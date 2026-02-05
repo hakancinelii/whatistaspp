@@ -503,8 +503,10 @@ export function initScheduler() {
                                 await db.run('UPDATE users SET credits = credits - 1 WHERE id = ?', [job.userId]);
                             }
                         }
-                        // Small natural delay between messages
-                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        // Get user settings for delay
+                        let userSettings = await db.get('SELECT min_delay FROM user_settings WHERE user_id = ?', [job.userId]);
+                        const delaySeconds = userSettings?.min_delay || 5;
+                        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
                     }
                 }
 

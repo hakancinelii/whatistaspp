@@ -6,18 +6,18 @@ import Link from "next/link";
 
 const menuItems = [
   { href: "/dashboard/inbox", icon: "💬", label: "Sohbetler" },
-  { href: "/dashboard", icon: "📊", label: "Dashboard" },
-  { href: "/dashboard/customers", icon: "👥", label: "Müşteriler" },
   { href: "/dashboard/messages", icon: "📨", label: "Toplu Mesaj Gönder" },
+  { href: "/dashboard/operation", icon: "🏝️", label: "Operasyon" },
+  { href: "/dashboard/customers", icon: "👥", label: "Müşteriler" },
   { href: "/dashboard/automation", icon: "🤖", label: "Otomasyon" },
   { href: "/dashboard/knowledge", icon: "🧠", label: "Bilgi Bankası" },
-  { href: "/dashboard/operation", icon: "🏝️", label: "Operasyon" },
   { href: "/dashboard/templates", icon: "📝", label: "Şablonlar" },
   { href: "/dashboard/reports", icon: "📈", label: "Raporlar" },
   { href: "/dashboard/scheduled", icon: "⏳", label: "Bekleyenler" },
   { href: "/dashboard/history", icon: "📜", label: "Geçmiş" },
-  { href: "/dashboard/whatsapp", icon: "🟢", label: "WhatsApp" },
+  { href: "/dashboard", icon: "📊", label: "Dashboard" },
   { href: "/dashboard/settings", icon: "⚙️", label: "Ayarlar" },
+  { href: "/dashboard/whatsapp", icon: "🟢", label: "WhatsApp" },
 ];
 
 export default function DashboardLayout({
@@ -145,18 +145,6 @@ export default function DashboardLayout({
                 </Link>
               </li>
             )}
-            <li>
-              <Link
-                href="/dashboard/settings"
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition ${pathname === "/dashboard/settings"
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-600/20"
-                  : "text-gray-400 hover:bg-slate-800 hover:text-white"
-                  }`}
-              >
-                <span className="text-xl">⚙️</span>
-                <span className="font-medium">Ayarlar</span>
-              </Link>
-            </li>
           </ul>
         </nav>
 

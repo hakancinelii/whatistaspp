@@ -86,8 +86,42 @@ export default function MessagesPage() {
         }
     };
 
+    const [mediaFile, setMediaFile] = useState<File | null>(null);
+    const [mediaUrl, setMediaUrl] = useState("");
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/upload/image", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setMediaUrl(data.url);
+                showNotification("Görsel yüklendi!", "success");
+            } else {
+                showNotification("Görsel yüklenemedi!", "error");
+            }
+        } catch (error) {
+            showNotification("Görsel yükleme hatası!", "error");
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handleSend = async () => {
-        if (!message.trim() || selectedCustomers.length === 0) return;
+        if ((!message.trim() && !mediaUrl) || selectedCustomers.length === 0) return;
         if (!isConnected) {
             showNotification("WhatsApp bağlantısı yok! Önce WhatsApp'ı bağlayın.", "warning");
             return;
@@ -106,6 +140,8 @@ export default function MessagesPage() {
                 body: JSON.stringify({
                     customerIds: selectedCustomers,
                     message: message,
+                    mediaUrl: mediaUrl,
+                    mediaType: mediaUrl ? 'image' : null,
                     scheduledAt: isScheduled ? scheduledAt : null
                 }),
             });
@@ -118,6 +154,7 @@ export default function MessagesPage() {
                     showNotification("Gönderim başlatıldı.", "success");
                 }
                 setMessage("");
+                setMediaUrl("");
                 setSelectedCustomers([]);
                 setIsScheduled(false);
                 setScheduledAt("");
@@ -307,6 +344,36 @@ export default function MessagesPage() {
                         <div className="absolute bottom-3 right-4 text-[10px] text-gray-500 font-mono">
                             {message.length} karakter
                         </div>
+                    </div>
+
+                    {/* Media Upload Section */}
+                    <div className="mb-4">
+                        <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Görsel Ekle (Opsiyonel)</label>
+                        {!mediaUrl ? (
+                            <button
+                                type="button"
+                                onClick={() => document.getElementById('media-upload')?.click()}
+                                disabled={uploading}
+                                className="w-full py-4 bg-slate-700/30 border-2 border-dashed border-slate-600 rounded-xl text-gray-400 hover:text-white hover:border-purple-500 transition-all flex flex-col items-center justify-center gap-2 group"
+                            >
+                                <span className="text-2xl group-hover:scale-110 transition-transform">{uploading ? '⏳' : '🖼️'}</span>
+                                <span className="text-xs font-bold">{uploading ? 'Yükleniyor...' : 'Görsel Seçmek İçin Tıklayın'}</span>
+                                <input id="media-upload" type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                            </button>
+                        ) : (
+                            <div className="relative group">
+                                <img src={mediaUrl} alt="Selected" className="w-full h-32 object-cover rounded-xl border border-purple-500/50" />
+                                <button
+                                    onClick={() => setMediaUrl("")}
+                                    className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <span className="text-xs">✕</span>
+                                </button>
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none">
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/50 px-2 py-1 rounded">Görsel Yüklendi</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-700">

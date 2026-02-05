@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Start sending in background
-        processMessages(user.userId, customers, message, db);
+        processMessages(user.userId, customers, message, db, { mediaUrl, mediaType });
 
         return NextResponse.json({
             success: true,
@@ -126,7 +126,8 @@ async function processMessages(
     userId: number,
     customers: any[],
     message: string,
-    db: any
+    db: any,
+    options?: { mediaUrl?: string, mediaType?: string }
 ) {
     const progress = activeSendings.get(userId)!;
 
@@ -183,13 +184,13 @@ async function processMessages(
                 personalizedMessage += randomVar;
             }
 
-            const success = await sendMessage(userId, customer.phone_number, personalizedMessage);
+            const success = await sendMessage(userId, customer.phone_number, personalizedMessage, options);
 
             if (success) {
                 progress.success++;
                 await db.run(
-                    'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                    [userId, customer.phone_number, personalizedMessage, 'sent']
+                    'INSERT INTO sent_messages (user_id, phone_number, message, status, media_url, media_type, sent_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                    [userId, customer.phone_number, personalizedMessage, 'sent', options?.mediaUrl, options?.mediaType]
                 );
 
                 const u = await db.get('SELECT role FROM users WHERE id = ?', [userId]);

@@ -4,36 +4,61 @@ import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
     const [user, setUser] = useState<any>(null);
+    const [settings, setSettings] = useState<any>({ min_delay: 5, night_mode: true });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
     });
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            try {
-                const decoded = JSON.parse(atob(token.split(".")[1]));
-                setUser(decoded);
-                setFormData(prev => ({ ...prev, name: decoded.name, email: decoded.email }));
-            } catch (e) { }
-        }
-        setLoading(false);
+        const fetchData = async () => {
+            const token = localStorage.getItem("token");
+            if (token) {
+                try {
+                    const decoded = JSON.parse(atob(token.split(".")[1]));
+                    setUser(decoded);
+                    setFormData({ name: decoded.name, email: decoded.email });
+
+                    // Fetch settings from API
+                    const res = await fetch('/api/settings');
+                    const data = await res.json();
+                    if (!data.error) {
+                        setSettings({
+                            min_delay: data.min_delay || 5,
+                            night_mode: !!data.night_mode
+                        });
+                    }
+                } catch (e) { }
+            }
+            setLoading(false);
+        };
+        fetchData();
     }, []);
 
-    const handleUpdateProfile = async (e: React.FormEvent) => {
+    const handleSaveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
-        // Profil güncelleme API'si henüz yok, şimdilik UI simülasyonu
-        setTimeout(() => {
-            alert("✅ Profil bilgileriniz güncellendi!");
-            setSaving(false);
-        }, 1000);
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    min_delay: parseInt(settings.min_delay),
+                    night_mode: settings.night_mode,
+                    name: formData.name
+                })
+            });
+
+            if (res.ok) {
+                alert("✅ Ayarlarınız başarıyla güncellendi!");
+                // Update local storage token name if needed (optional)
+            }
+        } catch (error) {
+            alert("❌ Ayarlar kaydedilirken bir hata oluştu.");
+        }
+        setSaving(false);
     };
 
     if (loading) return <div className="p-8 text-white">Yükleniyor...</div>;
@@ -48,10 +73,10 @@ export default function SettingsPage() {
                 <div className="md:col-span-1 space-y-6">
                     <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center">
                         <div className="w-20 h-20 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold border-4 border-slate-900 shadow-xl">
-                            {user?.name?.[0]?.toUpperCase() || "U"}
+                            {formData.name?.[0]?.toUpperCase() || "U"}
                         </div>
-                        <h2 className="text-xl font-bold text-white mb-1">{user?.name}</h2>
-                        <p className="text-sm text-gray-500 mb-4">{user?.email}</p>
+                        <h2 className="text-xl font-bold text-white mb-1">{formData.name}</h2>
+                        <p className="text-sm text-gray-500 mb-4">{formData.email}</p>
                         <div className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${user?.package === 'platinum' ? 'bg-purple-500 text-white' :
                             user?.package === 'gold' ? 'bg-yellow-500 text-slate-900' :
                                 'bg-blue-500 text-white'
@@ -83,7 +108,7 @@ export default function SettingsPage() {
                     {/* General Info */}
                     <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
                         <h3 className="text-xl font-bold text-white mb-6">Profil Bilgileri</h3>
-                        <form onSubmit={handleUpdateProfile} className="space-y-6">
+                        <div className="space-y-6">
                             <div className="grid sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Ad Soyad</label>
@@ -104,16 +129,7 @@ export default function SettingsPage() {
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50"
-                                >
-                                    {saving ? "Güncelleniyor..." : "Profil Güncelle"}
-                                </button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
 
                     {/* Application Settings (Restored) */}
@@ -128,13 +144,11 @@ export default function SettingsPage() {
                                 <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
                                     <input
                                         type="checkbox"
-                                        name="toggle"
-                                        id="theme-toggle"
                                         className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer translate-x-6 border-purple-500"
-                                        checked={true}
-                                        readOnly
+                                        checked={settings.night_mode}
+                                        onChange={(e) => setSettings({ ...settings, night_mode: e.target.checked })}
                                     />
-                                    <label htmlFor="theme-toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-purple-500 cursor-pointer"></label>
+                                    <label className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${settings.night_mode ? 'bg-purple-500' : 'bg-gray-700'}`}></label>
                                 </div>
                             </div>
 
@@ -145,13 +159,24 @@ export default function SettingsPage() {
                                         type="number"
                                         min="1"
                                         max="60"
-                                        defaultValue="5"
+                                        value={settings.min_delay}
+                                        onChange={(e) => setSettings({ ...settings, min_delay: e.target.value })}
                                         className="w-20 bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white font-mono text-center focus:ring-2 focus:ring-purple-500 outline-none"
                                     />
                                     <span className="text-sm text-gray-400">saniye</span>
                                 </div>
                                 <p className="text-[10px] text-gray-500 mt-2">Daha güvenli gönderim için mesajlar arası bekleme.</p>
                             </div>
+                        </div>
+
+                        <div className="flex justify-end mt-8">
+                            <button
+                                onClick={handleSaveSettings}
+                                disabled={saving}
+                                className="px-10 py-3 bg-purple-600 hover:bg-purple-500 text-white font-extrabold rounded-2xl transition hover:scale-105 active:scale-95 shadow-xl shadow-purple-600/30 disabled:opacity-50"
+                            >
+                                {saving ? "Kaydediliyor..." : "AYARLARI KAYDET"}
+                            </button>
                         </div>
                     </div>
 
