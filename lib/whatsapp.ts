@@ -137,23 +137,8 @@ export async function connectWhatsApp(userId: number): Promise<void> {
                 session.isConnected = true;
                 session.isConnecting = false;
                 session.qrCode = null;
-
-                // Fotoğraf Senkronizasyonu (Arka Planda)
-                (async () => {
-                    try {
-                        const { getDatabase } = require('./db');
-                        const db = await getDatabase();
-                        const customers = await db.all('SELECT phone_number FROM customers WHERE user_id = ? AND profile_picture_url IS NULL', [userId]);
-
-                        for (const cust of customers) {
-                            await syncContactProfile(userId, sock, cust.phone_number).catch(() => { });
-                            await new Promise(r => setTimeout(r, 1000));
-                        }
-                    } catch (e) { }
-                })();
             }
         });
-
 
         // Arşivleme Durumu Senkronizasyonu
         sock.ev.on('chats.update', async (chats) => {

@@ -5,14 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 const menuItems = [
+  { href: "/dashboard/inbox", icon: "💬", label: "Sohbetler" },
   { href: "/dashboard", icon: "📊", label: "Dashboard" },
   { href: "/dashboard/customers", icon: "👥", label: "Müşteriler" },
   { href: "/dashboard/messages", icon: "📨", label: "Toplu Mesaj Gönder" },
   { href: "/dashboard/automation", icon: "🤖", label: "Otomasyon" },
-
   { href: "/dashboard/knowledge", icon: "🧠", label: "Bilgi Bankası" },
   { href: "/dashboard/operation", icon: "🏝️", label: "Operasyon" },
-  { href: "/dashboard/inbox", icon: "💬", label: "Sohbetler" },
   { href: "/dashboard/templates", icon: "📝", label: "Şablonlar" },
   { href: "/dashboard/reports", icon: "📈", label: "Raporlar" },
   { href: "/dashboard/scheduled", icon: "⏳", label: "Bekleyenler" },

@@ -166,8 +166,7 @@ export default function MessagesPage() {
 
     return (
         <div className="fade-in">
-
-            <h1 className="text-3xl font-bold text-white mb-8">Toplu Mesaj Gönder</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">Mesaj Gönder</h1>
 
             {!isConnected && (
                 <div className={`border rounded-xl p-4 mb-6 flex items-center ${isConnecting ? 'bg-blue-500/10 border-blue-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
