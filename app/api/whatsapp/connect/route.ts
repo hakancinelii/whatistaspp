@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Start connection in background
-        connectWhatsApp(user.userId);
+        // Start connection in background (force fresh start)
+        connectWhatsApp(user.userId, true);
 
         return NextResponse.json({ success: true, message: 'Connection started' });
     } catch (error: any) {

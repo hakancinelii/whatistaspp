@@ -51,24 +51,24 @@ export async function getSession(userId: number): Promise<WhatsAppSession> {
     return sessions.get(userId)!;
 }
 
-export async function connectWhatsApp(userId: number): Promise<void> {
+export async function connectWhatsApp(userId: number, force = false): Promise<void> {
     const session = await getSession(userId);
 
     // If already connected, we refresh listeners to ensure HMR code updates are active
-    if (session.isConnected && session.sock) {
+    if (!force && session.isConnected && session.sock) {
         console.log(`[WA] User ${userId} already connected. Refreshing listeners for HMR...`);
         setupMessageListeners(userId, session.sock);
         return;
     }
 
-    // Prevent spamming connection attempts
+    // Prevent spamming connection attempts (unless forced)
     const now = Date.now();
-    if (session.isConnecting && session.lastAttempt && (now - session.lastAttempt < 15000)) {
+    if (!force && session.isConnecting && session.lastAttempt && (now - session.lastAttempt < 15000)) {
         console.log(`[WA] Connection attempt already in progress for user ${userId}.`);
         return;
     }
 
-    console.log(`[WA] 🚀 User ${userId}: Initiating connection...`);
+    console.log(`[WA] 🚀 User ${userId}: Initiating connection (force: ${force})...`);
     session.isConnecting = true;
     session.lastAttempt = now;
     session.qrCode = null;
