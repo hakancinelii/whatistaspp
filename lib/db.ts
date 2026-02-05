@@ -1,0 +1,256 @@
+import Database from 'better-sqlite3';
+import path from 'path';
+import fs from 'fs';
+
+let dbInstance: any = null;
+
+function getDbPath() {
+  // Railway'de volume /app/data'dır. Eğer bu klasör varsa mutlaka orayı kullan.
+  const railwayPath = '/app/data/database.db';
+  if (fs.existsSync('/app/data')) {
+    return railwayPath;
+  }
+
+  // Yerel geliştirme için
+  const localDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(localDir)) {
+    fs.mkdirSync(localDir, { recursive: true });
+  }
+  return path.join(localDir, 'database.db');
+}
+
+function initDatabase(): any {
+  if (dbInstance) return dbInstance;
+
+  const dbPath = getDbPath();
+  console.log(`[DB] Using Database at: ${dbPath}`);
+
+  const rawDb = new Database(dbPath);
+  rawDb.pragma('journal_mode = WAL');
+  rawDb.pragma('synchronous = NORMAL');
+  rawDb.pragma('busy_timeout = 30000'); // 30 saniye bekleme süresi
+
+  rawDb.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        credits INTEGER DEFAULT 0,
+        package TEXT DEFAULT 'standard',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        session_id TEXT UNIQUE NOT NULL,
+        is_connected BOOLEAN DEFAULT 0,
+        qr_code TEXT,
+        last_connected DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS auto_replies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        keyword TEXT NOT NULL,
+        reply TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        phone_number TEXT NOT NULL,
+        name TEXT,
+        tags TEXT,
+        additional_data TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(user_id, phone_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        customer_ids TEXT NOT NULL, -- JSON string of contact IDs
+        message TEXT NOT NULL,
+        scheduled_at DATETIME NOT NULL,
+        status TEXT DEFAULT 'pending', -- pending, sent, failed, cancelled
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS sent_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        phone_number TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        media_url TEXT,
+        media_type TEXT,
+        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS message_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS knowledge_base (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        type TEXT DEFAULT 'text', -- text, pdf_parsed, etc.
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        customer_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        scheduled_time DATETIME NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS incoming_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        phone_number TEXT NOT NULL,
+        message TEXT NOT NULL,
+        received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS drivers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        phone_number TEXT NOT NULL,
+        license_plate TEXT,
+        vehicle_type TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS reservations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        customer_id INTEGER NOT NULL,
+        driver_id INTEGER,
+        driver_phone TEXT,
+        voucher_number TEXT UNIQUE NOT NULL,
+        type TEXT DEFAULT 'transfer', -- transfer, tour, hotel
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        pickup_location TEXT NOT NULL,
+        dropoff_location TEXT NOT NULL,
+        flight_code TEXT,
+        passenger_count INTEGER DEFAULT 1,
+        passenger_names TEXT,
+        price REAL,
+        currency TEXT DEFAULT 'TRY',
+        status TEXT DEFAULT 'pending', -- pending, confirmed, active, completed, cancelled
+        payment_status TEXT DEFAULT 'pending',
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (customer_id) REFERENCES customers(id),
+        FOREIGN KEY (driver_id) REFERENCES drivers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS user_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE NOT NULL,
+        webhook_url TEXT,
+        api_key TEXT UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
+  // Migrations for existing databases
+  try {
+    rawDb.exec("ALTER TABLE reservations ADD COLUMN driver_phone TEXT;");
+    console.log("[DB] Migration: Added driver_phone to reservations");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      console.error("[DB] Migration Error (driver_phone):", e.message);
+    }
+  }
+
+  try {
+    rawDb.exec("ALTER TABLE reservations ADD COLUMN passenger_names TEXT;");
+    console.log("[DB] Migration: Added passenger_names to reservations");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      console.error("[DB] Migration Error (passenger_names):", e.message);
+    }
+  }
+
+  try {
+    rawDb.exec("ALTER TABLE reservations ADD COLUMN passenger_names TEXT;");
+    console.log("[DB] Migration: Added passenger_names to reservations");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      console.error("[DB] Migration Error (passenger_names):", e.message);
+    }
+  }
+
+  // Users Migration
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0;");
+    console.log("[DB] Migration: Added credits to users");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN package TEXT DEFAULT 'standard';");
+    console.log("[DB] Migration: Added package to users");
+  } catch (e: any) { }
+
+  // User Settings Migration
+  try {
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN min_delay INTEGER DEFAULT 50;");
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN max_delay INTEGER DEFAULT 100;");
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN daily_limit INTEGER DEFAULT 250;");
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN message_variation BOOLEAN DEFAULT 1;");
+    console.log("[DB] Migration: Added columns to user_settings");
+  } catch (e: any) { }
+
+  dbInstance = rawDb;
+  return rawDb;
+}
+
+export async function getDatabase(): Promise<any> {
+  const rawDb = initDatabase();
+
+  return {
+    get: async (sql: string, params: any[] = []) => rawDb.prepare(sql).get(...params),
+    all: async (sql: string, params: any[] = []) => rawDb.prepare(sql).all(...params),
+    run: async (sql: string, params: any[] = []) => {
+      const result = rawDb.prepare(sql).run(...params);
+      return { lastID: Number(result.lastInsertRowid), changes: result.changes };
+    },
+    exec: async (sql: string) => {
+      rawDb.exec(sql);
+    },
+    prepare: (sql: string) => rawDb.prepare(sql)
+  };
+}
