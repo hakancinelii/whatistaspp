@@ -7,7 +7,7 @@ import Link from "next/link";
 const menuItems = [
   { href: "/dashboard", icon: "📊", label: "Dashboard" },
   { href: "/dashboard/customers", icon: "👥", label: "Müşteriler" },
-  { href: "/dashboard/messages", icon: "📨", label: "Mesaj Gönder" },
+  { href: "/dashboard/messages", icon: "📨", label: "Toplu Mesaj Gönder" },
   { href: "/dashboard/automation", icon: "🤖", label: "Otomasyon" },
   { href: "/dashboard/knowledge", icon: "🧠", label: "Bilgi Bankası" },
   { href: "/dashboard/operation", icon: "🏝️", label: "Operasyon" },

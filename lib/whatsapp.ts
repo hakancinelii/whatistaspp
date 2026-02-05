@@ -155,6 +155,8 @@ export async function connectWhatsApp(userId: number): Promise<void> {
                             'UPDATE customers SET is_archived = ? WHERE user_id = ? AND phone_number = ?',
                             [isArchived, userId, jid]
                         );
+                        // Profil bilgisini çek
+                        syncContactProfile(userId, sock, jid).catch(() => { });
                         console.log(`[WA] Chat ${jid} archive status updated: ${isArchived}`);
                     } catch (e) { }
                 }
