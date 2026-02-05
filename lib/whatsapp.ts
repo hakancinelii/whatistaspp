@@ -271,6 +271,9 @@ function setupMessageListeners(userId: number, sock: any) {
             );
             console.log(`[WA] ✅ Incoming message saved: ${from}`);
 
+            // Profil Bilgilerini Senkronize Et (Arka Planda)
+            syncContactProfile(userId, sock, from).catch(e => console.error('[WA] Profile sync error:', e));
+
             // --- Auto Reply Logic ---
             if (text) {
                 const cleanText = text.toLowerCase().trim();
@@ -302,6 +305,37 @@ function setupMessageListeners(userId: number, sock: any) {
     });
 }
 
+
+async function syncContactProfile(userId: number, sock: any, phone: string) {
+    try {
+        const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+        const { getDatabase } = require('./db');
+        const db = await getDatabase();
+
+        // Profil Resmi Sorgula
+        let ppUrl = null;
+        try {
+            ppUrl = await sock.profilePictureUrl(jid, 'image');
+        } catch (e) { /* Resim yoksa hata verebilir, geçiyoruz */ }
+
+        // Durum (Bio) Sorgula
+        let status = null;
+        try {
+            const statusData = await sock.fetchStatus(jid);
+            status = statusData?.status;
+        } catch (e) { /* Bio yoksa hata verebilir, geçiyoruz */ }
+
+        if (ppUrl || status) {
+            await db.run(
+                'UPDATE customers SET profile_picture_url = ?, status = ? WHERE user_id = ? AND phone_number = ?',
+                [ppUrl, status, userId, phone.split('@')[0]]
+            );
+            console.log(`[WA] Profile synced for ${phone}: ${ppUrl ? 'Image' : 'No Image'}, ${status ? 'Bio' : 'No Bio'}`);
+        }
+    } catch (err: any) {
+        console.error(`[WA] syncContactProfile error for ${phone}:`, err.message);
+    }
+}
 
 export async function disconnectWhatsApp(userId: number): Promise<void> {
     console.log(`[WA] 🧹 Explicitly disconnecting user ${userId}...`);

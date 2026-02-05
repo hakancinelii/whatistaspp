@@ -69,6 +69,8 @@ function initDatabase(): any {
         name TEXT,
         tags TEXT,
         is_archived BOOLEAN DEFAULT 0,
+        profile_picture_url TEXT,
+        status TEXT,
         additional_data TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id),
@@ -190,6 +192,12 @@ function initDatabase(): any {
   try {
     rawDb.exec("ALTER TABLE customers ADD COLUMN is_archived BOOLEAN DEFAULT 0;");
     console.log("[DB] Migration: Added is_archived to customers");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE customers ADD COLUMN profile_picture_url TEXT;");
+    rawDb.exec("ALTER TABLE customers ADD COLUMN status TEXT;");
+    console.log("[DB] Migration: Added profile columns to customers");
   } catch (e: any) { }
 
   try {
