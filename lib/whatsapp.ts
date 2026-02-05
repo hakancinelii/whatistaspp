@@ -401,7 +401,7 @@ export async function disconnectWhatsApp(userId: number): Promise<void> {
     session.qrCode = null;
     session.sock = null;
 
-    const authDir = path.join(process.cwd(), 'auth_info', `user_${userId}`);
+    const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${userId}`);
     if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
 
     sessions.delete(userId);
