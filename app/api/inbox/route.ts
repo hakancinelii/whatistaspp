@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
         // Arşivlenmemiş mesajları çek ve profil bilgilerini ekle
         const messages = await db.all(`
             SELECT 
-                'msg_in_' || im.id as id, im.phone_number, im.name, im.content, im.media_url, im.media_type, 
+                'msg_in_' || im.id as id, im.phone_number, 
+                COALESCE(c.name, im.name) as name, 
+                im.content, im.media_url, im.media_type, 
                 im.received_at as timestamp, im.received_at, im.is_read, 0 as is_from_me,
                 c.profile_picture_url, c.status as bio_status
             FROM incoming_messages im
@@ -24,7 +26,9 @@ export async function GET(request: NextRequest) {
             AND (c.id IS NULL OR c.is_archived = 0)
             UNION ALL
             SELECT 
-                'msg_sent_' || sm.id as id, sm.phone_number, 'Siz' as name, sm.message as content, sm.media_url, sm.media_type, 
+                'msg_sent_' || sm.id as id, sm.phone_number, 
+                COALESCE(c.name, sm.phone_number) as name, 
+                sm.message as content, sm.media_url, sm.media_type, 
                 sm.sent_at as timestamp, sm.sent_at as received_at, 1 as is_read, 1 as is_from_me,
                 c.profile_picture_url, c.status as bio_status
             FROM sent_messages sm

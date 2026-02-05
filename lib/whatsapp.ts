@@ -140,11 +140,34 @@ export async function connectWhatsApp(userId: number): Promise<void> {
             }
         });
 
+        // Rehber İsimlerini Senkronize Et
+        const updateContacts = async (contacts: any[]) => {
+            for (const contact of contacts) {
+                const jid = contact.id?.split('@')[0];
+                if (!jid || jid === 'status' || jid.includes('broadcast')) continue;
+
+                const name = contact.name || contact.verifiedName || contact.notify;
+                if (name) {
+                    try {
+                        const { getDatabase } = require('./db');
+                        const db = await getDatabase();
+                        await db.run(
+                            'INSERT INTO customers (user_id, phone_number, name) VALUES (?, ?, ?) ON CONFLICT(user_id, phone_number) DO UPDATE SET name = excluded.name WHERE name IS NULL OR name = phone_number OR name = "Siz" OR name = "Bilinmeyen"',
+                            [userId, jid, name]
+                        );
+                    } catch (e) { }
+                }
+            }
+        };
+
+        sock.ev.on('contacts.upsert', updateContacts);
+        sock.ev.on('contacts.update', updateContacts);
+
         // Arşivleme ve Okundu Bilgisi Senkronizasyonu
         sock.ev.on('chats.update', async (chats) => {
             for (const chat of chats) {
                 const jid = chat.id?.split('@')[0];
-                if (!jid) continue;
+                if (!jid || jid === 'status' || jid.includes('broadcast')) continue;
 
                 try {
                     const { getDatabase } = require('./db');
@@ -179,8 +202,10 @@ export async function connectWhatsApp(userId: number): Promise<void> {
 
         sock.ev.on('chats.upsert', async (chats) => {
             for (const chat of chats) {
+                const jid = chat.id?.split('@')[0];
+                if (!jid || jid === 'status' || jid.includes('broadcast')) continue;
+
                 if (chat.archived !== undefined && chat.id) {
-                    const jid = chat.id.split('@')[0];
                     const isArchived = chat.archived ? 1 : 0;
                     try {
                         const { getDatabase } = require('./db');
@@ -212,8 +237,15 @@ function setupMessageListeners(userId: number, sock: any) {
         const msg = m.messages[0];
         if (!msg || !msg.message) return;
 
-        const from = msg.key.remoteJid?.split('@')[0] || '';
+        const fromJid = msg.key.remoteJid || '';
+        const from = fromJid.split('@')[0] || '';
         const isFromMe = msg.key.fromMe || false;
+
+        // WhatsApp Durum (Story) mesajlarını yoksay
+        if (fromJid === 'status@broadcast') {
+            console.log('[WA] 📱 Status update detected, skipping inbox...');
+            return;
+        }
 
         console.log(`[WA] 📥 Message detected: ${from} (fromMe: ${isFromMe})`);
 
