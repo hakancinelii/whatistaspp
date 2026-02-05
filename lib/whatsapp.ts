@@ -140,6 +140,45 @@ export async function connectWhatsApp(userId: number): Promise<void> {
             }
         });
 
+        // Arşivleme Durumu Senkronizasyonu
+        sock.ev.on('chats.update', async (chats) => {
+            for (const chat of chats) {
+                if (chat.archived !== undefined && chat.id) {
+                    const jid = chat.id.split('@')[0];
+                    const isArchived = chat.archived ? 1 : 0;
+                    try {
+                        const { getDatabase } = require('./db');
+                        const db = await getDatabase();
+                        // Önce müşterinin var olduğundan emin ol, yoksa oluştur, sonra arşiv durumunu güncelle
+                        await db.run('INSERT OR IGNORE INTO customers (user_id, phone_number, name) VALUES (?, ?, ?)', [userId, jid, chat.name || jid]);
+                        await db.run(
+                            'UPDATE customers SET is_archived = ? WHERE user_id = ? AND phone_number = ?',
+                            [isArchived, userId, jid]
+                        );
+                        console.log(`[WA] Chat ${jid} archive status updated: ${isArchived}`);
+                    } catch (e) { }
+                }
+            }
+        });
+
+        sock.ev.on('chats.upsert', async (chats) => {
+            for (const chat of chats) {
+                if (chat.archived !== undefined && chat.id) {
+                    const jid = chat.id.split('@')[0];
+                    const isArchived = chat.archived ? 1 : 0;
+                    try {
+                        const { getDatabase } = require('./db');
+                        const db = await getDatabase();
+                        await db.run('INSERT OR IGNORE INTO customers (user_id, phone_number, name) VALUES (?, ?, ?)', [userId, jid, chat.name || jid]);
+                        await db.run(
+                            'UPDATE customers SET is_archived = ? WHERE user_id = ? AND phone_number = ?',
+                            [isArchived, userId, jid]
+                        );
+                    } catch (e) { }
+                }
+            }
+        });
+
         setupMessageListeners(userId, sock);
 
     } catch (error) {

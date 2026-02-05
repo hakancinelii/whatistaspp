@@ -68,6 +68,7 @@ function initDatabase(): any {
         phone_number TEXT NOT NULL,
         name TEXT,
         tags TEXT,
+        is_archived BOOLEAN DEFAULT 0,
         additional_data TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id),
@@ -186,6 +187,11 @@ function initDatabase(): any {
   `);
 
   // Migrations for existing databases
+  try {
+    rawDb.exec("ALTER TABLE customers ADD COLUMN is_archived BOOLEAN DEFAULT 0;");
+    console.log("[DB] Migration: Added is_archived to customers");
+  } catch (e: any) { }
+
   try {
     rawDb.exec("ALTER TABLE reservations ADD COLUMN driver_phone TEXT;");
     console.log("[DB] Migration: Added driver_phone to reservations");
