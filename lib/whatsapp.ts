@@ -140,25 +140,39 @@ export async function connectWhatsApp(userId: number): Promise<void> {
             }
         });
 
-        // Arşivleme Durumu Senkronizasyonu
+        // Arşivleme ve Okundu Bilgisi Senkronizasyonu
         sock.ev.on('chats.update', async (chats) => {
             for (const chat of chats) {
-                if (chat.archived !== undefined && chat.id) {
-                    const jid = chat.id.split('@')[0];
-                    const isArchived = chat.archived ? 1 : 0;
-                    try {
-                        const { getDatabase } = require('./db');
-                        const db = await getDatabase();
-                        // Önce müşterinin var olduğundan emin ol, yoksa oluştur, sonra arşiv durumunu güncelle
+                const jid = chat.id?.split('@')[0];
+                if (!jid) continue;
+
+                try {
+                    const { getDatabase } = require('./db');
+                    const db = await getDatabase();
+
+                    // --- Arşivleme Senkronizasyonu ---
+                    if (chat.archived !== undefined) {
+                        const isArchived = chat.archived ? 1 : 0;
                         await db.run('INSERT OR IGNORE INTO customers (user_id, phone_number, name) VALUES (?, ?, ?)', [userId, jid, chat.name || jid]);
                         await db.run(
                             'UPDATE customers SET is_archived = ? WHERE user_id = ? AND phone_number = ?',
                             [isArchived, userId, jid]
                         );
-                        // Profil bilgisini çek
                         syncContactProfile(userId, sock, jid).catch(() => { });
-                        console.log(`[WA] Chat ${jid} archive status updated: ${isArchived}`);
-                    } catch (e) { }
+                        console.log(`[WA] Chat ${jid} archive status synced: ${isArchived}`);
+                    }
+
+                    // --- Okundu (Görüldü) Bilgisi Senkronizasyonu ---
+                    // unreadCount 0 ise telefonda bu sohbet okunmuş demektir.
+                    if (chat.unreadCount === 0) {
+                        await db.run(
+                            'UPDATE incoming_messages SET is_read = 1 WHERE user_id = ? AND phone_number = ? AND is_read = 0',
+                            [userId, jid]
+                        );
+                        console.log(`[WA] Chat ${jid} marked as READ via phone sync`);
+                    }
+                } catch (e) {
+                    console.error('[WA] chats.update sync error:', e);
                 }
             }
         });
