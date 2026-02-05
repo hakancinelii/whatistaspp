@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
         const { initScheduler } = require('@/lib/whatsapp');
         initScheduler();
 
-        // If not connected and not connecting, try to connect (auto-reconnect logic)
-        if (!session.isConnected && !session.isConnecting) {
+        // If not connected and not connecting and no QR, try to connect (auto-reconnect logic)
+        if (!session.isConnected && !session.isConnecting && !session.qrCode) {
             const { connectWhatsApp } = require('@/lib/whatsapp');
             connectWhatsApp(user.userId).catch(console.error);
         }

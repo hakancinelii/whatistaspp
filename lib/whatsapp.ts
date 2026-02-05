@@ -99,7 +99,7 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
             version,
             auth: state,
             printQRInTerminal: false,
-            browser: ["Whatistaspp", "Chrome", "120.0.0.0"],
+            browser: ["Ubuntu", "Chrome", "114.0.5735.196"],
             syncFullHistory: false,
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
@@ -117,7 +117,7 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
             if (qr) {
                 console.log(`[WA] 🔳 New QR generated for user ${userId}`);
                 session.qrCode = await qrcode.toDataURL(qr);
-                session.isConnecting = false;
+                // isConnecting true kalmalı ki status API tekrar tetiklemesin
             }
 
             if (connection === 'close') {
@@ -129,9 +129,12 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
                 session.qrCode = null;
 
                 if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
+                    console.log(`[WA] 🏹 Session invalidated for user ${userId}. Clearing auth...`);
                     session.sock = null;
                     if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
                     sessions.delete(userId);
+                } else {
+                    // Diğer hatalarda (connection lost vb.) sock'u null yapmıyoruz ki tekrar denesin
                 }
             } else if (connection === 'open') {
                 console.log(`[WA] ✅ User ${userId} connected successfully!`);
