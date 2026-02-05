@@ -142,8 +142,21 @@ export default function InboxPage() {
 
     useEffect(() => {
         fetchMessages();
-        const interval = setInterval(fetchMessages, 5000);
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds for better real-time feel
+
+        // Handle visibility change (tab focus) to refresh immediately
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchMessages();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -279,8 +292,8 @@ export default function InboxPage() {
 
             // Fetch messages and WA status in parallel
             const [msgRes, statusRes] = await Promise.all([
-                fetch("/api/inbox", { headers: { Authorization: `Bearer ${token}` } }),
-                fetch("/api/whatsapp/status", { headers: { Authorization: `Bearer ${token}` } })
+                fetch("/api/inbox", { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
+                fetch("/api/whatsapp/status", { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
             ]);
 
             if (msgRes.status === 401 || statusRes.status === 401) {

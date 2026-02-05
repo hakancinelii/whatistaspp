@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
     try {
         const user = await getUserFromToken(request);
