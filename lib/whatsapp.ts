@@ -79,10 +79,10 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
 
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
-        let version: [number, number, number] = [2, 3000, 1019014164];
+        let version: [number, number, number] = [2, 3000, 1015901307];
         try {
             const latest = await fetchLatestBaileysVersion();
-            version = latest.version;
+            if (latest.version) version = latest.version;
         } catch (vErr) {
             console.warn(`[WA] Could not fetch version, using fallback.`);
         }
@@ -99,11 +99,12 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
             version,
             auth: state,
             printQRInTerminal: false,
-            browser: Browsers.macOS('Desktop'),
+            browser: ["Whatistaspp", "Chrome", "120.0.0.0"],
             syncFullHistory: false,
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
+            generateHighQualityLinkPreview: true,
         });
 
         session.sock = sock;
