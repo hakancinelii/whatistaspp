@@ -737,23 +737,23 @@ export default function InboxPage() {
                         )}
 
                         {/* Reply Input */}
-                        <div className="p-4 bg-slate-800/80 border-t border-slate-700">
+                        <div className="p-2 md:p-4 bg-slate-800/80 border-t border-slate-700">
                             {isRecording ? (
                                 <div className="flex items-center justify-between bg-slate-900 rounded-xl px-4 py-3 animate-pulse border border-red-500/50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 bg-red-500 rounded-full animate-ping" />
-                                        <span className="text-red-500 font-bold">Kayıt Yapılıyor... {formatTime(recordingTime)}</span>
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full animate-ping" />
+                                        <span className="text-red-500 font-bold text-xs md:text-base">Kayıt... {formatTime(recordingTime)}</span>
                                     </div>
                                     <button
                                         onClick={stopRecording}
-                                        className="bg-red-600 hover:bg-red-500 text-white px-6 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-95"
+                                        className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 md:px-6 md:py-1.5 rounded-lg text-[10px] md:text-sm font-bold transition-all active:scale-95"
                                     >
                                         BİTİR VE GÖNDER
                                     </button>
                                 </div>
                             ) : (
                                 <>
-                                    <form onSubmit={handleReply} className="flex gap-2">
+                                    <form onSubmit={handleReply} className="flex gap-1 md:gap-2">
                                         <div className="relative">
                                             <input
                                                 type="file"
@@ -768,7 +768,7 @@ export default function InboxPage() {
                                                 className="h-10 w-10 md:h-12 md:w-12 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all active:scale-90 border border-slate-600 shadow-lg"
                                                 title="Resim Gönder"
                                             >
-                                                <span className="text-xl">+</span>
+                                                <span className="text-lg md:text-xl font-bold">+</span>
                                             </button>
                                         </div>
 
@@ -780,7 +780,7 @@ export default function InboxPage() {
                                                 : "bg-purple-600 border-purple-500 text-white hover:bg-purple-500"
                                                 }`}
                                         >
-                                            <span className="text-xl md:text-2xl">{isRecording ? "⏹" : "🎤"}</span>
+                                            <span className="text-lg md:text-2xl">{isRecording ? "⏹" : "🎤"}</span>
                                         </button>
 
                                         <input
@@ -788,7 +788,7 @@ export default function InboxPage() {
                                             value={replyText}
                                             onChange={(e) => { setReplyText(e.target.value); setTranslatedReply(""); }}
                                             placeholder="Mesaj yazın..."
-                                            className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-inner"
+                                            className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-3 md:px-4 py-2 md:py-3 text-sm md:text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-inner min-w-0"
                                         />
 
                                         {/* Translate button - only show if detected language is not Turkish */}
@@ -797,7 +797,7 @@ export default function InboxPage() {
                                                 type="button"
                                                 onClick={translateReplyToTargetLang}
                                                 disabled={isTranslatingReply}
-                                                className="h-10 w-10 md:h-12 md:w-12 flex items-center justify-center bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-xl transition-all active:scale-95 border border-purple-500/30"
+                                                className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0 flex items-center justify-center bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-xl transition-all active:scale-95 border border-purple-500/30"
                                                 title={`${detectedLanguage.toUpperCase()} diline çevir`}
                                             >
                                                 {isTranslatingReply ? '⏳' : '🌍'}
@@ -807,7 +807,7 @@ export default function InboxPage() {
                                         <button
                                             type="submit"
                                             disabled={isSending || (!replyText.trim() && !isRecording)}
-                                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-purple-500/20"
+                                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl text-sm md:text-base font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-purple-500/20 flex-shrink-0"
                                         >
                                             {isSending ? "..." : "Gönder"}
                                         </button>
