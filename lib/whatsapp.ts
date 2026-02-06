@@ -479,7 +479,12 @@ export async function sendMessage(userId: number, to: string, message: string, o
     if (!session.isConnected || !session.sock) return false;
 
     try {
-        const jid = to.includes('@s.whatsapp.net') ? to : `${to}@s.whatsapp.net`;
+        let jid = to;
+        if (to.includes('@lid') || to.includes('@g.us')) {
+            jid = to; // LID veya Grup ise olduğu gibi bırak
+        } else if (!to.includes('@s.whatsapp.net')) {
+            jid = `${to}@s.whatsapp.net`; // Normal numaraysa uzantı ekle
+        }
 
         if (options?.mediaUrl && options.mediaType === 'audio') {
             const audioPath = path.join(process.cwd(), 'data', options.mediaUrl);
