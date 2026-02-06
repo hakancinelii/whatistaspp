@@ -133,8 +133,12 @@ async function processMessages(
 
     let settings = await db.get('SELECT * FROM user_settings WHERE user_id = ?', [userId]);
     if (!settings) {
-        settings = { min_delay: 50, max_delay: 100, daily_limit: 250, night_mode: 1, message_variation: 1 };
+        settings = { min_delay: 5, max_delay: 7, daily_limit: 250, night_mode: 1, message_variation: 1 };
     }
+
+    // Ensure min_delay is at least 1 second
+    if (settings.min_delay < 1) settings.min_delay = 1;
+    if (!settings.max_delay || settings.max_delay <= settings.min_delay) settings.max_delay = settings.min_delay + 2;
 
     for (let i = 0; i < customers.length; i++) {
         if (!progress.isActive) break;
@@ -206,8 +210,11 @@ async function processMessages(
             }
 
             if (i < customers.length - 1) {
-                const min = settings.min_delay || 50;
-                const max = settings.max_delay || 100;
+                // Use settings from DB, fallback to 5 if somehow missing
+                const min = parseInt(settings.min_delay) || 5;
+                const max = parseInt(settings.max_delay) || (min + 2);
+
+                // Add jitter to make it behave more human-like (between min and max)
                 const delay = (Math.floor(Math.random() * (max - min + 1)) + min) * 1000;
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
