@@ -279,6 +279,7 @@ export default function MessagesPage() {
                                                 : [...prev, customer.id]
                                         );
                                     }}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="w-4 h-4 rounded-full accent-purple-500 mr-3"
                                 />
                                 <div className="flex-1">
@@ -407,7 +408,7 @@ export default function MessagesPage() {
 
                     <button
                         onClick={handleSend}
-                        disabled={sending || !message.trim() || selectedCustomers.length === 0 || (!isScheduled && !isConnected)}
+                        disabled={sending || (!message.trim() && !mediaUrl) || selectedCustomers.length === 0 || (!isScheduled && !isConnected)}
                         className={`w-full py-4 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-95 ${isScheduled
                             ? "bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20"
                             : "bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/20"
