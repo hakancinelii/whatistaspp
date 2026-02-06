@@ -137,8 +137,13 @@ async function processMessages(
     }
 
     // Ensure min_delay is at least 1 second
-    if (settings.min_delay < 1) settings.min_delay = 1;
-    if (!settings.max_delay || settings.max_delay <= settings.min_delay) settings.max_delay = settings.min_delay + 2;
+    settings.min_delay = parseInt(settings.min_delay); // Force int
+    settings.max_delay = parseInt(settings.max_delay); // Force int
+
+    if (isNaN(settings.min_delay) || settings.min_delay < 1) settings.min_delay = 5;
+    if (isNaN(settings.max_delay) || settings.max_delay <= settings.min_delay) settings.max_delay = settings.min_delay + 2;
+
+    console.log(`[Batch] Settings loaded - Min: ${settings.min_delay}s, Max: ${settings.max_delay}s`);
 
     for (let i = 0; i < customers.length; i++) {
         if (!progress.isActive) break;
