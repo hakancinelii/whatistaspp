@@ -151,13 +151,15 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
                 if (!jid || jid === 'status' || jid.includes('broadcast')) continue;
 
                 const name = contact.name || contact.verifiedName || contact.notify;
-                if (name) {
+                const lid = contact.lid; // Capture LID
+
+                if (name || lid) {
                     try {
                         const { getDatabase } = require('./db');
                         const db = await getDatabase();
                         await db.run(
-                            'INSERT INTO customers (user_id, phone_number, name) VALUES (?, ?, ?) ON CONFLICT(user_id, phone_number) DO UPDATE SET name = excluded.name WHERE name IS NULL OR name = phone_number OR name = "Siz" OR name = "Bilinmeyen"',
-                            [userId, jid, name]
+                            'INSERT INTO customers (user_id, phone_number, name, lid) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, phone_number) DO UPDATE SET name = COALESCE(excluded.name, name), lid = COALESCE(excluded.lid, lid)',
+                            [userId, jid, name, lid]
                         );
                     } catch (e) { }
                 }
@@ -279,9 +281,20 @@ function setupMessageListeners(userId: number, sock: any) {
         const fromJid = msg.key.remoteJid || '';
         let from = fromJid.split('@')[0] || '';
 
-        // Eğer mesaj LID (Gizli ID) üzerinden geliyorsa, uzantıyı koru ki cevap verebilelim
+        // Eğer mesaj LID (Gizli ID) üzerinden geliyorsa
         if (fromJid.includes('@lid')) {
-            from = fromJid;
+            from = fromJid; // Default to LID if lookup fails
+            try {
+                const { getDatabase } = require('./db');
+                const db = await getDatabase();
+                const matchedContact = await db.get('SELECT phone_number FROM customers WHERE lid = ? AND user_id = ?', [fromJid, userId]);
+                if (matchedContact && matchedContact.phone_number) {
+                    from = matchedContact.phone_number;
+                    console.log(`[WA] LID ${fromJid} mapped to Phone ${from}`);
+                }
+            } catch (e) {
+                console.error('[WA] LID Lookup Error:', e);
+            }
         }
 
         const isFromMe = msg.key.fromMe || false;

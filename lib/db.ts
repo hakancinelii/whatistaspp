@@ -248,6 +248,11 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added columns to user_settings");
   } catch (e: any) { }
 
+  try {
+    rawDb.exec("ALTER TABLE customers ADD COLUMN lid TEXT;");
+    console.log("[DB] Migration: Added lid to customers");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }
