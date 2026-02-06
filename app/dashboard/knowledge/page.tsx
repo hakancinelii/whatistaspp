@@ -94,7 +94,7 @@ export default function KnowledgeBasePage() {
                 </div>
                 <button
                     onClick={() => {
-                        if (user?.package === 'standard') {
+                        if (user?.role !== 'admin' && user?.package === 'standard') {
                             alert("🛑 Bilgi Bankası özelliği Gold ve Platinum paketlere özeldir.");
                             return;
                         }
@@ -106,7 +106,7 @@ export default function KnowledgeBasePage() {
                 </button>
             </div>
 
-            {user?.package === 'standard' && (
+            {user?.role !== 'admin' && user?.package === 'standard' && (
                 <div className="bg-purple-500/10 border border-purple-500/20 p-6 rounded-3xl mb-8 flex items-center justify-between">
                     <div>
                         <h3 className="text-purple-400 font-bold mb-1">Paket Kısıtlaması</h3>
