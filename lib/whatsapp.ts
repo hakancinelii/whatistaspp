@@ -280,9 +280,9 @@ function setupMessageListeners(userId: number, sock: any) {
         const from = fromJid.split('@')[0] || '';
         const isFromMe = msg.key.fromMe || false;
 
-        // WhatsApp Durum (Story) mesajlarını yoksay
-        if (fromJid === 'status@broadcast') {
-            console.log('[WA] 📱 Status update detected, skipping inbox...');
+        // WhatsApp Durum (Story), Grup ve Yayın mesajlarını yoksay
+        if (fromJid === 'status@broadcast' || fromJid.includes('@g.us') || fromJid.includes('@broadcast')) {
+            console.log(`[WA] 🚫 Ignoring non-user message from ${fromJid}`);
             return;
         }
 
