@@ -35,23 +35,38 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { min_delay, night_mode, name } = await request.json();
+        const body = await request.json();
+        const { min_delay, night_mode, name } = body;
         const db = await getDatabase();
 
-        // Update user settings
-        await db.run(
-            'UPDATE user_settings SET min_delay = ?, max_delay = ?, night_mode = ? WHERE user_id = ?',
-            [min_delay, min_delay + 2, night_mode ? 1 : 0, user.userId]
-        );
+        console.log('[Settings] Saving for user:', user.userId, 'min_delay:', min_delay, 'night_mode:', night_mode);
+
+        // Check if settings exist for this user
+        const existing = await db.get('SELECT id FROM user_settings WHERE user_id = ?', [user.userId]);
+
+        if (existing) {
+            // Update existing settings
+            await db.run(
+                'UPDATE user_settings SET min_delay = ?, max_delay = ?, night_mode = ? WHERE user_id = ?',
+                [min_delay, min_delay + 2, night_mode ? 1 : 0, user.userId]
+            );
+        } else {
+            // Insert new settings
+            await db.run(
+                'INSERT INTO user_settings (user_id, min_delay, max_delay, night_mode, message_variation) VALUES (?, ?, ?, ?, ?)',
+                [user.userId, min_delay, min_delay + 2, night_mode ? 1 : 0, 1]
+            );
+        }
 
         // Update user profile name if provided
         if (name) {
             await db.run('UPDATE users SET name = ? WHERE id = ?', [name, user.userId]);
         }
 
+        console.log('[Settings] Saved successfully for user:', user.userId);
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Settings POST error:', error);
-        return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Settings POST error:', error.message, error.stack);
+        return NextResponse.json({ error: 'Failed to update settings: ' + error.message }, { status: 500 });
     }
 }
