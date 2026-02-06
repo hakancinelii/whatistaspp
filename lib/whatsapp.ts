@@ -224,6 +224,41 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
             }
         });
 
+
+
+        // Mesaj Durumu Güncellemesi (Tek Tik, Çift Tik, Mavi Tik)
+        sock.ev.on('messages.update', async (updates) => {
+            for (const update of updates) {
+                if (update.update.status) {
+                    const status = update.update.status;
+                    const msgId = update.key.id;
+                    const remoteJid = update.key.remoteJid;
+
+                    if (!msgId || !remoteJid) continue;
+
+                    try {
+                        const { getDatabase } = require('./db');
+                        const db = await getDatabase();
+                        // 4 = READ (Mavi Tik), 3 = DELIVERED (İletildi), 2 = SERVER_ACK (Sunucu aldı)
+                        // Veritabanında status sütunu yoksa bile is_read'i güncelleyebiliriz
+                        if (status === 4 || status === 5) { // 4: READ, 5: PLAYED
+                            // Gönderilen mesajın okunduğunu işaretle
+                            await db.run(
+                                `UPDATE sent_messages SET is_read = 1 WHERE user_id = ? AND (id = (SELECT id FROM sent_messages WHERE user_id = ? AND message LIKE '%' || ? || '%') OR phone_number = ?)`, // ID match is tricky without storing WA ID, falling back to heuristic or exact ID if stored
+                                [userId, userId, msgId, remoteJid.split('@')[0]]
+                            );
+
+                            // Daha güvenli yöntem: WA message ID'sini saklamak gerekir ama şimdilik phone_number ve son mesaj üzerinden gidelim
+                            // VEYA: sent_messages tablosuna wa_msg_id eklenmeli. Şimdilik sadece consola basalım.
+                            console.log(`[WA] Message status updated to READ for ${remoteJid}`);
+                        }
+                    } catch (e) {
+                        console.error('[WA] Message status update error:', e);
+                    }
+                }
+            }
+        });
+
         setupMessageListeners(userId, sock);
 
     } catch (error) {

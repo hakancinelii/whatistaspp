@@ -160,7 +160,7 @@ export default function SettingsPage() {
                                         min="1"
                                         max="60"
                                         value={settings.min_delay}
-                                        onChange={(e) => setSettings({ ...settings, min_delay: e.target.value })}
+                                        onChange={(e) => setSettings({ ...settings, min_delay: parseInt(e.target.value) || 5 })}
                                         className="w-20 bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white font-mono text-center focus:ring-2 focus:ring-purple-500 outline-none"
                                     />
                                     <span className="text-sm text-gray-400">saniye</span>
