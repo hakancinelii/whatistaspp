@@ -183,6 +183,11 @@ function initDatabase(): any {
         user_id INTEGER UNIQUE NOT NULL,
         webhook_url TEXT,
         api_key TEXT UNIQUE,
+        min_delay INTEGER DEFAULT 5,
+        max_delay INTEGER DEFAULT 10,
+        daily_limit INTEGER DEFAULT 250,
+        night_mode BOOLEAN DEFAULT 1,
+        message_variation BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );
