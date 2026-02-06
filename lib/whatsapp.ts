@@ -187,9 +187,11 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
                             'UPDATE customers SET is_archived = ? WHERE user_id = ? AND phone_number = ?',
                             [isArchived, userId, jid]
                         );
-                        syncContactProfile(userId, sock, jid).catch(() => { });
                         console.log(`[WA] Chat ${jid} archive status synced: ${isArchived}`);
                     }
+
+                    // Chat güncellendiğinde profil bilgisini de tazelemeyi dene
+                    syncContactProfile(userId, sock, jid).catch(() => { });
 
                     // --- Okundu (Görüldü) Bilgisi Senkronizasyonu ---
                     // unreadCount 0 ise telefonda bu sohbet okunmuş demektir.
@@ -223,6 +225,9 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
                         );
                     } catch (e) { }
                 }
+
+                // Yeni chat eklendiğinde de profili hemen çek
+                syncContactProfile(userId, sock, jid).catch(() => { });
             }
         });
 
@@ -427,8 +432,11 @@ async function syncContactProfile(userId: number, sock: any, phone: string) {
         // Durum (Bio) Sorgula
         let status = null;
         try {
-            const statusData = await sock.fetchStatus(jid);
-            status = statusData?.status;
+            // LID (Gizli ID) için status sorgulanamayabilir, normal numaralarda deneyelim
+            if (!jid.includes('@lid')) {
+                const statusData = await sock.fetchStatus(jid);
+                status = statusData?.status;
+            }
         } catch (e) { /* Bio yoksa hata verebilir, geçiyoruz */ }
 
         if (ppUrl || status) {
