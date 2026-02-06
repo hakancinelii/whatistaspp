@@ -22,7 +22,11 @@ export default function SettingsPage() {
                     setFormData({ name: decoded.name, email: decoded.email });
 
                     // Fetch settings from API
-                    const res = await fetch('/api/settings');
+                    const res = await fetch('/api/settings', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                     const data = await res.json();
                     if (!data.error) {
                         setSettings({
@@ -41,9 +45,13 @@ export default function SettingsPage() {
         e.preventDefault();
         setSaving(true);
         try {
+            const token = localStorage.getItem("token");
             const res = await fetch('/api/settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     min_delay: parseInt(settings.min_delay),
                     night_mode: settings.night_mode,
