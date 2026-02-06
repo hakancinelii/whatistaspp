@@ -277,7 +277,13 @@ function setupMessageListeners(userId: number, sock: any) {
         if (!msg || !msg.message) return;
 
         const fromJid = msg.key.remoteJid || '';
-        const from = fromJid.split('@')[0] || '';
+        let from = fromJid.split('@')[0] || '';
+
+        // Eğer mesaj LID (Gizli ID) üzerinden geliyorsa, uzantıyı koru ki cevap verebilelim
+        if (fromJid.includes('@lid')) {
+            from = fromJid;
+        }
+
         const isFromMe = msg.key.fromMe || false;
 
         // WhatsApp Durum (Story), Grup ve Yayın mesajlarını yoksay
