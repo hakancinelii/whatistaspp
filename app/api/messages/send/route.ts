@@ -209,16 +209,6 @@ async function processMessages(
                 );
             }
 
-            if (i < customers.length - 1) {
-                // Use settings from DB, fallback to 5 if somehow missing
-                const min = parseInt(settings.min_delay) || 5;
-                const max = parseInt(settings.max_delay) || (min + 2);
-
-                // Add jitter to make it behave more human-like (between min and max)
-                const delay = (Math.floor(Math.random() * (max - min + 1)) + min) * 1000;
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-
         } catch (error) {
             console.error(`Failed to send message to ${customer.phone_number}:`, error);
             progress.error++;
@@ -226,6 +216,18 @@ async function processMessages(
                 'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
                 [userId, customer.phone_number, message, 'failed']
             );
+        }
+
+        // DELAY LOGIC - MOVED OUTSIDE TRY/CATCH TO ENSURE IT RUNS EVEN ON ERROR
+        if (i < customers.length - 1) {
+            // Use settings from DB, fallback to 5 if somehow missing
+            const min = parseInt(settings.min_delay) || 5;
+            const max = parseInt(settings.max_delay) || (min + 2);
+
+            // Add jitter to make it behave more human-like (between min and max)
+            const delay = (Math.floor(Math.random() * (max - min + 1)) + min) * 1000;
+            console.log(`[Batch] Waiting ${delay}ms before next message (Settings: ${min}-${max}s)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 
