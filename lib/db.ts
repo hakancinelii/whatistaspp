@@ -291,6 +291,11 @@ function initDatabase(): any {
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");
   } catch (e: any) { }
 
+  try {
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN time TEXT;");
+    console.log("[DB] Migration: Added time to captured_jobs");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }

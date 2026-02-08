@@ -401,8 +401,13 @@ export default function DriverDashboard() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase">
-                                                {new Date(job.created_at + " UTC").toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                             </div>
+                                            {job.time && job.time !== 'Belirtilmedi' && (
+                                                <div className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase flex items-center gap-1 ${job.time.includes('ACİL') ? 'bg-red-500 text-white animate-pulse shadow-red-500/50 shadow-lg' : 'bg-slate-700 text-slate-300 border border-white/10'}`}>
+                                                    {job.time.includes('ACİL') && '🚨'} {job.time}
+                                                </div>
+                                            )}
                                             {job.status === 'pending' && (
                                                 <div className="animate-pulse bg-red-500 w-2 h-2 rounded-full" />
                                             )}

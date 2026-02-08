@@ -341,8 +341,8 @@ function setupMessageListeners(userId: number, sock: any) {
                     const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid}`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, sender_jid, from_loc, to_loc, price, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, senderJid, job.from_loc, job.to_loc, job.price, job.phone, text]
+                        'INSERT INTO captured_jobs (user_id, group_jid, sender_jid, from_loc, to_loc, price, time, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text]
                     );
                     // Burada opsiyonel olarak şoföre push notification veya sesli uyarı tetiklenebilir.
                 }
@@ -665,22 +665,30 @@ async function parseTransferJob(text: string) {
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (apiKey) {
         try {
-            const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını (nereden, nereye, fiyat) ayıkla.
-            Yanıtı sadece şu JSON formatında ver, başka açıklama yazma: {"from_loc": "...", "to_loc": "...", "price": "..."}.
-            Fiyat bilinmiyorsa "Belirtilmedi" yaz. Lokasyonlar için semt veya lokasyon adını (SAW, İHL, Taksim vb.) yakala.
+            const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını (nereden, nereye, fiyat, zaman) ayıkla.
+            
+            Kurallar:
+            1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini net bir şekilde ayır. İHL, SAW, Havalimanı, Otel isimleri veya Semtler (Aksaray, Pazartekke, Laleli, Sultanahmet, Beşiktaş vb.) lokasyondur.
+            2. Eğer "Hazır", "Hemen", "Acil", "Müsait", "Bekleyen" kelimeleri geçiyorsa zaman (time) değerini "ŞİMDİ (ACİL) 🚨" yap.
+            3. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra") bunu zaman (time) alanına yaz.
+            4. Fiyatı (price) bulamazsan "Belirtilmedi" yaz.
+            5. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "..."}
+
             Mesaj: "${text}"`;
 
             const aiText = await tryGemini(prompt, apiKey);
 
             if (aiText) {
-                const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const data = JSON.parse(jsonMatch[0]);
-                    if (data.from_loc && data.from_loc !== "..." && data.to_loc && data.to_loc !== "...") {
+                const match = aiText.match(/\{[\s\S]*\}/);
+                if (match) {
+                    const data = JSON.parse(match[0]);
+                    // Basit doğrulama: En az bir lokasyon veya fiyat bulunmalı
+                    if (data.from_loc || data.price !== "Belirtilmedi") {
                         return {
-                            from_loc: data.from_loc,
-                            to_loc: data.to_loc,
+                            from_loc: data.from_loc || "Bilinmiyor",
+                            to_loc: data.to_loc || "Bilinmiyor",
                             price: data.price || "Belirtilmedi",
+                            time: data.time || "Belirtilmedi",
                             phone
                         };
                     }
