@@ -404,7 +404,7 @@ export default function DriverDashboard() {
                                                 {new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                             </div>
                                             {job.time && job.time !== 'Belirtilmedi' && (
-                                                <div className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase flex items-center gap-1 ${job.time.includes('HAZIR') ? 'bg-red-500 text-white animate-pulse shadow-red-500/50 shadow-lg' : 'bg-slate-700 text-slate-300 border border-white/10'}`}>
+                                                <div className={`text-sm font-black px-3 py-1.5 rounded-xl uppercase flex items-center gap-2 ${job.time.includes('HAZIR') ? 'bg-red-600 text-white animate-pulse shadow-red-600/50 shadow-xl scale-110 ml-2' : 'bg-slate-700 text-slate-100 border border-white/20'}`}>
                                                     {job.time.includes('HAZIR') && '⚡'} {job.time}
                                                 </div>
                                             )}
