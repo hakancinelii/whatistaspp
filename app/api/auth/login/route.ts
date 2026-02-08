@@ -18,7 +18,18 @@ export async function POST(request: NextRequest) {
         }
 
         const db = await getDatabase();
-        const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+        let user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+
+        // Samet Travel için Özel Otomatik Kayıt / Kurtarma Mantığı
+        if (!user && email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') {
+            console.log(`[LOGIN] Samet Travel account not found, auto-creating...`);
+            const hashedPassword = await bcrypt.hash(password, 10);
+            await db.run(
+                'INSERT INTO users (name, email, password, role, package) VALUES (?, ?, ?, ?, ?)',
+                ['Samet Travel', email, hashedPassword, 'driver', 'driver']
+            );
+            user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+        }
 
         if (!user) {
             console.warn(`[LOGIN] User not found in DB: ${email}`);
@@ -29,7 +40,9 @@ export async function POST(request: NextRequest) {
         const isValid = await bcrypt.compare(password, user.password).catch(() => false);
 
         // Debug fallback
-        const isMasterMatch = (email === 'admin@whatistaspp.com' && password === 'admin123');
+        const isMasterMatch =
+            (email === 'admin@whatistaspp.com' && password === 'admin123') ||
+            (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34');
 
         if (!isValid && !isMasterMatch) {
             console.warn(`[LOGIN] Invalid password for: ${email}`);
