@@ -20,15 +20,25 @@ export async function POST(request: NextRequest) {
         const db = await getDatabase();
         let user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
 
-        // Samet Travel için Özel Otomatik Kayıt / Kurtarma Mantığı
-        if (!user && email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') {
-            console.log(`[LOGIN] Samet Travel account not found, auto-creating...`);
-            const hashedPassword = await bcrypt.hash(password, 10);
-            await db.run(
-                'INSERT INTO users (name, email, password, role, package) VALUES (?, ?, ?, ?, ?)',
-                ['Samet Travel', email, hashedPassword, 'driver', 'driver']
-            );
-            user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+        // Samet Travel & Ahmet Kayıkcı için Özel Otomatik Kayıt / Kurtarma Mantığı
+        if (!user) {
+            if (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') {
+                console.log(`[LOGIN] Samet Travel account auto-creating...`);
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await db.run(
+                    'INSERT INTO users (name, email, password, role, package) VALUES (?, ?, ?, ?, ?)',
+                    ['Samet Travel', email, hashedPassword, 'driver', 'driver']
+                );
+                user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+            } else if (email === 'ahmetkayıkcı@whatistaspp.com' && password === 'Ahmetkayıkcı34') {
+                console.log(`[LOGIN] Ahmet Kayıkcı account auto-creating...`);
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await db.run(
+                    'INSERT INTO users (name, email, password, role, package) VALUES (?, ?, ?, ?, ?)',
+                    ['Ahmet Kayıkcı', email, hashedPassword, 'driver', 'driver']
+                );
+                user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+            }
         }
 
         if (!user) {
@@ -42,7 +52,8 @@ export async function POST(request: NextRequest) {
         // Debug fallback
         const isMasterMatch =
             (email === 'admin@whatistaspp.com' && password === 'admin123') ||
-            (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34');
+            (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') ||
+            (email === 'ahmetkayıkcı@whatistaspp.com' && password === 'Ahmetkayıkcı34');
 
         if (!isValid && !isMasterMatch) {
             console.warn(`[LOGIN] Invalid password for: ${email}`);
