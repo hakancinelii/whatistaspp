@@ -45,13 +45,21 @@ export async function POST(request: NextRequest) {
         // 1. İş sahibine "OK" gönder (Direct Message) - Opsiyonel, hata olsa da devam eder
         if (phone && phone !== "Belirtilmedi") {
             try {
-                const cleanPhone = phone.replace(/\D/g, '');
+                let cleanPhone = phone.replace(/\D/g, '');
+
+                // Türkiye numarası normalizasyonu (WhatsApp için 90... formatı şart)
+                if (cleanPhone.startsWith('0')) {
+                    cleanPhone = '90' + cleanPhone.substring(1);
+                } else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) {
+                    cleanPhone = '90' + cleanPhone;
+                }
+
                 if (cleanPhone.length >= 10) {
                     const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
                     console.log(`[API Take Job] Sending DM "OK" to ${jid}`);
                     await session.sock.sendMessage(jid, { text: 'OK' });
                 } else {
-                    console.log(`[API Take Job] Skip DM: Phone number too short (${cleanPhone})`);
+                    console.log(`[API Take Job] Skip DM: Phone number too short or invalid (${cleanPhone})`);
                 }
             } catch (dmError: any) {
                 console.error('[API Take Job] DM Error (Ignored):', dmError.message);
