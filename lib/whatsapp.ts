@@ -335,7 +335,8 @@ function setupMessageListeners(userId: number, sock: any) {
             if (!text) return;
 
             // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
-            if (isGroup && isDriverPackage) {
+            // Hem Grup Hem Bireysel Mesajlarda Çalışır
+            if (isDriverPackage) {
                 const job = await parseTransferJob(text);
                 if (job) {
                     const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
@@ -344,9 +345,8 @@ function setupMessageListeners(userId: number, sock: any) {
                         'INSERT INTO captured_jobs (user_id, group_jid, sender_jid, from_loc, to_loc, price, time, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         [userId, fromJid, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text]
                     );
-                    // Burada opsiyonel olarak şoföre push notification veya sesli uyarı tetiklenebilir.
                 }
-                return; // Grup mesajları inbox'a düşmesin, sadece yakalansın.
+                if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
             }
 
             let mediaUrl = '';
@@ -655,8 +655,8 @@ export function initScheduler() {
 async function parseTransferJob(text: string) {
     if (!text) return null;
 
-    // 1. Telefon numarasını yakala (Mutlaka olmalı)
-    const phoneRegex = /(?:\+90|0)?\s*[5]\d{2}\s*\d{3}\s*\d{2}\s*\d{2}/g;
+    // 1. Telefon numarasını yakala (Daha esnek regex)
+    const phoneRegex = /(?:\+90|0)?\s*5\d{2}[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}/g;
     const phoneMatch = text.match(phoneRegex);
     if (!phoneMatch) return null;
     const phone = phoneMatch[0].replace(/\D/g, '');
@@ -668,8 +668,9 @@ async function parseTransferJob(text: string) {
             const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını (nereden, nereye, fiyat, zaman) ayıkla.
             
             Kurallar:
-            1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini net bir şekilde ayır. İHL, SAW, Havalimanı, Otel isimleri veya Semtler (Aksaray, Pazartekke, Laleli, Sultanahmet, Beşiktaş vb.) lokasyondur.
-            2. Eğer "Hazır", "Hemen", "Acil", "Müsait", "Bekleyen" kelimeleri geçiyorsa zaman (time) değerini "ŞİMDİ (ACİL) 🚨" yap.
+            1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini net bir şekilde ayır. İHL, SAW, Havalimanı, Otel isimleri veya Semtler (Aksaray, Pazartekke, Laleli, Sultanahmet, Beşiktaş, Beylikdüzü, Esenyurt, Sarıyer, Maslak vb.) lokasyondur.
+            2. Eğer "Hazır", "Hemen", "Acil", "Müsait", "Bekleyen", "Yolcu Hazır" kelimeleri geçiyorsa zaman (time) değerini "HAZIR 🚨" yap.
+            3. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra", "18:00") bunu zaman (time) alanına yaz.
             3. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra") bunu zaman (time) alanına yaz.
             4. Fiyatı (price) bulamazsan "Belirtilmedi" yaz.
             5. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "..."}
@@ -704,7 +705,7 @@ async function parseTransferJob(text: string) {
     const priceMatch = text.match(priceRegex);
     const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
-    const locations = ["SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI"];
+    const locations = ["SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "RİXOS", "TERSANE", "SARIYER", "MASLAK", "PAZARTEKKE", "AKSARAY"];
     const foundLocations: string[] = [];
     const normalizedText = text.toUpperCase();
 
