@@ -10,17 +10,24 @@ export async function GET(request: NextRequest) {
         }
 
         const db = await getDatabase();
+        console.log(`[JobsAPI] Fetching jobs for user ${user.userId}...`);
 
         // Sadece son 24 saatteki işleri getir
+        // datetime string formatına ve SQL tırnaklarına dikkat edelim
         const jobs = await db.all(
-            'SELECT * FROM captured_jobs WHERE user_id = ? AND created_at >= datetime("now", "-1 day") ORDER BY created_at DESC',
+            "SELECT * FROM captured_jobs WHERE user_id = ? AND created_at >= datetime('now', '-1 day') ORDER BY created_at DESC",
             [user.userId]
         );
 
-        return NextResponse.json(jobs);
+        console.log(`[JobsAPI] Found ${jobs?.length || 0} jobs.`);
+        return NextResponse.json(jobs || []);
     } catch (error: any) {
-        console.error('Jobs GET error detailed:', error.message, error.stack);
-        return NextResponse.json({ error: 'Failed to fetch jobs: ' + error.message }, { status: 500 });
+        console.error('Jobs GET error detailed:', error.message);
+        return NextResponse.json({
+            error: 'Failed to fetch jobs',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }
 

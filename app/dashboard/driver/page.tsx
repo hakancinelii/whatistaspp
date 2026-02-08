@@ -6,6 +6,7 @@ export default function DriverDashboard() {
     const [jobs, setJobs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [autoCall, setAutoCall] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     const fetchJobs = async () => {
@@ -15,7 +16,14 @@ export default function DriverDashboard() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
-            if (!data.error) {
+
+            if (res.status === 500) {
+                setError(data.details || data.error || "Sunucu hatası");
+                return;
+            }
+
+            if (!data.error && Array.isArray(data)) {
+                setError(null);
                 // Eğer yeni bir iş geldiyse ve liste boş değilse ses çal
                 if (jobs.length > 0 && data.length > jobs.length) {
                     playAlert();
@@ -25,9 +33,12 @@ export default function DriverDashboard() {
                     }
                 }
                 setJobs(data);
+            } else if (data.error) {
+                setError(data.error);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Jobs fetch error:", e);
+            setError(e.message);
         } finally {
             setLoading(false);
         }
@@ -103,6 +114,13 @@ export default function DriverDashboard() {
                 </div>
             </div>
 
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-red-400 text-sm font-medium">
+                    ⚠️ Hata: {error}
+                </div>
+            )}
+
+
             <div className="space-y-4">
                 {jobs.length === 0 ? (
                     <div className="text-center py-20 bg-slate-800/30 rounded-3xl border-2 border-dashed border-slate-700">
@@ -114,8 +132,8 @@ export default function DriverDashboard() {
                         <div
                             key={job.id}
                             className={`group bg-slate-800 rounded-3xl p-6 border-2 transition-all duration-300 transform active:scale-[0.98] ${job.status === 'called' ? 'border-slate-700 opacity-60' :
-                                    job.status === 'ignored' ? 'border-red-900/30 opacity-40' :
-                                        'border-green-500 shadow-xl shadow-green-500/10'
+                                job.status === 'ignored' ? 'border-red-900/30 opacity-40' :
+                                    'border-green-500 shadow-xl shadow-green-500/10'
                                 }`}
                         >
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -149,8 +167,8 @@ export default function DriverDashboard() {
                                     <button
                                         onClick={() => handleCall(job.phone, job.id)}
                                         className={`flex-1 py-5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg ${job.status === 'called'
-                                                ? 'bg-slate-700 text-slate-400'
-                                                : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:translate-y-1'
+                                            ? 'bg-slate-700 text-slate-400'
+                                            : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:translate-y-1'
                                             }`}
                                     >
                                         <span className="text-lg font-black tracking-widest uppercase">HEMEN ARA</span>
