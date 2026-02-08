@@ -23,21 +23,30 @@ export async function POST(request: NextRequest) {
         // Samet Travel & Ahmet Kayıkcı için Özel Otomatik Kayıt / Kurtarma Mantığı
         if (!user) {
             if (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') {
-                console.log(`[LOGIN] Samet Travel account auto-creating...`);
+                console.log(`[LOGIN] Samet Travel account auto-creating with 1000 credits...`);
                 const hashedPassword = await bcrypt.hash(password, 10);
                 await db.run(
-                    'INSERT INTO users (name, email, password, role, package) VALUES (?, ?, ?, ?, ?)',
-                    ['Samet Travel', email, hashedPassword, 'driver', 'driver']
+                    'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
+                    ['Samet Travel', email, hashedPassword, 'driver', 'driver', 1000]
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
             } else if (email === 'ahmetkayıkcı@whatistaspp.com' && password === 'Ahmetkayıkcı34') {
-                console.log(`[LOGIN] Ahmet Kayıkcı account auto-creating...`);
+                console.log(`[LOGIN] Ahmet Kayıkcı account auto-creating with 1000 credits...`);
                 const hashedPassword = await bcrypt.hash(password, 10);
                 await db.run(
-                    'INSERT INTO users (name, email, password, role, package) VALUES (?, ?, ?, ?, ?)',
-                    ['Ahmet Kayıkcı', email, hashedPassword, 'driver', 'driver']
+                    'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
+                    ['Ahmet Kayıkcı', email, hashedPassword, 'driver', 'driver', 1000]
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+            }
+        } else {
+            // Mevcut Samet/Ahmet hesapları 0 kredide kaldıysa onları güncelle
+            if (user.credits === 0 || !user.credits) {
+                if (email === 'samettravel@whatistaspp.com' || email === 'ahmetkayıkcı@whatistaspp.com') {
+                    console.log(`[LOGIN] Updating legacy test user ${email} with 1000 credits...`);
+                    await db.run('UPDATE users SET credits = 1000 WHERE id = ?', [user.id]);
+                    user.credits = 1000;
+                }
             }
         }
 
