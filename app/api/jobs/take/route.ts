@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
         const user = await getUserFromToken(request);
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { jobId, groupJid } = await request.json();
+        const { jobId, groupJid, phone } = await request.json();
 
         if (!groupJid) {
             return NextResponse.json({ error: 'Grup bilgisi bulunamadı' }, { status: 400 });
@@ -37,10 +37,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'WhatsApp bağlantınız aktif değil. Lütfen Dashboard sayfasından bağlantıyı kontrol edin ve tekrar deneyin.' }, { status: 400 });
         }
 
-        console.log(`[API Take Job] Target: ${groupJid}, JobId: ${jobId}, User: ${user.userId}`);
+        console.log(`[API Take Job] Target Group: ${groupJid}, Target Phone: ${phone}, JobId: ${jobId}`);
 
         // Reconnect sonrası socket'in tam oturması için mini bir mola
         await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 1. İş sahibine "OK" gönder (Direct Message)
+        if (phone) {
+            try {
+                const cleanPhone = phone.replace(/\D/g, '');
+                const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
+                console.log(`[API Take Job] Sending DM "OK" to ${jid}`);
+                await session.sock.sendMessage(jid, { text: 'OK' });
+            } catch (dmError: any) {
+                console.error('[API Take Job] DM Error:', dmError.message);
+            }
+        }
 
         // 1. Gruba mesajı gönder (Retry mantığı ile)
         let sent = false;
@@ -63,7 +75,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (!sent) {
-            return NextResponse.json({ error: 'Gruba mesaj gönderilemedi: ' + (lastError?.message || 'Zaman aşımı') }, { status: 500 });
+            return NextResponse.json({ error: 'Gruba mesaj gönderilemedi ama iş sahibine OK iletilmiş olabilir: ' + (lastError?.message || 'Zaman aşımı') }, { status: 500 });
         }
 
         // 2. İşin durumunu güncelle

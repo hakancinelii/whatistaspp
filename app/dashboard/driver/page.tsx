@@ -149,8 +149,8 @@ export default function DriverDashboard() {
         window.location.href = `tel:${phone}`;
     };
 
-    const handleTakeJob = async (jobId: number, groupJid: string) => {
-        if (!confirm("Bu işi gruba 'Aldım' mesajı atarak sahiplenmek istiyor musunuz?")) return;
+    const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
+        if (!confirm("Bu işi gruba 'Aldım' ve iş sahibine 'OK' mesajı atarak sahiplenmek istiyor musunuz?")) return;
 
         const token = localStorage.getItem("token");
         try {
@@ -161,7 +161,7 @@ export default function DriverDashboard() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ jobId, groupJid })
+                body: JSON.stringify({ jobId, groupJid, phone })
             });
             const data = await res.json();
 
@@ -368,7 +368,7 @@ export default function DriverDashboard() {
 
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => handleTakeJob(job.id, job.group_jid)}
+                                            onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
                                             className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
                                         >
                                             İŞİ AL 👋
