@@ -128,7 +128,7 @@ export default function Home() {
             <p className="text-gray-400">İhtiyacınıza uygun paketi seçin, dilediğiniz zaman yükseltin.</p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             <PriceCard
               name="Standart"
               price="490"
@@ -136,9 +136,16 @@ export default function Home() {
               features={["Günlük 250 Mesaj Limiti", "3 Mesaj Şablonu", "Excel/CSV Dışa Aktar", "Manuel Müşteri Ekleme", "Değişken Motoru (Kısıtlı)"]}
             />
             <PriceCard
+              name="Sosyal Transfer"
+              price="750"
+              highlight={true}
+              badge="YENİ 🚕"
+              description="Transfer şoförleri ve acenteler için özel yapay zeka asistanı."
+              features={["Yapay Zeka İş Avcısı", "Grupları Otomatik Tara", "Akıllı 'İş Bende' Butonu", "Anlık Kazanç Takibi", "PWA (Mobil Uyumlu)", "7/24 Şoför Desteği"]}
+            />
+            <PriceCard
               name="Gold"
               price="990"
-              highlight={true}
               description="Büyüyen ekipler ve otomasyon tutkunları için."
               features={["Günlük 1.000 Mesaj Limiti", "Sınırsız Şablon", "Excel/CSV İçe/Dışa Aktar", "Keyword Otomasyonu", "Mesaj Zamanlama", "Dinamik Değişkenler"]}
             />
@@ -188,11 +195,14 @@ function FeatureCard({ icon, title, description, badge }: any) {
   );
 }
 
-function PriceCard({ name, price, description, features, highlight = false }: any) {
+function PriceCard({ name, price, description, features, highlight = false, badge }: any) {
   return (
     <div className={`relative p-8 rounded-3xl border transition-all duration-300 ${highlight ? 'bg-gradient-to-b from-purple-600/20 to-transparent border-purple-500 scale-105 shadow-2xl shadow-purple-500/10 z-10' : 'bg-slate-800/30 border-white/5 hover:border-white/10'}`}>
-      {highlight && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest">En Çok Tercih Edilen</div>
+      {highlight && !badge && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest whitespace-nowrap">en popüler</div>
+      )}
+      {badge && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-yellow-400/20 whitespace-nowrap animate-pulse">{badge}</div>
       )}
       <div className="mb-8">
         <h3 className="text-2xl font-bold mb-2">{name}</h3>
