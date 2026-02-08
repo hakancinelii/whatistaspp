@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
         );
 
         return NextResponse.json(jobs);
-    } catch (error) {
-        console.error('Jobs GET error:', error);
-        return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Jobs GET error detailed:', error.message, error.stack);
+        return NextResponse.json({ error: 'Failed to fetch jobs: ' + error.message }, { status: 500 });
     }
 }
 
