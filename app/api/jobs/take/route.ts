@@ -38,24 +38,43 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'WhatsApp bağlantınız aktif değil. Lütfen Dashboard sayfasından bağlantıyı kontrol edin ve tekrar deneyin.' }, { status: 400 });
         }
 
-        console.log(`[API Take Job] Sending message to group ${groupJid} for user ${user.userId}`);
+        console.log(`[API Take Job] Target: ${groupJid}, JobId: ${jobId}, User: ${user.userId}`);
 
-        // 1. Gruba mesajı gönder
-        try {
-            await session.sock.sendMessage(groupJid, { text: 'Araç hazır, işi alıyorum. 👍' });
-        } catch (sendError: any) {
-            console.error('[API Take Job] Message Send Error:', sendError);
-            return NextResponse.json({ error: 'Gruba mesaj gönderilemedi: ' + (sendError.message || 'Bilinmeyen hata') }, { status: 500 });
+        // Reconnect sonrası socket'in tam oturması için mini bir mola
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 1. Gruba mesajı gönder (Retry mantığı ile)
+        let sent = false;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                console.log(`[API Take Job] Sending message (Attempt ${attempt})...`);
+                await session.sock.sendMessage(groupJid, { text: 'Araç hazır, işi alıyorum. 👍' });
+                sent = true;
+                break;
+            } catch (sendError: any) {
+                lastError = sendError;
+                console.error(`[API Take Job] Attempt ${attempt} failed:`, sendError.message);
+                if (attempt === 1) {
+                    console.log("[API Take Job] Retrying in 2 seconds...");
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
         }
 
-        // 2. İşin durumunu güncelle (Panelde grileşmesi için)
+        if (!sent) {
+            return NextResponse.json({ error: 'Gruba mesaj gönderilemedi: ' + (lastError?.message || 'Zaman aşımı') }, { status: 500 });
+        }
+
+        // 2. İşin durumunu güncelle
         const db = await getDatabase();
         await db.run(
             'UPDATE captured_jobs SET status = ? WHERE id = ? AND user_id = ?',
             ['called', jobId, user.userId]
         );
 
-        return NextResponse.json({ success: true, message: 'Mesaj gruba iletildi ve iş rezerve edildi.' });
+        return NextResponse.json({ success: true, message: 'Mesaj gruba iletildi.' });
     } catch (error: any) {
         console.error('[API Take Job Global Error]', error);
         return NextResponse.json({ error: 'Sistem hatası: ' + error.message }, { status: 500 });

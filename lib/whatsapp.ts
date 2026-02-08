@@ -103,7 +103,7 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
             browser: ["Ubuntu", "Chrome", "114.0.5735.196"],
             syncFullHistory: false,
             connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 90000,
             keepAliveIntervalMs: 30000,
             generateHighQualityLinkPreview: true,
         });
