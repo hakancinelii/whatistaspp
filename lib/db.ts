@@ -191,6 +191,20 @@ function initDatabase(): any {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS captured_jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        group_jid TEXT,
+        from_loc TEXT,
+        to_loc TEXT,
+        price TEXT,
+        phone TEXT,
+        raw_message TEXT,
+        status TEXT DEFAULT 'pending', -- pending, called, ignored
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
   `);
 
   // Migrations for existing databases

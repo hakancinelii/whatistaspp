@@ -114,6 +114,23 @@ export default function DashboardLayout({
 
         <nav className="mt-6 flex-grow">
           <ul className="space-y-2 px-4">
+            {/* Transfer Şoförü Paketi Linki */}
+            {user?.package === 'driver' && (
+              <li>
+                <Link
+                  href="/dashboard/driver"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/driver"
+                    ? "bg-green-600/20 text-green-400 border border-green-500/30"
+                    : "text-gray-400 hover:bg-slate-800 hover:text-white"
+                    }`}
+                >
+                  <span className="text-xl">🚕</span>
+                  <span className="font-medium">Hızlı Transfer</span>
+                </Link>
+              </li>
+            )}
+
             {menuItems.map((item) => (
               <li key={item.href}>
                 <Link
@@ -155,7 +172,8 @@ export default function DashboardLayout({
               <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Paket</div>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${user?.package === 'platinum' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
                 user?.package === 'gold' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-                  'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  user?.package === 'driver' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                    'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                 }`}>
                 {user?.package || 'Standard'}
               </span>

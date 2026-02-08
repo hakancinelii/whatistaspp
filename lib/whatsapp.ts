@@ -304,27 +304,51 @@ function setupMessageListeners(userId: number, sock: any) {
 
         const isFromMe = msg.key.fromMe || false;
 
-        // WhatsApp Durum (Story), Grup ve Yayın mesajlarını yoksay
-        if (fromJid === 'status@broadcast' || fromJid.includes('@g.us') || fromJid.includes('@broadcast')) {
-            console.log(`[WA] 🚫 Ignoring non-user message from ${fromJid}`);
+        // WhatsApp Durum (Story) ve Yayın mesajlarını yoksay
+        if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) {
             return;
         }
 
-        console.log(`[WA] 📥 Message detected: ${from} (fromMe: ${isFromMe})`);
-
-        let text = msg.message.conversation ||
-            msg.message.extendedTextMessage?.text ||
-            msg.message.imageMessage?.caption ||
-            msg.message.videoMessage?.caption ||
-            msg.message.buttonsResponseMessage?.selectedDisplayText ||
-            msg.message.listResponseMessage?.title || '';
-
-        let mediaUrl = '';
-        let mediaType = '';
+        const isGroup = fromJid.includes('@g.us');
 
         try {
             const { getDatabase } = require('./db');
             const db = await getDatabase();
+            const dbUser = await db.get('SELECT package FROM users WHERE id = ?', [userId]);
+            const isDriverPackage = dbUser?.package === 'driver';
+
+            // Grup mesajıysa ve şoför paketi değilse yoksay
+            if (isGroup && !isDriverPackage) {
+                return;
+            }
+
+            console.log(`[WA] 📥 Message detected: ${from} (Group: ${isGroup}, fromMe: ${isFromMe})`);
+
+            let text = msg.message.conversation ||
+                msg.message.extendedTextMessage?.text ||
+                msg.message.imageMessage?.caption ||
+                msg.message.videoMessage?.caption ||
+                msg.message.buttonsResponseMessage?.selectedDisplayText ||
+                msg.message.listResponseMessage?.title || '';
+
+            if (!text) return;
+
+            // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
+            if (isGroup && isDriverPackage) {
+                const job = parseTransferJob(text);
+                if (job) {
+                    console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} (${job.price})`);
+                    await db.run(
+                        'INSERT INTO captured_jobs (user_id, group_jid, from_loc, to_loc, price, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, job.from_loc, job.to_loc, job.price, job.phone, text]
+                    );
+                    // Burada opsiyonel olarak şoföre push notification veya sesli uyarı tetiklenebilir.
+                }
+                return; // Grup mesajları inbox'a düşmesin, sadece yakalansın.
+            }
+
+            let mediaUrl = '';
+            let mediaType = '';
 
             // Eğer benden gidiyorsa (Telefondan manuel gönderim kontrolü)
             if (isFromMe) {
@@ -622,3 +646,51 @@ export function initScheduler() {
     }, 60000); // Check every minute
 }
 
+/**
+ * Transfer gruplarından gelen mesajları analiz eder.
+ * Örn: "SAW - BEŞİKTAŞ 1900TL 05330402212"
+ */
+function parseTransferJob(text: string) {
+    if (!text) return null;
+
+    // Telefon numarasını yakala (05xx, +90, boşluklu veya boşluksuz)
+    const phoneRegex = /(?:\+90|0)?\s*[5]\d{2}\s*\d{3}\s*\d{2}\s*\d{2}/g;
+    const phoneMatch = text.match(phoneRegex);
+    if (!phoneMatch) return null;
+    const phone = phoneMatch[0].replace(/\D/g, ''); // Temizle
+
+    // Fiyat yakala (1200 TL, 1.700₺, 1500 TRY vb.)
+    const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit)?/i;
+    const priceMatch = text.match(priceRegex);
+    const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
+
+    // Lokasyonları yakala (SAW, İHL, Sabiha, Havalimanı, Semt isimleri)
+    const locations = ["SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI"];
+    const foundLocations: string[] = [];
+
+    // Mesajı satırlara bölüp lokasyon aramayı deneyelim (Ok işareti veya tireye göre)
+    const normalizedText = text.toUpperCase();
+
+    // Yaygın lokasyonları kontrol et
+    locations.forEach(loc => {
+        if (normalizedText.includes(loc)) {
+            foundLocations.push(loc);
+        }
+    });
+
+    // Eğer lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de 'Bilinmeyen' olarak döndür
+    const from_loc = foundLocations[0] || "Bilinmeyen";
+    const to_loc = foundLocations[1] || "Bilinmeyen";
+
+    // Eğer en az bir lokasyon, fiyat ve telefon varsa bu bir iş mesajıdır
+    if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi")) {
+        return {
+            from_loc,
+            to_loc,
+            price: price.toUpperCase(),
+            phone
+        };
+    }
+
+    return null;
+}
