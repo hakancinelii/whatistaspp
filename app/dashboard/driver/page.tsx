@@ -10,8 +10,10 @@ export default function DriverDashboard() {
     const [minPrice, setMinPrice] = useState<number>(0);
     const [regionSearch, setRegionSearch] = useState("");
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
+    const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const wakeLockRef = useRef<any>(null);
+    const waStatusIntervalRef = useRef<any>(null);
 
     // Ekranı uyanık tutma (Wake Lock)
     const toggleWakeLock = async () => {
@@ -32,6 +34,23 @@ export default function DriverDashboard() {
             }
         } else {
             alert("Tarayıcınız ekran uyanık tutma özelliğini desteklemiyor.");
+        }
+    };
+
+    const checkWAStatus = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            const res = await fetch("/api/whatsapp/status", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setWaStatus({
+                isConnected: !!data.isConnected,
+                isConnecting: !!data.isConnecting
+            });
+        } catch (e) {
+            console.error("WA Status check error:", e);
         }
     };
 
@@ -84,9 +103,13 @@ export default function DriverDashboard() {
 
     useEffect(() => {
         fetchJobs();
+        checkWAStatus();
         const interval = setInterval(fetchJobs, 10000); // 10 saniyede bir kontrol et
+        waStatusIntervalRef.current = setInterval(checkWAStatus, 5000); // 5 saniyede bir WP durumu
+
         return () => {
             clearInterval(interval);
+            if (waStatusIntervalRef.current) clearInterval(waStatusIntervalRef.current);
             if (wakeLockRef.current) wakeLockRef.current.release();
         };
     }, [jobs.length, autoCall, minPrice]);
@@ -172,12 +195,18 @@ export default function DriverDashboard() {
                     <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
                         🚕 SOSYAL TRANSFER
                     </h1>
-                    <button
-                        onClick={toggleWakeLock}
-                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
-                    >
-                        {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={toggleWakeLock}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                        >
+                            {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
+                        </button>
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border flex items-center gap-1.5 ${waStatus.isConnected ? 'bg-green-500/20 text-green-400 border-green-500/40' : waStatus.isConnecting ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/40'}`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${waStatus.isConnected ? 'bg-green-400' : waStatus.isConnecting ? 'bg-yellow-400' : 'bg-red-400'}`} />
+                            {waStatus.isConnected ? 'WHATSAPP: BAĞLI' : waStatus.isConnecting ? 'WHATSAPP: BAĞLANIYOR...' : 'WHATSAPP: BAĞLI DEĞİL'}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">

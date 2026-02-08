@@ -14,10 +14,28 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Grup bilgisi bulunamadı' }, { status: 400 });
         }
 
-        const session = await getSession(user.userId);
+        let session = await getSession(user.userId);
+
+        // Eğer bağlı değilse ama oturum dosyaları varsa, otomatik bağlanmayı dene ve bekle
         if (!session.sock || !session.isConnected) {
-            console.error('[API Take Job] WA Session not connected for user', user.userId);
-            return NextResponse.json({ error: 'WhatsApp bağlantınız aktif değil. Lütfen Dashboard sayfasından bağlantıyı kontrol edin.' }, { status: 400 });
+            console.log(`[API Take Job] WA not connected for user ${user.userId}. Attempting quick reconnect...`);
+            const { connectWhatsApp } = require('@/lib/whatsapp');
+            await connectWhatsApp(user.userId).catch(console.error);
+
+            // 5 saniye boyunca bağlantıyı kontrol et
+            for (let i = 0; i < 5; i++) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                session = await getSession(user.userId);
+                if (session.isConnected && session.sock) {
+                    console.log(`[API Take Job] Reconnected successfully after ${i + 1} seconds.`);
+                    break;
+                }
+            }
+        }
+
+        if (!session.sock || !session.isConnected) {
+            console.error('[API Take Job] WA Session still not connected for user', user.userId);
+            return NextResponse.json({ error: 'WhatsApp bağlantınız aktif değil. Lütfen Dashboard sayfasından bağlantıyı kontrol edin ve tekrar deneyin.' }, { status: 400 });
         }
 
         console.log(`[API Take Job] Sending message to group ${groupJid} for user ${user.userId}`);
