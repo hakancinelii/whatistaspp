@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
-import { getSession } from '@/lib/whatsapp';
+import { getSession, connectWhatsApp } from '@/lib/whatsapp';
 
 export async function POST(request: NextRequest) {
     try {
@@ -19,11 +19,10 @@ export async function POST(request: NextRequest) {
         // Eğer bağlı değilse ama oturum dosyaları varsa, otomatik bağlanmayı dene ve bekle
         if (!session.sock || !session.isConnected) {
             console.log(`[API Take Job] WA not connected for user ${user.userId}. Attempting quick reconnect...`);
-            const { connectWhatsApp } = require('@/lib/whatsapp');
             await connectWhatsApp(user.userId).catch(console.error);
 
-            // 5 saniye boyunca bağlantıyı kontrol et
-            for (let i = 0; i < 5; i++) {
+            // 3 saniye boyunca bağlantıyı kontrol et
+            for (let i = 0; i < 3; i++) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 session = await getSession(user.userId);
                 if (session.isConnected && session.sock) {
