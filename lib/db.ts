@@ -119,17 +119,7 @@ function initDatabase(): any {
         FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
-    CREATE TABLE IF NOT EXISTS scheduled_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        customer_id INTEGER NOT NULL,
-        message TEXT NOT NULL,
-        scheduled_time DATETIME NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (customer_id) REFERENCES customers(id)
-    );
+
 
     CREATE TABLE IF NOT EXISTS incoming_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,19 +247,37 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added package to users");
   } catch (e: any) { }
 
-  // User Settings Migration
+  // Captured Jobs Migration
   try {
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN min_delay INTEGER DEFAULT 50;");
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN max_delay INTEGER DEFAULT 100;");
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN daily_limit INTEGER DEFAULT 250;");
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN message_variation BOOLEAN DEFAULT 1;");
-    console.log("[DB] Migration: Added columns to user_settings");
-  } catch (e: any) { }
+    rawDb.exec(`
+            CREATE TABLE IF NOT EXISTS captured_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                group_jid TEXT,
+                from_loc TEXT,
+                to_loc TEXT,
+                price TEXT,
+                phone TEXT,
+                raw_message TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+        `);
+    console.log("[DB] Migration: Ensured captured_jobs table exists");
+  } catch (e: any) {
+    console.error("[DB] Migration Error (captured_jobs):", e.message);
+  }
 
   try {
     rawDb.exec("ALTER TABLE customers ADD COLUMN lid TEXT;");
     console.log("[DB] Migration: Added lid to customers");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN min_delay INTEGER DEFAULT 5;");
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN max_delay INTEGER DEFAULT 10;");
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");
   } catch (e: any) { }
 
   dbInstance = rawDb;
