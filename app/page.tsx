@@ -137,11 +137,11 @@ export default function Home() {
             />
             <PriceCard
               name="Sosyal Transfer"
-              price="750"
+              price="3.000"
               highlight={true}
               badge="YENİ 🚕"
-              description="Transfer şoförleri ve acenteler için özel yapay zeka asistanı."
-              features={["Yapay Zeka İş Avcısı", "Grupları Otomatik Tara", "Akıllı 'İş Bende' Butonu", "Anlık Kazanç Takibi", "PWA (Mobil Uyumlu)", "7/24 Şoför Desteği"]}
+              description="İş kaçırmaya son! Bölge, saat ve fiyata göre filtrele, ilk arayan sen ol."
+              features={["Yapay Zeka İş Avcısı", "Bölge/Saat/Fiyat Filtreleme", "Benzersiz 'İlk Arayan Ol' Özelliği", "ACİL (Hazır) İş Bildirimleri", "Anlık Kazanç ve Rakip Analizi", "7/24 Şoför Desteği"]}
             />
             <PriceCard
               name="Gold"
