@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "WhatIstaspp - WhatsApp Toplu Mesaj Platformu",
   description: "Multi-tenant WhatsApp mesajlaşma platformu - Güvenli, hızlı ve kolay",
   keywords: ["whatsapp", "toplu mesaj", "bulk messaging", "saas"],
+  manifest: "/manifest.json",
 };
 
 import { NotificationProvider } from "@/context/NotificationContext";

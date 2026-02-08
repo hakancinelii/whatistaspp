@@ -281,6 +281,11 @@ function initDatabase(): any {
   } catch (e: any) { }
 
   try {
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN completed_at DATETIME;");
+    console.log("[DB] Migration: Added completed_at to captured_jobs");
+  } catch (e: any) { }
+
+  try {
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN min_delay INTEGER DEFAULT 5;");
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN max_delay INTEGER DEFAULT 10;");
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");

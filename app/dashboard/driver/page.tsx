@@ -12,6 +12,7 @@ export default function DriverDashboard() {
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
     const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
     const [loadingJobId, setLoadingJobId] = useState<number | null>(null);
+    const [view, setView] = useState<'active' | 'history'>('active');
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const wakeLockRef = useRef<any>(null);
     const waStatusIntervalRef = useRef<any>(null);
@@ -198,6 +199,30 @@ export default function DriverDashboard() {
         }
     };
 
+    const handleWonJob = async (jobId: number) => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/jobs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ jobId, status: 'won' })
+            });
+
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
+            fetchJobs();
+        } catch (e: any) {
+            console.error("[Driver] Won Job Error:", e);
+        }
+    };
+
     const handleIgnore = async (jobId: number) => {
         try {
             const token = localStorage.getItem("token");
@@ -224,11 +249,25 @@ export default function DriverDashboard() {
 
     // Filter Logic
     const filteredJobs = jobs.filter(job => {
+        if (view === 'active') {
+            if (job.status === 'won' || job.status === 'ignored') return false;
+        } else {
+            if (job.status !== 'won') return false;
+        }
+
         const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
         const textMatch = (job.from_loc + job.to_loc + job.raw_message).toLowerCase().includes(regionSearch.toLowerCase());
         const priceMatch = minPrice === 0 || priceNum >= minPrice;
         return textMatch && priceMatch;
     });
+
+    const totalEarnings = jobs
+        .filter(j => j.status === 'won')
+        .reduce((sum, j) => sum + (parseInt(j.price.replace(/\D/g, '')) || 0), 0);
+
+    const todayWonCount = jobs
+        .filter(j => j.status === 'won' && new Date(j.created_at).toDateString() === new Date().toDateString())
+        .length;
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-screen bg-slate-900">
@@ -276,6 +315,36 @@ export default function DriverDashboard() {
                     >
                         <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all ${autoCall ? 'right-1' : 'left-1'}`} />
                     </button>
+                </div>
+            </div>
+
+            {/* Earnings & View Switcher */}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50">
+                <div className="flex gap-2 p-1 bg-slate-900 rounded-2xl border border-white/5">
+                    <button
+                        onClick={() => setView('active')}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-tighter transition-all ${view === 'active' ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        AKTİF İŞLER
+                    </button>
+                    <button
+                        onClick={() => setView('history')}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-tighter transition-all ${view === 'history' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        İŞ GEÇMİŞİM
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-8">
+                    <div className="text-center">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">BUGÜNKÜ İŞLER</div>
+                        <div className="text-2xl font-black text-white">{todayWonCount}</div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-700" />
+                    <div className="text-center">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">TOPLAM KAZANÇ</div>
+                        <div className="text-2xl font-black text-green-400">{totalEarnings.toLocaleString()} ₺</div>
+                    </div>
                 </div>
             </div>
 
@@ -372,33 +441,57 @@ export default function DriverDashboard() {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-row md:flex-col gap-3 min-w-[180px]">
-                                    <button
-                                        onClick={() => handleCall(job.phone, job.id)}
-                                        className={`flex-1 py-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg ${job.status === 'called'
-                                            ? 'bg-slate-700 text-slate-400'
-                                            : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:scale-95'
-                                            }`}
-                                    >
-                                        <span className="text-lg font-black tracking-widest uppercase">ARA</span>
-                                        <span className="text-[10px] font-bold font-mono opacity-80">{job.phone}</span>
-                                    </button>
+                                <div className="flex flex-row md:flex-col gap-3 min-w-[200px]">
+                                    {view === 'active' ? (
+                                        <>
+                                            <button
+                                                onClick={() => handleCall(job.phone, job.id)}
+                                                className={`flex-1 py-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg ${job.status === 'called'
+                                                    ? 'bg-slate-700 text-slate-400'
+                                                    : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:scale-95'
+                                                    }`}
+                                            >
+                                                <span className="text-lg font-black tracking-widest uppercase">ARA</span>
+                                                <span className="text-[10px] font-bold font-mono opacity-80">{job.phone}</span>
+                                            </button>
 
-                                    {job.status !== 'called' && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
-                                                disabled={!!loadingJobId}
-                                                className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
-                                            >
-                                                {loadingJobId === job.id ? 'GÖNDERİLİYOR...' : 'İŞİ AL 👋'}
-                                            </button>
-                                            <button
-                                                onClick={() => handleIgnore(job.id)}
-                                                className="py-3 px-3 rounded-xl bg-slate-700 text-slate-400 text-[10px] font-black uppercase hover:bg-red-500/20 hover:text-red-400 transition-all"
-                                            >
-                                                YOKSAY
-                                            </button>
+                                            {job.status === 'called' ? (
+                                                <button
+                                                    onClick={() => handleWonJob(job.id)}
+                                                    className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-600/40 animate-pulse border-2 border-white/20 active:scale-95"
+                                                >
+                                                    İŞ BENDE / ALDIM ✅
+                                                </button>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
+                                                        disabled={!!loadingJobId}
+                                                        className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                                    >
+                                                        {loadingJobId === job.id ? 'GÖNDERİLİYOR...' : 'İŞİ AL 👋'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleIgnore(job.id)}
+                                                        className="py-3 px-3 rounded-xl bg-slate-700 text-slate-400 text-[10px] font-black uppercase hover:bg-red-500/20 hover:text-red-400 transition-all font-mono"
+                                                    >
+                                                        YOKSAY
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col gap-2 h-full justify-center">
+                                            <div className="bg-slate-700/50 p-4 rounded-2xl text-center border border-white/5 space-y-1">
+                                                <div className="text-[10px] text-slate-500 font-black uppercase">TAMAMLANMA</div>
+                                                <div className="text-xs text-white font-black">
+                                                    {new Date(job.completed_at || job.created_at).toLocaleDateString('tr-TR')}
+                                                </div>
+                                            </div>
+                                            <div className="bg-green-500/10 p-4 rounded-2xl text-center border border-green-500/20 space-y-1">
+                                                <div className="text-[10px] text-green-500 font-black uppercase">KAZANILAN</div>
+                                                <div className="text-xl text-green-400 font-black font-mono">{job.price}</div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

@@ -41,10 +41,17 @@ export async function POST(request: NextRequest) {
         const { jobId, status } = await request.json();
         const db = await getDatabase();
 
-        await db.run(
-            'UPDATE captured_jobs SET status = ? WHERE id = ? AND user_id = ?',
-            [status, jobId, user.userId]
-        );
+        if (status === 'won') {
+            await db.run(
+                'UPDATE captured_jobs SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+                [status, jobId, user.userId]
+            );
+        } else {
+            await db.run(
+                'UPDATE captured_jobs SET status = ? WHERE id = ? AND user_id = ?',
+                [status, jobId, user.userId]
+            );
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
