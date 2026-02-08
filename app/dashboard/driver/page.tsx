@@ -140,7 +140,7 @@ export default function DriverDashboard() {
                                 <div className="space-y-4 flex-1">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                                            {new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(job.created_at + " UTC").toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                         {job.status === 'pending' && (
                                             <div className="animate-pulse bg-red-500 w-2 h-2 rounded-full" />
