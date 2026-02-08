@@ -44,6 +44,13 @@ export default function DriverDashboard() {
             const res = await fetch("/api/whatsapp/status", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
             const data = await res.json();
             setWaStatus({
                 isConnected: !!data.isConnected,
@@ -61,6 +68,12 @@ export default function DriverDashboard() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
+
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
 
             if (res.status === 500) {
                 setError(data.details || data.error || "Sunucu hatası");
@@ -117,7 +130,7 @@ export default function DriverDashboard() {
     const handleCall = async (phone: string, jobId: number) => {
         const token = localStorage.getItem("token");
         // Durumu güncelle
-        await fetch("/api/jobs", {
+        const res = await fetch("/api/jobs", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -125,6 +138,12 @@ export default function DriverDashboard() {
             },
             body: JSON.stringify({ jobId, status: 'called' })
         });
+
+        if (res.status === 401) {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+            return;
+        }
 
         // Telefonu ara
         window.location.href = `tel:${phone}`;
@@ -145,6 +164,13 @@ export default function DriverDashboard() {
                 body: JSON.stringify({ jobId, groupJid })
             });
             const data = await res.json();
+
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
             if (res.ok && data.success) {
                 alert("✅ Başarılı: " + (data.message || "Gruba mesaj gönderildi."));
                 fetchJobs();
@@ -160,7 +186,7 @@ export default function DriverDashboard() {
 
     const handleIgnore = async (jobId: number) => {
         const token = localStorage.getItem("token");
-        await fetch("/api/jobs", {
+        const res = await fetch("/api/jobs", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -168,6 +194,13 @@ export default function DriverDashboard() {
             },
             body: JSON.stringify({ jobId, status: 'ignored' })
         });
+
+        if (res.status === 401) {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+            return;
+        }
+
         fetchJobs();
     };
 
