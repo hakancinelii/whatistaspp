@@ -669,11 +669,11 @@ async function parseTransferJob(text: string) {
             
             Kurallar:
             1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini net bir şekilde ayır. İHL, SAW, Havalimanı, Otel isimleri veya Semtler (Aksaray, Pazartekke, Laleli, Sultanahmet, Beşiktaş, Beylikdüzü, Esenyurt, Sarıyer, Maslak vb.) lokasyondur.
-            2. Eğer "Hazır", "Hemen", "Acil", "Müsait", "Bekleyen", "Yolcu Hazır" kelimeleri geçiyorsa zaman (time) değerini "HAZIR 🚨" yap.
-            3. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra", "18:00") bunu zaman (time) alanına yaz.
-            3. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra") bunu zaman (time) alanına yaz.
-            4. Fiyatı (price) bulamazsan "Belirtilmedi" yaz.
-            5. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "..."}
+            2. Eğer yan yana iki lokasyon varsa (Örn: 'İHL Bayrampaşa', 'Taksim SAW'), ilki Nereden (from_loc), ikincisi Nereye (to_loc) demektir.
+            3. Eğer "Hazır", "Hemen", "Acil", "Müsait", "Bekleyen", "Yolcu Hazır" kelimeleri geçiyorsa zaman (time) değerini "HAZIR 🚨" yap.
+            4. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra", "18:00") bunu zaman (time) alanına yaz.
+            5. Fiyatı (price) bulamazsan "Belirtilmedi" yaz.
+            6. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "..."}
 
             Mesaj: "${text}"`;
 
@@ -718,21 +718,27 @@ async function parseTransferJob(text: string) {
         "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY",
         "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK",
         "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR",
-        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ"
+        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA",
+        "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE",
+        "AVCILAR", "BAĞCILAR", "GÜNGÖREN"
     ];
 
-    const foundLocations: string[] = [];
+    const foundLocations: { name: string, index: number }[] = [];
     const normalizedText = text.toUpperCase();
 
     locations.forEach(loc => {
-        if (normalizedText.includes(loc)) {
-            foundLocations.push(loc);
+        const idx = normalizedText.indexOf(loc);
+        if (idx !== -1) {
+            foundLocations.push({ name: loc, index: idx });
         }
     });
 
+    // Mesaj içindeki sırasına göre sırala
+    foundLocations.sort((a, b) => a.index - b.index);
+
     // Lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de kaydet (Genel İş)
-    const from_loc = foundLocations[0] || "Bilinmeyen Konum";
-    const to_loc = foundLocations[1] || "Bilinmeyen Konum";
+    const from_loc = foundLocations[0]?.name || "Bilinmeyen Konum";
+    const to_loc = foundLocations[1]?.name || "Bilinmeyen Konum";
 
     if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi")) {
         return {
