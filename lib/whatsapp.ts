@@ -701,11 +701,26 @@ async function parseTransferJob(text: string) {
     }
 
     // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
-    const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit)?/i;
+    const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft)?/i;
     const priceMatch = text.match(priceRegex);
     const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
-    const locations = ["SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "RİXOS", "TERSANE", "SARIYER", "MASLAK", "PAZARTEKKE", "AKSARAY"];
+    // Fallback için Zaman Analizi
+    let time = "Belirtilmedi";
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes("hazır") || lowerText.includes("acil") || lowerText.includes("hemen") || lowerText.includes("bekleyen") || lowerText.includes("yolcu hazır")) {
+        time = "HAZIR 🚨";
+    }
+
+    const locations = [
+        "SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
+        "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU",
+        "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY",
+        "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK",
+        "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR",
+        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ"
+    ];
+
     const foundLocations: string[] = [];
     const normalizedText = text.toUpperCase();
 
@@ -715,14 +730,16 @@ async function parseTransferJob(text: string) {
         }
     });
 
-    const from_loc = foundLocations[0] || "Bilinmeyen";
-    const to_loc = foundLocations[1] || "Bilinmeyen";
+    // Lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de kaydet (Genel İş)
+    const from_loc = foundLocations[0] || "Bilinmeyen Konum";
+    const to_loc = foundLocations[1] || "Bilinmeyen Konum";
 
     if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi")) {
         return {
             from_loc,
             to_loc,
             price: price.toUpperCase(),
+            time,
             phone
         };
     }
