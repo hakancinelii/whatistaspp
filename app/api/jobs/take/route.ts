@@ -42,31 +42,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'WhatsApp bağlantısı kurulamadı. Lütfen lambaya tıklayıp bağlanın.' }, { status: 400 });
         }
 
-        console.log(`[API Take Job] Sender: ${targetSenderJid}, Group: ${targetGroupJid}, Customer: ${customerPhone}`);
+        console.log(`[API Take Job] Customer: ${customerPhone}, Group: ${targetGroupJid}, Sender: ${targetSenderJid}`);
 
-        // 1. İş Sahibine (Gruba Atan Kişiye) "OK" gönder
-        if (targetSenderJid) {
-            try {
-                let jid = targetSenderJid;
-                if (!jid.includes('@')) jid += '@s.whatsapp.net';
-
-                console.log(`[API Take Job] Sending "OK" to OWNER: ${jid}`);
-                await session.sock.sendMessage(jid, { text: 'OK' });
-            } catch (dmError: any) {
-                console.error('[API Take Job] Owner DM Error:', dmError.message);
-            }
-        } else if (customerPhone && customerPhone !== "Belirtilmedi") {
-            // Yedek: Eğer sender_jid yoksa eski usul temizlenmiş nosuna at (yeni işlerde sender_jid hep olacak)
+        // 1. Mesaj içindeki numaraya (Ara butonundaki numara) "OK" gönder
+        if (customerPhone && customerPhone !== "Belirtilmedi") {
             try {
                 let cleanPhone = customerPhone.replace(/\D/g, '');
+                // Türkiye numarası normalizasyonu
                 if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
                 else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
 
                 const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
-                console.log(`[API Take Job] Fallback: Sending "OK" to Customer: ${jid}`);
+                console.log(`[API Take Job] Sending "OK" to Customer Phone: ${jid}`);
                 await session.sock.sendMessage(jid, { text: 'OK' });
-            } catch (fallbackError: any) {
-                console.error('[API Take Job] Fallback DM Error:', fallbackError.message);
+            } catch (dmError: any) {
+                console.error('[API Take Job] Customer DM Error:', dmError.message);
+            }
+        } else if (targetSenderJid) {
+            // Yedek: Eğer mesaj içinde numara bulunamadıysa (ki zor ama) mesajı atana gönder.
+            try {
+                let jid = targetSenderJid;
+                if (!jid.includes('@')) jid += '@s.whatsapp.net';
+                console.log(`[API Take Job] Backup: Sending "OK" to Owner (Sender): ${jid}`);
+                await session.sock.sendMessage(jid, { text: 'OK' });
+            } catch (backupError: any) {
+                console.error('[API Take Job] Backup DM Error:', backupError.message);
             }
         }
 
