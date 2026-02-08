@@ -151,8 +151,6 @@ export default function DriverDashboard() {
     };
 
     const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
-        if (!confirm("Bu işi gruba 'Aldım' ve iş sahibine 'OK' mesajı atarak sahiplenmek istiyor musunuz?")) return;
-
         setLoadingJobId(jobId);
         const token = localStorage.getItem("token");
         try {
@@ -174,7 +172,7 @@ export default function DriverDashboard() {
             }
 
             if (res.ok && data.success) {
-                alert("✅ Başarılı: " + (data.message || "Gruba mesaj gönderildi."));
+                // Başarı durumunda alert kaldırıldı (Hızı artırmak için)
                 fetchJobs();
             } else {
                 console.error("[Driver] Take Job API Error:", data);
@@ -370,21 +368,23 @@ export default function DriverDashboard() {
                                         <span className="text-[10px] font-bold font-mono opacity-80">{job.phone}</span>
                                     </button>
 
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
-                                            disabled={!!loadingJobId}
-                                            className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
-                                        >
-                                            {loadingJobId === job.id ? 'GÖNDERİLİYOR...' : 'İŞİ AL 👋'}
-                                        </button>
-                                        <button
-                                            onClick={() => handleIgnore(job.id)}
-                                            className="py-3 px-3 rounded-xl bg-slate-700 text-slate-400 text-[10px] font-black uppercase hover:bg-red-500/20 hover:text-red-400 transition-all"
-                                        >
-                                            YOKSAY
-                                        </button>
-                                    </div>
+                                    {job.status !== 'called' && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
+                                                disabled={!!loadingJobId}
+                                                className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                            >
+                                                {loadingJobId === job.id ? 'GÖNDERİLİYOR...' : 'İŞİ AL 👋'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleIgnore(job.id)}
+                                                className="py-3 px-3 rounded-xl bg-slate-700 text-slate-400 text-[10px] font-black uppercase hover:bg-red-500/20 hover:text-red-400 transition-all"
+                                            >
+                                                YOKSAY
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
