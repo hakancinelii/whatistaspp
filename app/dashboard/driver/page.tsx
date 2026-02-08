@@ -391,9 +391,9 @@ export default function DriverDashboard() {
                     filteredJobs.map((job) => (
                         <div
                             key={job.id}
-                            className={`group bg-slate-800 rounded-3xl p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-slate-700 opacity-60' :
+                            className={`group bg-slate-800 rounded-3xl p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-green-500/50 shadow-lg shadow-green-500/10' :
                                 job.status === 'ignored' ? 'border-red-900/30 opacity-40' :
-                                    'border-green-500 shadow-xl shadow-green-500/10'
+                                    'border-slate-700'
                                 }`}
                         >
                             <div className="flex flex-col md:flex-row gap-6">
@@ -447,7 +447,7 @@ export default function DriverDashboard() {
                                             <button
                                                 onClick={() => handleCall(job.phone, job.id)}
                                                 className={`flex-1 py-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg ${job.status === 'called'
-                                                    ? 'bg-slate-700 text-slate-400'
+                                                    ? 'bg-slate-800 border-2 border-slate-600 text-slate-400'
                                                     : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:scale-95'
                                                     }`}
                                             >
@@ -458,7 +458,7 @@ export default function DriverDashboard() {
                                             {job.status === 'called' ? (
                                                 <button
                                                     onClick={() => handleWonJob(job.id)}
-                                                    className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-600/40 animate-pulse border-2 border-white/20 active:scale-95"
+                                                    className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-600/30 animate-pulse border-2 border-white/10 active:scale-95 flex items-center justify-center gap-2"
                                                 >
                                                     İŞ BENDE / ALDIM ✅
                                                 </button>
