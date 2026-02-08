@@ -338,10 +338,11 @@ function setupMessageListeners(userId: number, sock: any) {
             if (isGroup && isDriverPackage) {
                 const job = await parseTransferJob(text);
                 if (job) {
-                    console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} (${job.price})`);
+                    const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
+                    console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid}`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, from_loc, to_loc, price, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, job.from_loc, job.to_loc, job.price, job.phone, text]
+                        'INSERT INTO captured_jobs (user_id, group_jid, sender_jid, from_loc, to_loc, price, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, senderJid, job.from_loc, job.to_loc, job.price, job.phone, text]
                     );
                     // Burada opsiyonel olarak şoföre push notification veya sesli uyarı tetiklenebilir.
                 }

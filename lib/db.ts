@@ -186,6 +186,7 @@ function initDatabase(): any {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         group_jid TEXT,
+        sender_jid TEXT,
         from_loc TEXT,
         to_loc TEXT,
         price TEXT,
@@ -272,6 +273,11 @@ function initDatabase(): any {
   try {
     rawDb.exec("ALTER TABLE customers ADD COLUMN lid TEXT;");
     console.log("[DB] Migration: Added lid to customers");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN sender_jid TEXT;");
+    console.log("[DB] Migration: Added sender_jid to captured_jobs");
   } catch (e: any) { }
 
   try {
