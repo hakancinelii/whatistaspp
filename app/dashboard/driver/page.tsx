@@ -57,8 +57,8 @@ export default function DriverDashboard() {
                 isConnected: !!data.isConnected,
                 isConnecting: !!data.isConnecting
             });
-        } catch (e) {
-            console.error("WA Status check error:", e);
+        } catch (e: any) {
+            console.error("WA Status Error:", e);
         }
     };
 
@@ -103,7 +103,12 @@ export default function DriverDashboard() {
             }
         } catch (e: any) {
             console.error("Jobs fetch error:", e);
-            setError(e.message);
+            // İnternet kopması veya ağ değişikliği (Failed to fetch) hatalarında ekranı kırmızıya boyama
+            if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
+                console.warn("[Driver] Network glitch detected, retrying in next interval...");
+            } else {
+                setError(e.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -129,25 +134,28 @@ export default function DriverDashboard() {
     }, [jobs.length, autoCall, minPrice]);
 
     const handleCall = async (phone: string, jobId: number) => {
-        const token = localStorage.getItem("token");
-        // Durumu güncelle
-        const res = await fetch("/api/jobs", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ jobId, status: 'called' })
-        });
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/jobs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ jobId, status: 'called' })
+            });
 
-        if (res.status === 401) {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-            return;
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
+            // Telefonu ara
+            window.location.href = `tel:${phone}`;
+        } catch (e: any) {
+            console.error("[Driver] Call Error:", e);
         }
-
-        // Telefonu ara
-        window.location.href = `tel:${phone}`;
     };
 
     const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
@@ -180,30 +188,38 @@ export default function DriverDashboard() {
             }
         } catch (e: any) {
             console.error("[Driver] Take Job Global Error:", e);
-            alert("🚨 Sistem hatası: " + e.message);
+            if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
+                alert("🚨 Bağlantı Hatası: İnternet bağlantınız koptu veya kararsız. Lütfen kontrol edip tekrar deneyin.");
+            } else {
+                alert("🚨 Sistem hatası: " + e.message);
+            }
         } finally {
             setLoadingJobId(null);
         }
     };
 
     const handleIgnore = async (jobId: number) => {
-        const token = localStorage.getItem("token");
-        const res = await fetch("/api/jobs", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ jobId, status: 'ignored' })
-        });
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/jobs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ jobId, status: 'ignored' })
+            });
 
-        if (res.status === 401) {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-            return;
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
+            fetchJobs();
+        } catch (e: any) {
+            console.error("[Driver] Ignore Error:", e);
         }
-
-        fetchJobs();
     };
 
     // Filter Logic
