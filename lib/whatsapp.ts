@@ -5,10 +5,7 @@ import fs from 'fs';
 import qrcode from 'qrcode';
 import { writeFile } from 'fs/promises';
 import { execSync } from 'child_process';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
-const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+import { tryGemini } from './ai';
 
 // Use a global variable to persist sessions across HMR reloads in dev mode
 const globalForWhatsApp = global as unknown as {
@@ -664,7 +661,7 @@ async function parseTransferJob(text: string) {
     const phone = phoneMatch[0].replace(/\D/g, '');
 
     // 2. Yapay Zeka ile Analiz Denemesi
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (apiKey) {
         try {
             const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını (nereden, nereye, fiyat) ayıkla.
@@ -672,20 +669,20 @@ async function parseTransferJob(text: string) {
             Fiyat bilinmiyorsa "Belirtilmedi" yaz. Lokasyonlar için semt veya lokasyon adını (SAW, İHL, Taksim vb.) yakala.
             Mesaj: "${text}"`;
 
-            const result = await aiModel.generateContent(prompt);
-            const response = await result.response;
-            const aiText = response.text();
+            const aiText = await tryGemini(prompt, apiKey);
 
-            const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                const data = JSON.parse(jsonMatch[0]);
-                if (data.from_loc !== "..." && data.to_loc !== "...") {
-                    return {
-                        from_loc: data.from_loc,
-                        to_loc: data.to_loc,
-                        price: data.price,
-                        phone
-                    };
+            if (aiText) {
+                const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const data = JSON.parse(jsonMatch[0]);
+                    if (data.from_loc && data.from_loc !== "..." && data.to_loc && data.to_loc !== "...") {
+                        return {
+                            from_loc: data.from_loc,
+                            to_loc: data.to_loc,
+                            price: data.price || "Belirtilmedi",
+                            phone
+                        };
+                    }
                 }
             }
         } catch (e) {
