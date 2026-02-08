@@ -7,7 +7,33 @@ export default function DriverDashboard() {
     const [loading, setLoading] = useState(true);
     const [autoCall, setAutoCall] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [minPrice, setMinPrice] = useState<number>(0);
+    const [regionSearch, setRegionSearch] = useState("");
+    const [isWakeLockActive, setIsWakeLockActive] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const wakeLockRef = useRef<any>(null);
+
+    // Ekranı uyanık tutma (Wake Lock)
+    const toggleWakeLock = async () => {
+        if ("wakeLock" in navigator) {
+            try {
+                if (!isWakeLockActive) {
+                    wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
+                    setIsWakeLockActive(true);
+                } else {
+                    if (wakeLockRef.current) {
+                        await wakeLockRef.current.release();
+                        wakeLockRef.current = null;
+                        setIsWakeLockActive(false);
+                    }
+                }
+            } catch (err: any) {
+                console.error(`Wake Lock failed: ${err.name}, ${err.message}`);
+            }
+        } else {
+            alert("Tarayıcınız ekran uyanık tutma özelliğini desteklemiyor.");
+        }
+    };
 
     const fetchJobs = async () => {
         try {
@@ -27,9 +53,15 @@ export default function DriverDashboard() {
                 // Eğer yeni bir iş geldiyse ve liste boş değilse ses çal
                 if (jobs.length > 0 && data.length > jobs.length) {
                     playAlert();
-                    if (autoCall) {
-                        const newJob = data[0];
-                        handleCall(newJob.phone, newJob.id);
+
+                    const newJobs = data.filter((dj: any) => !jobs.some((j: any) => j.id === dj.id));
+                    if (autoCall && newJobs.length > 0) {
+                        const bestJob = newJobs[0];
+                        // Fiyat filtresine uyuyorsa otomatik ara
+                        const priceNum = parseInt(bestJob.price.replace(/\D/g, '')) || 0;
+                        if (priceNum >= minPrice) {
+                            handleCall(bestJob.phone, bestJob.id);
+                        }
                     }
                 }
                 setJobs(data);
@@ -53,8 +85,11 @@ export default function DriverDashboard() {
     useEffect(() => {
         fetchJobs();
         const interval = setInterval(fetchJobs, 10000); // 10 saniyede bir kontrol et
-        return () => clearInterval(interval);
-    }, [jobs.length, autoCall]);
+        return () => {
+            clearInterval(interval);
+            if (wakeLockRef.current) wakeLockRef.current.release();
+        };
+    }, [jobs.length, autoCall, minPrice]);
 
     const handleCall = async (phone: string, jobId: number) => {
         const token = localStorage.getItem("token");
@@ -72,6 +107,31 @@ export default function DriverDashboard() {
         window.location.href = `tel:${phone}`;
     };
 
+    const handleTakeJob = async (jobId: number, groupJid: string) => {
+        if (!confirm("Bu işi gruba 'Aldım' mesajı atarak sahiplenmek istiyor musunuz?")) return;
+
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch("/api/jobs/take", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ jobId, groupJid })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Gruba mesaj gönderildi: Araç hazır, alıyorum.");
+                fetchJobs();
+            } else {
+                alert("Hata: " + data.error);
+            }
+        } catch (e) {
+            alert("Sistem hatası!");
+        }
+    };
+
     const handleIgnore = async (jobId: number) => {
         const token = localStorage.getItem("token");
         await fetch("/api/jobs", {
@@ -85,7 +145,19 @@ export default function DriverDashboard() {
         fetchJobs();
     };
 
-    if (loading) return <div className="p-8 text-white">Yükleniyor...</div>;
+    // Filter Logic
+    const filteredJobs = jobs.filter(job => {
+        const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
+        const textMatch = (job.from_loc + job.to_loc + job.raw_message).toLowerCase().includes(regionSearch.toLowerCase());
+        const priceMatch = minPrice === 0 || priceNum >= minPrice;
+        return textMatch && priceMatch;
+    });
+
+    if (loading) return (
+        <div className="flex items-center justify-center min-h-screen bg-slate-900">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+        </div>
+    );
 
     return (
         <div className="max-w-4xl mx-auto p-4 space-y-6">
@@ -93,9 +165,16 @@ export default function DriverDashboard() {
             <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" />
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl">
-                <div>
-                    <h1 className="text-3xl font-black text-white tracking-tight">🚕 SOSYAL TRANSFER</h1>
-                    <p className="text-slate-400 text-sm font-medium">Gruplardaki işleri anında yakala!</p>
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                        🚕 SOSYAL TRANSFER
+                    </h1>
+                    <button
+                        onClick={toggleWakeLock}
+                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                    >
+                        {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">
@@ -114,6 +193,32 @@ export default function DriverDashboard() {
                 </div>
             </div>
 
+            {/* Smart Filters */}
+            <div className="bg-slate-900/50 p-4 rounded-3xl border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder="Nereye veya nereden? (SAW, Beşiktaş...)"
+                        value={regionSearch}
+                        onChange={(e) => setRegionSearch(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-2xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:border-green-500 transition-all font-bold"
+                    />
+                </div>
+                <div className="flex items-center gap-4 px-2 text-white">
+                    <span className="text-xs font-black text-slate-500 uppercase whitespace-nowrap">Min Fiyat:</span>
+                    <input
+                        type="range"
+                        min="0"
+                        max="5000"
+                        step="100"
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(parseInt(e.target.value))}
+                        className="flex-1 accent-green-500"
+                    />
+                    <span className="text-sm font-black text-green-400 w-16">{minPrice}₺</span>
+                </div>
+            </div>
+
             {error && (
                 <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-red-400 text-sm font-medium">
                     ⚠️ Hata: {error}
@@ -122,29 +227,47 @@ export default function DriverDashboard() {
 
 
             <div className="space-y-4">
-                {jobs.length === 0 ? (
+                {filteredJobs.length === 0 ? (
                     <div className="text-center py-20 bg-slate-800/30 rounded-3xl border-2 border-dashed border-slate-700">
-                        <p className="text-slate-500 font-bold">Henüz yeni iş düşmedi...</p>
-                        <p className="text-slate-600 text-sm mt-1">Gruplarınız taranıyor.</p>
+                        <p className="text-slate-500 font-bold">Aradığınız kriterde iş bulunamadı...</p>
+                        <p className="text-slate-600 text-sm mt-1">Filtreleri esneterek daha fazla iş görebilirsiniz.</p>
                     </div>
                 ) : (
-                    jobs.map((job) => (
+                    filteredJobs.map((job) => (
                         <div
                             key={job.id}
-                            className={`group bg-slate-800 rounded-3xl p-6 border-2 transition-all duration-300 transform active:scale-[0.98] ${job.status === 'called' ? 'border-slate-700 opacity-60' :
+                            className={`group bg-slate-800 rounded-3xl p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-slate-700 opacity-60' :
                                 job.status === 'ignored' ? 'border-red-900/30 opacity-40' :
                                     'border-green-500 shadow-xl shadow-green-500/10'
                                 }`}
                         >
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex flex-col md:flex-row gap-6">
                                 <div className="space-y-4 flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                                            {new Date(job.created_at + " UTC").toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase">
+                                                {new Date(job.created_at + " UTC").toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                            {job.status === 'pending' && (
+                                                <div className="animate-pulse bg-red-500 w-2 h-2 rounded-full" />
+                                            )}
                                         </div>
-                                        {job.status === 'pending' && (
-                                            <div className="animate-pulse bg-red-500 w-2 h-2 rounded-full" />
-                                        )}
+                                        <div className="flex gap-2 text-[10px] font-bold">
+                                            <a
+                                                href={`https://www.google.com/maps/search/${encodeURIComponent(job.from_loc)}`}
+                                                target="_blank"
+                                                className="text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-lg"
+                                            >
+                                                📍 ALIM
+                                            </a>
+                                            <a
+                                                href={`https://www.google.com/maps/search/${encodeURIComponent(job.to_loc)}`}
+                                                target="_blank"
+                                                className="text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 px-2 py-1 rounded-lg"
+                                            >
+                                                🏁 VARIŞ
+                                            </a>
+                                        </div>
                                     </div>
 
                                     <div className="flex flex-col gap-1">
@@ -159,28 +282,36 @@ export default function DriverDashboard() {
                                     </div>
 
                                     <div className="p-3 bg-slate-900/50 rounded-xl text-xs text-slate-400 border border-white/5 font-medium italic">
-                                        "{job.raw_message.substring(0, 100)}..."
+                                        "{job.raw_message}"
                                     </div>
                                 </div>
 
-                                <div className="flex flex-row md:flex-col gap-3 min-w-[160px]">
+                                <div className="flex flex-row md:flex-col gap-3 min-w-[180px]">
                                     <button
                                         onClick={() => handleCall(job.phone, job.id)}
-                                        className={`flex-1 py-5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg ${job.status === 'called'
+                                        className={`flex-1 py-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg ${job.status === 'called'
                                             ? 'bg-slate-700 text-slate-400'
-                                            : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:translate-y-1'
+                                            : 'bg-green-600 hover:bg-green-500 text-white shadow-green-600/20 active:scale-95'
                                             }`}
                                     >
-                                        <span className="text-lg font-black tracking-widest uppercase">HEMEN ARA</span>
-                                        <span className="text-xs font-bold font-mono opacity-80">{job.phone}</span>
+                                        <span className="text-lg font-black tracking-widest uppercase">ARA</span>
+                                        <span className="text-[10px] font-bold font-mono opacity-80">{job.phone}</span>
                                     </button>
 
-                                    <button
-                                        onClick={() => handleIgnore(job.id)}
-                                        className="py-3 px-4 rounded-xl text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-400 transition-colors"
-                                    >
-                                        YOKSAY
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleTakeJob(job.id, job.group_jid)}
+                                            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                        >
+                                            İŞİ AL 👋
+                                        </button>
+                                        <button
+                                            onClick={() => handleIgnore(job.id)}
+                                            className="py-3 px-3 rounded-xl bg-slate-700 text-slate-400 text-[10px] font-black uppercase hover:bg-red-500/20 hover:text-red-400 transition-all"
+                                        >
+                                            YOKSAY
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
