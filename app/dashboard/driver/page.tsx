@@ -11,6 +11,7 @@ export default function DriverDashboard() {
     const [regionSearch, setRegionSearch] = useState("");
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
     const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
+    const [loadingJobId, setLoadingJobId] = useState<number | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const wakeLockRef = useRef<any>(null);
     const waStatusIntervalRef = useRef<any>(null);
@@ -152,6 +153,7 @@ export default function DriverDashboard() {
     const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
         if (!confirm("Bu işi gruba 'Aldım' ve iş sahibine 'OK' mesajı atarak sahiplenmek istiyor musunuz?")) return;
 
+        setLoadingJobId(jobId);
         const token = localStorage.getItem("token");
         try {
             console.log(`[Driver] Taking job ${jobId} for group ${groupJid}`);
@@ -181,6 +183,8 @@ export default function DriverDashboard() {
         } catch (e: any) {
             console.error("[Driver] Take Job Global Error:", e);
             alert("🚨 Sistem hatası: " + e.message);
+        } finally {
+            setLoadingJobId(null);
         }
     };
 
@@ -369,9 +373,10 @@ export default function DriverDashboard() {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
-                                            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                            disabled={!!loadingJobId}
+                                            className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
                                         >
-                                            İŞİ AL 👋
+                                            {loadingJobId === job.id ? 'GÖNDERİLİYOR...' : 'İŞİ AL 👋'}
                                         </button>
                                         <button
                                             onClick={() => handleIgnore(job.id)}

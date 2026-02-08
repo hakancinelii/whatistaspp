@@ -42,33 +42,37 @@ export async function POST(request: NextRequest) {
         // Reconnect sonrası socket'in tam oturması için mini bir mola
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // 1. İş sahibine "OK" gönder (Direct Message)
-        if (phone) {
+        // 1. İş sahibine "OK" gönder (Direct Message) - Opsiyonel, hata olsa da devam eder
+        if (phone && phone !== "Belirtilmedi") {
             try {
                 const cleanPhone = phone.replace(/\D/g, '');
-                const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
-                console.log(`[API Take Job] Sending DM "OK" to ${jid}`);
-                await session.sock.sendMessage(jid, { text: 'OK' });
+                if (cleanPhone.length >= 10) {
+                    const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
+                    console.log(`[API Take Job] Sending DM "OK" to ${jid}`);
+                    await session.sock.sendMessage(jid, { text: 'OK' });
+                } else {
+                    console.log(`[API Take Job] Skip DM: Phone number too short (${cleanPhone})`);
+                }
             } catch (dmError: any) {
-                console.error('[API Take Job] DM Error:', dmError.message);
+                console.error('[API Take Job] DM Error (Ignored):', dmError.message);
             }
         }
 
-        // 1. Gruba mesajı gönder (Retry mantığı ile)
+        // 2. Gruba mesajı gönder (Retry mantığı ile)
         let sent = false;
         let lastError = null;
 
         for (let attempt = 1; attempt <= 2; attempt++) {
             try {
-                console.log(`[API Take Job] Sending message (Attempt ${attempt})...`);
+                console.log(`[API Take Job] Sending group message (Attempt ${attempt}) to ${groupJid}...`);
                 await session.sock.sendMessage(groupJid, { text: 'Araç hazır, işi alıyorum. 👍' });
                 sent = true;
                 break;
             } catch (sendError: any) {
                 lastError = sendError;
-                console.error(`[API Take Job] Attempt ${attempt} failed:`, sendError.message);
+                console.error(`[API Take Job] Group Message Attempt ${attempt} failed:`, sendError.message);
                 if (attempt === 1) {
-                    console.log("[API Take Job] Retrying in 2 seconds...");
+                    console.log("[API Take Job] Retrying group message in 2 seconds...");
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
