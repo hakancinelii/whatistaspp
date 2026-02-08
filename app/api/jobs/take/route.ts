@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
+import { getDatabase } from '@/lib/db';
 import { getSession } from '@/lib/whatsapp';
 
 export async function POST(request: NextRequest) {
@@ -15,15 +16,30 @@ export async function POST(request: NextRequest) {
 
         const session = await getSession(user.userId);
         if (!session.sock || !session.isConnected) {
-            return NextResponse.json({ error: 'WhatsApp bağlantısı aktif değil' }, { status: 400 });
+            console.error('[API Take Job] WA Session not connected for user', user.userId);
+            return NextResponse.json({ error: 'WhatsApp bağlantınız aktif değil. Lütfen Dashboard sayfasından bağlantıyı kontrol edin.' }, { status: 400 });
         }
 
-        // Gruba mesajı gönder
-        await session.sock.sendMessage(groupJid, { text: 'Araç hazır, işi alıyorum. 👍' });
+        console.log(`[API Take Job] Sending message to group ${groupJid} for user ${user.userId}`);
 
-        return NextResponse.json({ success: true });
+        // 1. Gruba mesajı gönder
+        try {
+            await session.sock.sendMessage(groupJid, { text: 'Araç hazır, işi alıyorum. 👍' });
+        } catch (sendError: any) {
+            console.error('[API Take Job] Message Send Error:', sendError);
+            return NextResponse.json({ error: 'Gruba mesaj gönderilemedi: ' + (sendError.message || 'Bilinmeyen hata') }, { status: 500 });
+        }
+
+        // 2. İşin durumunu güncelle (Panelde grileşmesi için)
+        const db = await getDatabase();
+        await db.run(
+            'UPDATE captured_jobs SET status = ? WHERE id = ? AND user_id = ?',
+            ['called', jobId, user.userId]
+        );
+
+        return NextResponse.json({ success: true, message: 'Mesaj gruba iletildi ve iş rezerve edildi.' });
     } catch (error: any) {
-        console.error('[API Take Job Error]', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[API Take Job Global Error]', error);
+        return NextResponse.json({ error: 'Sistem hatası: ' + error.message }, { status: 500 });
     }
 }

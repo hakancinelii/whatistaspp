@@ -112,6 +112,7 @@ export default function DriverDashboard() {
 
         const token = localStorage.getItem("token");
         try {
+            console.log(`[Driver] Taking job ${jobId} for group ${groupJid}`);
             const res = await fetch("/api/jobs/take", {
                 method: "POST",
                 headers: {
@@ -121,14 +122,16 @@ export default function DriverDashboard() {
                 body: JSON.stringify({ jobId, groupJid })
             });
             const data = await res.json();
-            if (data.success) {
-                alert("Gruba mesaj gönderildi: Araç hazır, alıyorum.");
+            if (res.ok && data.success) {
+                alert("✅ Başarılı: " + (data.message || "Gruba mesaj gönderildi."));
                 fetchJobs();
             } else {
-                alert("Hata: " + data.error);
+                console.error("[Driver] Take Job API Error:", data);
+                alert("❌ Hata: " + (data.error || "Bilinmeyen bir hata oluştu."));
             }
-        } catch (e) {
-            alert("Sistem hatası!");
+        } catch (e: any) {
+            console.error("[Driver] Take Job Global Error:", e);
+            alert("🚨 Sistem hatası: " + e.message);
         }
     };
 
