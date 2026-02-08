@@ -5,6 +5,10 @@ import fs from 'fs';
 import qrcode from 'qrcode';
 import { writeFile } from 'fs/promises';
 import { execSync } from 'child_process';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
+const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Use a global variable to persist sessions across HMR reloads in dev mode
 const globalForWhatsApp = global as unknown as {
@@ -335,7 +339,7 @@ function setupMessageListeners(userId: number, sock: any) {
 
             // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
             if (isGroup && isDriverPackage) {
-                const job = parseTransferJob(text);
+                const job = await parseTransferJob(text);
                 if (job) {
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} (${job.price})`);
                     await db.run(
@@ -648,41 +652,65 @@ export function initScheduler() {
 
 /**
  * Transfer gruplarından gelen mesajları analiz eder.
- * Örn: "SAW - BEŞİKTAŞ 1900TL 05330402212"
+ * AI Desteği ile lokasyon ve fiyat ayıklama.
  */
-function parseTransferJob(text: string) {
+async function parseTransferJob(text: string) {
     if (!text) return null;
 
-    // Telefon numarasını yakala (05xx, +90, boşluklu veya boşluksuz)
+    // 1. Telefon numarasını yakala (Mutlaka olmalı)
     const phoneRegex = /(?:\+90|0)?\s*[5]\d{2}\s*\d{3}\s*\d{2}\s*\d{2}/g;
     const phoneMatch = text.match(phoneRegex);
     if (!phoneMatch) return null;
-    const phone = phoneMatch[0].replace(/\D/g, ''); // Temizle
+    const phone = phoneMatch[0].replace(/\D/g, '');
 
-    // Fiyat yakala (1200 TL, 1.700₺, 1500 TRY vb.)
+    // 2. Yapay Zeka ile Analiz Denemesi
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (apiKey) {
+        try {
+            const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını (nereden, nereye, fiyat) ayıkla.
+            Yanıtı sadece şu JSON formatında ver, başka açıklama yazma: {"from_loc": "...", "to_loc": "...", "price": "..."}.
+            Fiyat bilinmiyorsa "Belirtilmedi" yaz. Lokasyonlar için semt veya lokasyon adını (SAW, İHL, Taksim vb.) yakala.
+            Mesaj: "${text}"`;
+
+            const result = await aiModel.generateContent(prompt);
+            const response = await result.response;
+            const aiText = response.text();
+
+            const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const data = JSON.parse(jsonMatch[0]);
+                if (data.from_loc !== "..." && data.to_loc !== "...") {
+                    return {
+                        from_loc: data.from_loc,
+                        to_loc: data.to_loc,
+                        price: data.price,
+                        phone
+                    };
+                }
+            }
+        } catch (e) {
+            console.error("[WA AI Parser Error]", e);
+        }
+    }
+
+    // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
     const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit)?/i;
     const priceMatch = text.match(priceRegex);
     const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
-    // Lokasyonları yakala (SAW, İHL, Sabiha, Havalimanı, Semt isimleri)
     const locations = ["SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI"];
     const foundLocations: string[] = [];
-
-    // Mesajı satırlara bölüp lokasyon aramayı deneyelim (Ok işareti veya tireye göre)
     const normalizedText = text.toUpperCase();
 
-    // Yaygın lokasyonları kontrol et
     locations.forEach(loc => {
         if (normalizedText.includes(loc)) {
             foundLocations.push(loc);
         }
     });
 
-    // Eğer lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de 'Bilinmeyen' olarak döndür
     const from_loc = foundLocations[0] || "Bilinmeyen";
     const to_loc = foundLocations[1] || "Bilinmeyen";
 
-    // Eğer en az bir lokasyon, fiyat ve telefon varsa bu bir iş mesajıdır
     if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi")) {
         return {
             from_loc,
