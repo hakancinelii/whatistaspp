@@ -22,6 +22,7 @@ const PACKAGES_LIST = [
     { id: 'standard', label: "Standart Paket", color: "bg-blue-500/20 text-blue-300" },
     { id: 'gold', label: "Gold Paket", color: "bg-yellow-500/20 text-yellow-300" },
     { id: 'platinum', label: "Platin Paket", color: "bg-purple-500/20 text-purple-300" },
+    { id: 'driver', label: "Driver (Social Transfer)", color: "bg-green-500/20 text-green-300" },
 ];
 
 const CREDIT_PACKAGES = [

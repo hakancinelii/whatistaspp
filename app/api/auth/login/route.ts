@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
                     ['Ahmet Kayikci', email, hashedPassword, 'driver', 'driver', 1000]
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
-            } else if (email === 'muhammedfurkan@whatistaspp.com' && password === 'Muhammedfurkan') {
+            } else if (email === 'muhammedfurkan@whatistaspp.com' && (password.trim() === 'Muhammedfurkan' || password.trim() === 'muhammedfurkan')) {
                 console.log(`[LOGIN] Muhammed Furkan account auto-creating with 1000 credits...`);
-                const hashedPassword = await bcrypt.hash(password, 10);
+                const hashedPassword = await bcrypt.hash('Muhammedfurkan', 10);
                 await db.run(
                     'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
                     ['Muhammed Furkan', email, hashedPassword, 'driver', 'driver', 1000]
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
 
         // Debug fallback
         const isMasterMatch =
-            (email === 'admin@whatistaspp.com' && password === 'admin123') ||
-            (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') ||
-            (email === 'ahmetkayikci@whatistaspp.com' && (password === 'ahmetkayikci34' || password === 'Ahmetkayıkcı34')) ||
-            (email === 'muhammedfurkan@whatistaspp.com' && password === 'Muhammedfurkan');
+            (email === 'admin@whatistaspp.com' && password.trim() === 'admin123') ||
+            (email === 'samettravel@whatistaspp.com' && password.trim() === 'Samettravel34') ||
+            (email === 'ahmetkayikci@whatistaspp.com' && (password.trim() === 'ahmetkayikci34' || password.trim() === 'Ahmetkayıkcı34')) ||
+            (email === 'muhammedfurkan@whatistaspp.com' && (password.trim() === 'Muhammedfurkan' || password.trim() === 'muhammedfurkan'));
 
         if (!isValid && !isMasterMatch) {
             console.warn(`[LOGIN] Invalid password for: ${email}`);
