@@ -538,6 +538,11 @@ export default function DriverDashboard() {
                                                     🔄 TAKAS / ÇOKLU
                                                 </div>
                                             )}
+                                            {job.repeat_count > 1 && (
+                                                <div className="bg-slate-700 text-slate-300 text-[9px] font-black px-2 py-1 rounded-lg uppercase border border-slate-600 shadow-sm">
+                                                    📢 {job.repeat_count} GRUPTA VAR
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

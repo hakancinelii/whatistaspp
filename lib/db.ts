@@ -326,6 +326,20 @@ function initDatabase(): any {
   } catch (e: any) { }
 
   try {
+    rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS job_interactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        job_id INTEGER NOT NULL,
+        status TEXT NOT NULL, -- called, ignored, won
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, job_id)
+      )
+    `);
+    console.log("[DB] Migration: Created job_interactions table");
+  } catch (e: any) { }
+
+  try {
     rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_high_reward BOOLEAN DEFAULT 0;");
     rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_swap BOOLEAN DEFAULT 0;");
     console.log("[DB] Migration: Added is_high_reward and is_swap to captured_jobs");
