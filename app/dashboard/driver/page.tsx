@@ -501,22 +501,6 @@ export default function DriverDashboard() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="flex gap-2 text-[10px] font-bold">
-                                            <a
-                                                href={`https://www.google.com/maps/search/${encodeURIComponent(job.from_loc)}`}
-                                                target="_blank"
-                                                className="text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-lg"
-                                            >
-                                                📍 ALIM
-                                            </a>
-                                            <a
-                                                href={`https://www.google.com/maps/search/${encodeURIComponent(job.to_loc)}`}
-                                                target="_blank"
-                                                className="text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 px-2 py-1 rounded-lg"
-                                            >
-                                                🏁 VARIŞ
-                                            </a>
-                                        </div>
                                     </div>
 
                                     <div className="flex flex-col gap-1">
