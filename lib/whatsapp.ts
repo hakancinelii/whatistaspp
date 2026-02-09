@@ -115,10 +115,18 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
+            const { getDatabase } = require('./db');
+            const db = await getDatabase();
+
             if (qr) {
                 console.log(`[WA] 🔳 New QR generated for user ${userId}`);
                 session.qrCode = await qrcode.toDataURL(qr);
-                // isConnecting true kalmalı ki status API tekrar tetiklemesin
+
+                // QR bilgisini DB'ye kaydet
+                await db.run(
+                    'INSERT INTO whatsapp_sessions (user_id, session_id, qr_code, is_connected) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET qr_code = ?, is_connected = 0',
+                    [userId, `session_${userId}`, session.qrCode, 0, session.qrCode]
+                ).catch(() => { });
             }
 
             if (connection === 'close') {
@@ -129,19 +137,29 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
                 session.isConnecting = false;
                 session.qrCode = null;
 
+                // DB Güncelle: Bağlantı koptu
+                await db.run(
+                    'INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET is_connected = 0, qr_code = NULL',
+                    [userId, `session_${userId}`, 0, null]
+                ).catch(() => { });
+
                 if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
                     console.log(`[WA] 🏹 Session invalidated for user ${userId}. Clearing auth...`);
                     session.sock = null;
                     if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
                     sessions.delete(userId);
-                } else {
-                    // Diğer hatalarda (connection lost vb.) sock'u null yapmıyoruz ki tekrar denesin
                 }
             } else if (connection === 'open') {
                 console.log(`[WA] ✅ User ${userId} connected successfully!`);
                 session.isConnected = true;
                 session.isConnecting = false;
                 session.qrCode = null;
+
+                // DB Güncelle: Bağlantı başarılı
+                await db.run(
+                    'INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code, last_connected) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET is_connected = 1, qr_code = NULL, last_connected = CURRENT_TIMESTAMP',
+                    [userId, `session_${userId}`, 1, null]
+                ).catch(() => { });
             }
         });
 

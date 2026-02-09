@@ -306,6 +306,11 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added plain_password to users");
   } catch (e: any) { }
 
+  try {
+    rawDb.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_whatsapp_sessions_user_id ON whatsapp_sessions(user_id);");
+    console.log("[DB] Migration: Ensured unique user_id in whatsapp_sessions");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }
