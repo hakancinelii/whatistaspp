@@ -82,12 +82,26 @@ export default function LoginPage() {
                             />
                         </div>
 
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                            <div className="flex items-start gap-3">
+                                <input
+                                    id="kvkk"
+                                    type="checkbox"
+                                    required
+                                    className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                />
+                                <label htmlFor="kvkk" className="text-[11px] leading-relaxed text-gray-400">
+                                    <span className="text-white font-semibold">WhatsApp & KVKK Onayı:</span> Bu sistemi kullanarak; WhatsApp altyapısının kullanımı nedeniyle oluşabilecek <span className="text-orange-400">hesap kısıtlaması (Ban) risklerini</span>, verilerimin hizmet sunumu için işlenmesini ve WhatIstaspp'ın WhatsApp INC. ile resmi bir bağı olmadığını kabul ediyorum. Tüm sorumluluk kullanıcıya aittir.
+                                </label>
+                            </div>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
                             className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+                            {loading ? "Giriş yapılıyor..." : "Kullanım Şartlarını Kabul Et ve Giriş Yap"}
                         </button>
                     </form>
 

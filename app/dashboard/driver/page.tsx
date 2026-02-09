@@ -435,8 +435,9 @@ export default function DriverDashboard() {
                                 <div className="space-y-4 flex-1">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase">
-                                                {new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                            <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase flex items-center gap-1.5">
+                                                <span>{new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <RelativeTimer createdAt={job.created_at} />
                                             </div>
                                             {job.group_name && (
                                                 <div className="bg-blue-500/10 text-blue-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase border border-blue-500/20 max-w-[120px] truncate shadow-sm" title={job.group_name}>
@@ -546,5 +547,35 @@ export default function DriverDashboard() {
                 )}
             </div>
         </div >
+    );
+}
+
+function RelativeTimer({ createdAt }: { createdAt: string }) {
+    const [elapsed, setElapsed] = useState("");
+
+    useEffect(() => {
+        const update = () => {
+            const now = new Date();
+            const created = new Date(createdAt);
+            const diffSeconds = Math.floor((now.getTime() - created.getTime()) / 1000);
+
+            if (diffSeconds < 60) {
+                setElapsed(`${diffSeconds}sn`);
+            } else if (diffSeconds < 3600) {
+                setElapsed(`${Math.floor(diffSeconds / 60)}dk`);
+            } else {
+                setElapsed(`${Math.floor(diffSeconds / 3600)}sa`);
+            }
+        };
+
+        update();
+        const interval = setInterval(update, 1000);
+        return () => clearInterval(interval);
+    }, [createdAt]);
+
+    return (
+        <span className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 border border-white/5 shadow-inner">
+            {elapsed}
+        </span>
     );
 }
