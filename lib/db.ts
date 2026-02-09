@@ -313,7 +313,8 @@ function initDatabase(): any {
 
   try {
     rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_high_reward BOOLEAN DEFAULT 0;");
-    console.log("[DB] Migration: Added is_high_reward to captured_jobs");
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_swap BOOLEAN DEFAULT 0;");
+    console.log("[DB] Migration: Added is_high_reward and is_swap to captured_jobs");
   } catch (e: any) { }
 
   dbInstance = rawDb;

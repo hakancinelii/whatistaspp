@@ -370,8 +370,8 @@ function setupMessageListeners(userId: number, sock: any) {
 
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0]
+                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
                     );
                 }
                 if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
@@ -698,14 +698,15 @@ async function parseTransferJob(text: string) {
             ÖNEMLİ KURALLAR:
             1. LOKASYON AYIRMA: Mesajda "İHL Fatih", "SAW Taksim", "Havalimanı Beşiktaş" gibi yan yana iki lokasyon varsa; İLKİ "from_loc" (Nereden), İKİNCİSİ "to_loc" (Nereye) olarak kabul edilir. Asla bu iki kelimeyi tek bir lokasyon sanma.
             2. ÖRNEKLER: 
-               - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false}
-               - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true}
-            3. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
-            4. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
-            5. FİYAT: Fiyatı sadece rakam olarak ayıkla (Örn: 1500).
-            6. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward": true yap. 
+               - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false, "is_swap": false}
+               - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true, "is_swap": false}
+            3. **TAKAS (SWAP) ANALİZİ:** Eğer mesajda birden fazla iş varsa (Örn: 05:00 Tuzla-IHL, 10:00 Kumkapı-SAW) veya "verilir", "alınır", "takas", "boş araç", "iş istenir" gibi ifadeler geçiyorsa, bu bir TAKAS işidir. "is_swap": true yap ve "from_loc" değerini "ÇOKLU / TAKAS" olarak ayarla.
+            4. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
+            5. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
+            6. FİYAT: Fiyatı sadece rakam olarak ayıkla (Örn: 1500).
+            7. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward": true yap. 
 
-            Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean}
+            Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean}
 
             Mesaj: "${text}"`;
 
@@ -719,8 +720,8 @@ async function parseTransferJob(text: string) {
                         let from = data.from_loc || "Bilinmiyor";
                         let to = data.to_loc || "Bilinmiyor";
 
-                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayır.
-                        if ((to === "Bilinmiyor" || to === "Bilinmeyen Konum") && from.includes(' ')) {
+                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayör.
+                        if (!data.is_swap && (to === "Bilinmiyor" || to === "Bilinmeyen Konum") && from.includes(' ')) {
                             const parts = from.split(/\s+/).filter((p: string) => p.length > 1);
                             if (parts.length >= 2) {
                                 from = parts[0];
@@ -734,6 +735,7 @@ async function parseTransferJob(text: string) {
                             price: data.price || "Belirtilmedi",
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
+                            is_swap: data.is_swap ? 1 : 0,
                             phone
                         };
                     }

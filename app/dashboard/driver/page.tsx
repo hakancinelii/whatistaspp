@@ -500,6 +500,11 @@ export default function DriverDashboard() {
                                                     👑 KAÇIRMA!
                                                 </div>
                                             )}
+                                            {job.is_swap === 1 && (
+                                                <div className="bg-indigo-600 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase border border-indigo-400/50 shadow-lg shadow-indigo-600/20">
+                                                    🔄 TAKAS / ÇOKLU
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
