@@ -327,6 +327,27 @@ function initDatabase(): any {
 
   try {
     rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS driver_filters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE NOT NULL,
+        regions TEXT, -- JSON array of strings
+        min_price INTEGER DEFAULT 0,
+        job_mode TEXT DEFAULT 'all', -- all, ready, scheduled
+        action_mode TEXT DEFAULT 'manual', -- manual, auto
+        rota_name TEXT DEFAULT 'ROTA 1',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+    console.log("[DB] Migration: Created driver_filters table");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec(`ALTER TABLE driver_filters ADD COLUMN rota_name TEXT DEFAULT 'ROTA 1'`);
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec(`
       CREATE TABLE IF NOT EXISTS job_interactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
