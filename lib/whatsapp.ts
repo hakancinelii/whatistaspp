@@ -697,11 +697,13 @@ async function parseTransferJob(text: string) {
             
             ÖNEMLİ KURALLAR:
             1. LOKASYON AYIRMA: Mesajda "İHL Fatih", "SAW Taksim", "Havalimanı Beşiktaş" gibi yan yana iki lokasyon varsa; İLKİ "from_loc" (Nereden), İKİNCİSİ "to_loc" (Nereye) olarak kabul edilir. Asla bu iki kelimeyi tek bir lokasyon sanma.
-            2. KISALTMALAR: "İHL", "IHL", "İst", "İsl" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
-            3. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
-            4. FİYAT: Fiyatı sadece rakam olarak ayıkla (Örn: 1500).
-            5. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward": true yap. 
-            (Örn: SAW-Fatih için 1600+ TL, IHL-Taksim için 1500+ TL yüksek kazançtır.)
+            2. ÖRNEKLER: 
+               - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false}
+               - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true}
+            3. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
+            4. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
+            5. FİYAT: Fiyatı sadece rakam olarak ayıkla (Örn: 1500).
+            6. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward": true yap. 
 
             Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean}
 
@@ -714,9 +716,21 @@ async function parseTransferJob(text: string) {
                 if (match) {
                     const data = JSON.parse(match[0]);
                     if (data.from_loc || data.price !== "Belirtilmedi") {
+                        let from = data.from_loc || "Bilinmiyor";
+                        let to = data.to_loc || "Bilinmiyor";
+
+                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayır.
+                        if ((to === "Bilinmiyor" || to === "Bilinmeyen Konum") && from.includes(' ')) {
+                            const parts = from.split(/\s+/).filter((p: string) => p.length > 1);
+                            if (parts.length >= 2) {
+                                from = parts[0];
+                                to = parts.slice(1).join(' ');
+                            }
+                        }
+
                         return {
-                            from_loc: data.from_loc || "Bilinmiyor",
-                            to_loc: data.to_loc || "Bilinmiyor",
+                            from_loc: from,
+                            to_loc: to,
                             price: data.price || "Belirtilmedi",
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
