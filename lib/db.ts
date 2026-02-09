@@ -296,6 +296,11 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added time to captured_jobs");
   } catch (e: any) { }
 
+  try {
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN group_name TEXT;");
+    console.log("[DB] Migration: Added group_name to captured_jobs");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }

@@ -340,10 +340,20 @@ function setupMessageListeners(userId: number, sock: any) {
                 const job = await parseTransferJob(text);
                 if (job) {
                     const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
-                    console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid}`);
+                    let groupName = null;
+                    if (isGroup) {
+                        try {
+                            const metadata = await sock.groupMetadata(fromJid);
+                            groupName = metadata.subject;
+                        } catch (err) {
+                            console.warn(`[WA] Could not fetch group metadata for ${fromJid}`);
+                        }
+                    }
+
+                    console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, sender_jid, from_loc, to_loc, price, time, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text]
+                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text]
                     );
                 }
                 if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
