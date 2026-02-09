@@ -99,7 +99,13 @@ export default function DriverDashboard() {
                         }
                     }
                 }
-                setJobs(data);
+                const formattedData = data.map((job: any) => ({
+                    ...job,
+                    created_at: job.created_at?.includes(' ') && !job.created_at?.includes('T')
+                        ? job.created_at.replace(' ', 'T') + 'Z'
+                        : job.created_at
+                }));
+                setJobs(formattedData);
             } else if (data.error) {
                 setError(data.error);
             }
