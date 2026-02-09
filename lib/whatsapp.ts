@@ -693,14 +693,17 @@ async function parseTransferJob(text: string) {
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (apiKey) {
         try {
-            const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını ayıkla.
+            const prompt = `Aşağıdaki WhatsApp mesajındaki transfer işini analiz et ve verileri ayıkla.
             
-            Kurallar:
-            1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini ayır.
-            2. "Hazır", "Hemen" gibi kelimeler varsa time="HAZIR 🚨" yap.
-            3. Fiyatı (price) tam sayı olarak ayıkla (Örn: 1500).
-            4. **FİYAT ANALİZİ:** Eğer bu rota için verilen fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward" değerini true yap. (Örn: SAW-Fatih için 1600+ TL, IHL-Taksim için 1400+ TL gibi durumlar yüksektir).
-            5. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean}
+            ÖNEMLİ KURALLAR:
+            1. LOKASYON AYIRMA: Mesajda "İHL Fatih", "SAW Taksim", "Havalimanı Beşiktaş" gibi yan yana iki lokasyon varsa; İLKİ "from_loc" (Nereden), İKİNCİSİ "to_loc" (Nereye) olarak kabul edilir. Asla bu iki kelimeyi tek bir lokasyon sanma.
+            2. KISALTMALAR: "İHL", "IHL", "İst", "İsl" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
+            3. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
+            4. FİYAT: Fiyatı sadece rakam olarak ayıkla (Örn: 1500).
+            5. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward": true yap. 
+            (Örn: SAW-Fatih için 1600+ TL, IHL-Taksim için 1500+ TL yüksek kazançtır.)
+
+            Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean}
 
             Mesaj: "${text}"`;
 
@@ -740,7 +743,7 @@ async function parseTransferJob(text: string) {
     }
 
     const locations = [
-        "SAW", "İHL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
+        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
         "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU",
         "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY",
         "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK",
