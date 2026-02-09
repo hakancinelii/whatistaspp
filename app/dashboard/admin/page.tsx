@@ -10,6 +10,7 @@ interface User {
     credits: number;
     package: string;
     plain_password?: string;
+    is_connected?: number | boolean;
     created_at: string;
 }
 
@@ -192,6 +193,7 @@ export default function AdminPage() {
                                 <th className="p-4">Şifre</th>
                                 <th className="p-4">Mevcut Paket</th>
                                 <th className="p-4">Bakiye</th>
+                                <th className="p-4">WA Durum</th>
                                 <th className="p-4 text-right">İşlemler</th>
                             </tr>
                         </thead>
@@ -233,6 +235,19 @@ export default function AdminPage() {
                                     <td className="p-4">
                                         <div className="font-mono text-green-400">{user.credits.toLocaleString()}</div>
                                         <div className="text-[10px] text-gray-500">Kredi</div>
+                                    </td>
+                                    <td className="p-4">
+                                        {user.is_connected ? (
+                                            <span className="flex items-center gap-1.5 text-green-500 text-[10px] font-black uppercase bg-green-500/10 px-2 py-1 rounded-lg border border-green-500/20">
+                                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                                BAĞLI
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1.5 text-slate-500 text-[10px] font-black uppercase bg-slate-500/10 px-2 py-1 rounded-lg border border-slate-500/20">
+                                                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full" />
+                                                KOPUK
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="p-4 text-right relative">
                                         <div className="flex justify-end gap-2">
