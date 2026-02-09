@@ -430,7 +430,7 @@ export default function DriverDashboard() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase">
-                                                {new Date(job.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                             </div>
                                             {job.group_name && (
                                                 <div className="bg-blue-500/10 text-blue-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase border border-blue-500/20 max-w-[120px] truncate shadow-sm" title={job.group_name}>
@@ -524,7 +524,7 @@ export default function DriverDashboard() {
                                             <div className="bg-slate-700/50 p-4 rounded-2xl text-center border border-white/5 space-y-1">
                                                 <div className="text-[10px] text-slate-500 font-black uppercase">TAMAMLANMA</div>
                                                 <div className="text-xs text-white font-black">
-                                                    {new Date((job.completed_at || job.created_at).replace(' ', 'T') + 'Z').toLocaleDateString('tr-TR')}
+                                                    {new Date(job.completed_at || job.created_at).toLocaleDateString('tr-TR')}
                                                 </div>
                                             </div>
                                             <div className="bg-green-500/10 p-4 rounded-2xl text-center border border-green-500/20 space-y-1">

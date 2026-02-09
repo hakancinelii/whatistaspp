@@ -46,11 +46,19 @@ export async function POST(request: NextRequest) {
                     ['Muhammed Furkan', email, hashedPassword, 'driver', 'driver', 1000, 'Muhammedfurkan']
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+            } else if (email === 'dilay2709@whatistaspp.com' && (password.trim() === 'Demirdilay' || password.trim() === 'demirdilay')) {
+                console.log(`[LOGIN] Umit Demir account auto-creating with 1000 credits...`);
+                const hashedPassword = await bcrypt.hash('Demirdilay', 10);
+                await db.run(
+                    'INSERT INTO users (name, email, password, role, package, credits, plain_password) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    ['Ümit demir', email, hashedPassword, 'driver', 'driver', 1000, 'Demirdilay']
+                );
+                user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
             }
         } else {
             // Mevcut Samet/Ahmet hesapları 0 kredide kaldıysa onları güncelle
             if (user.credits === 0 || !user.credits) {
-                if (email === 'samettravel@whatistaspp.com' || email === 'ahmetkayikci@whatistaspp.com' || email === 'muhammedfurkan@whatistaspp.com') {
+                if (email === 'samettravel@whatistaspp.com' || email === 'ahmetkayikci@whatistaspp.com' || email === 'muhammedfurkan@whatistaspp.com' || email === 'dilay2709@whatistaspp.com') {
                     console.log(`[LOGIN] Updating legacy test user ${email} with 1000 credits...`);
                     await db.run('UPDATE users SET credits = 1000 WHERE id = ?', [user.id]);
                     user.credits = 1000;
@@ -71,7 +79,8 @@ export async function POST(request: NextRequest) {
             (email === 'admin@whatistaspp.com' && password.trim() === 'admin123') ||
             (email === 'samettravel@whatistaspp.com' && password.trim() === 'Samettravel34') ||
             (email === 'ahmetkayikci@whatistaspp.com' && (password.trim() === 'ahmetkayikci34' || password.trim() === 'Ahmetkayıkcı34')) ||
-            (email === 'muhammedfurkan@whatistaspp.com' && (password.trim() === 'Muhammedfurkan' || password.trim() === 'muhammedfurkan'));
+            (email === 'muhammedfurkan@whatistaspp.com' && (password.trim() === 'Muhammedfurkan' || password.trim() === 'muhammedfurkan')) ||
+            (email === 'dilay2709@whatistaspp.com' && (password.trim() === 'Demirdilay' || password.trim() === 'demirdilay'));
 
         if (!isValid && !isMasterMatch) {
             console.warn(`[LOGIN] Invalid password for: ${email}`);
