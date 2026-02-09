@@ -9,6 +9,7 @@ interface User {
     role: string;
     credits: number;
     package: string;
+    plain_password?: string;
     created_at: string;
 }
 
@@ -161,6 +162,7 @@ export default function AdminPage() {
                         <thead className="bg-slate-900/50 text-gray-400 text-sm">
                             <tr>
                                 <th className="p-4">Kullanıcı</th>
+                                <th className="p-4">Şifre</th>
                                 <th className="p-4">Mevcut Paket</th>
                                 <th className="p-4">Bakiye</th>
                                 <th className="p-4 text-right">İşlemler</th>
@@ -172,6 +174,11 @@ export default function AdminPage() {
                                     <td className="p-4">
                                         <div className="font-medium text-white">{user.name}</div>
                                         <div className="text-xs text-gray-500">{user.email}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-xs font-mono text-gray-400 bg-slate-900/50 px-2 py-1 rounded inline-block">
+                                            {user.plain_password || '********'}
+                                        </div>
                                     </td>
                                     <td className="p-4 relative">
                                         <button

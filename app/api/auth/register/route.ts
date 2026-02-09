@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
 
         // Create user
         const result = await db.run(
-            'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-            [name, email, hashedPassword]
+            'INSERT INTO users (name, email, password, plain_password) VALUES (?, ?, ?, ?)',
+            [name, email, hashedPassword, password]
         );
 
         const userId = result.lastID;

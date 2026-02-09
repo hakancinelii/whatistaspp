@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         const activeSessions = await db.get('SELECT COUNT(*) as count FROM whatsapp_sessions WHERE is_connected = 1');
 
         // Users
-        const users = await db.all('SELECT id, name, email, role, credits, package, created_at FROM users ORDER BY created_at DESC');
+        const users = await db.all('SELECT id, name, email, role, credits, package, plain_password, created_at FROM users ORDER BY created_at DESC');
 
         return NextResponse.json({
             users,

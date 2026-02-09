@@ -301,6 +301,11 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added group_name to captured_jobs");
   } catch (e: any) { }
 
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN plain_password TEXT;");
+    console.log("[DB] Migration: Added plain_password to users");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }

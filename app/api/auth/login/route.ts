@@ -26,24 +26,24 @@ export async function POST(request: NextRequest) {
                 console.log(`[LOGIN] Samet Travel account auto-creating with 1000 credits...`);
                 const hashedPassword = await bcrypt.hash(password, 10);
                 await db.run(
-                    'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
-                    ['Samet Travel', email, hashedPassword, 'driver', 'driver', 1000]
+                    'INSERT INTO users (name, email, password, role, package, credits, plain_password) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    ['Samet Travel', email, hashedPassword, 'driver', 'driver', 1000, password]
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
             } else if (email === 'ahmetkayikci@whatistaspp.com' && (password === 'ahmetkayikci34' || password === 'Ahmetkayıkcı34')) {
                 console.log(`[LOGIN] Ahmet Kayikci account auto-creating with 1000 credits...`);
                 const hashedPassword = await bcrypt.hash('ahmetkayikci34', 10);
                 await db.run(
-                    'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
-                    ['Ahmet Kayikci', email, hashedPassword, 'driver', 'driver', 1000]
+                    'INSERT INTO users (name, email, password, role, package, credits, plain_password) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    ['Ahmet Kayikci', email, hashedPassword, 'driver', 'driver', 1000, 'ahmetkayikci34']
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
             } else if (email === 'muhammedfurkan@whatistaspp.com' && (password.trim() === 'Muhammedfurkan' || password.trim() === 'muhammedfurkan')) {
                 console.log(`[LOGIN] Muhammed Furkan account auto-creating with 1000 credits...`);
                 const hashedPassword = await bcrypt.hash('Muhammedfurkan', 10);
                 await db.run(
-                    'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
-                    ['Muhammed Furkan', email, hashedPassword, 'driver', 'driver', 1000]
+                    'INSERT INTO users (name, email, password, role, package, credits, plain_password) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    ['Muhammed Furkan', email, hashedPassword, 'driver', 'driver', 1000, 'Muhammedfurkan']
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
             }
