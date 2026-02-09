@@ -11,6 +11,7 @@ export default function DriverDashboard() {
     const [regionSearch, setRegionSearch] = useState("");
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
     const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
+    const [showOnlyReady, setShowOnlyReady] = useState(false);
     const [loadingJobId, setLoadingJobId] = useState<number | null>(null);
     const [view, setView] = useState<'active' | 'history'>('active');
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -256,9 +257,11 @@ export default function DriverDashboard() {
         }
 
         const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
-        const textMatch = (job.from_loc + job.to_loc + job.raw_message).toLowerCase().includes(regionSearch.toLowerCase());
+        const textMatch = (job.from_loc + job.to_loc + job.raw_message + (job.time || '')).toLowerCase().includes(regionSearch.toLowerCase());
         const priceMatch = minPrice === 0 || priceNum >= minPrice;
-        return textMatch && priceMatch;
+        const readyMatch = !showOnlyReady || job.time?.includes('HAZIR');
+
+        return textMatch && priceMatch && readyMatch;
     });
 
     const totalEarnings = jobs
@@ -335,7 +338,12 @@ export default function DriverDashboard() {
                     </button>
                 </div>
 
-                <div className="flex items-center gap-8">
+                <div className="flex items-center gap-6">
+                    <div className="text-center hidden sm:block">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">HAVUZDAKİ İŞLER</div>
+                        <div className="text-2xl font-black text-blue-400">{jobs.length}</div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-700 hidden sm:block" />
                     <div className="text-center">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">BUGÜNKÜ İŞLER</div>
                         <div className="text-2xl font-black text-white">{todayWonCount}</div>
@@ -343,34 +351,56 @@ export default function DriverDashboard() {
                     <div className="h-8 w-px bg-slate-700" />
                     <div className="text-center">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">TOPLAM KAZANÇ</div>
-                        <div className="text-2xl font-black text-green-400">{totalEarnings.toLocaleString()} ₺</div>
+                        <div className="text-2xl font-black text-green-400 font-mono">{totalEarnings.toLocaleString()} ₺</div>
                     </div>
                 </div>
             </div>
 
             {/* Smart Filters */}
-            <div className="bg-slate-900/50 p-4 rounded-3xl border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder="Nereye veya nereden? (SAW, Beşiktaş...)"
-                        value={regionSearch}
-                        onChange={(e) => setRegionSearch(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-2xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:border-green-500 transition-all font-bold"
-                    />
-                </div>
-                <div className="flex items-center gap-4 px-2 text-white">
-                    <span className="text-xs font-black text-slate-500 uppercase whitespace-nowrap">Min Fiyat:</span>
-                    <input
-                        type="range"
-                        min="0"
-                        max="5000"
-                        step="100"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(parseInt(e.target.value))}
-                        className="flex-1 accent-green-500"
-                    />
-                    <span className="text-sm font-black text-green-400 w-16">{minPrice}₺</span>
+            <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-xl space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AKILLI FİLTRE:</span>
+                            {showOnlyReady && <span className="text-[10px] font-bold text-red-400 animate-pulse bg-red-400/10 px-2 rounded-full border border-red-500/20">SADECE HAZIR</span>}
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Nereye, nereden veya saat? (SAW, 14:00...)"
+                                value={regionSearch}
+                                onChange={(e) => setRegionSearch(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-4 px-6 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all font-medium"
+                            />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">🔍</div>
+                        </div>
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center w-32">
+                            <button
+                                onClick={() => setShowOnlyReady(!showOnlyReady)}
+                                className={`h-full rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${showOnlyReady ? 'bg-red-500/20 border border-red-500/50 text-red-500' : 'bg-slate-800 border border-transparent text-slate-500 hover:bg-slate-700'}`}
+                            >
+                                <span className="text-lg">🚨</span>
+                                <span className="text-[9px] font-black leading-none uppercase">Sadece Hazır</span>
+                            </button>
+                        </div>
+                        <div className="md:w-64 bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">MİN FİYAT:</span>
+                                <span className="text-sm font-black text-green-400">{minPrice.toLocaleString()} ₺</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="5000"
+                                step="100"
+                                value={minPrice}
+                                onChange={(e) => setMinPrice(Number(e.target.value))}
+                                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -379,7 +409,6 @@ export default function DriverDashboard() {
                     ⚠️ Hata: {error}
                 </div>
             )}
-
 
             <div className="space-y-4">
                 {filteredJobs.length === 0 ? (
@@ -505,6 +534,6 @@ export default function DriverDashboard() {
                     ))
                 )}
             </div>
-        </div>
+        </div >
     );
 }
