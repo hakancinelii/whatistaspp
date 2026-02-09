@@ -109,7 +109,6 @@ export default function AdminPage() {
             alert("Paket güncellenemedi");
         }
     };
-
     const makeAdmin = async (userId: number) => {
         if (!confirm("Bu kullanıcıyı Yönetici yapmak istediğinize emin misiniz?")) return;
 
@@ -124,6 +123,34 @@ export default function AdminPage() {
                 body: JSON.stringify({ action: 'make_admin', userId })
             });
             fetchData();
+        } catch (err) {
+            alert("İşlem başarısız");
+        }
+    };
+
+
+    const changePassword = async (userId: number) => {
+        const newPassword = prompt("Yeni şifreyi giriniz:");
+        if (!newPassword || newPassword.length < 6) {
+            if (newPassword) alert("Şifre en az 6 karakter olmalı!");
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/admin/users", {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'change_password', userId, newPassword })
+            });
+
+            if (res.ok) {
+                alert("Şifre başarıyla güncellendi.");
+                fetchData();
+            }
         } catch (err) {
             alert("İşlem başarısız");
         }
@@ -223,6 +250,12 @@ export default function AdminPage() {
                                                     Admin Yap
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={() => changePassword(user.id)}
+                                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                                            >
+                                                Şifre Değiştir
+                                            </button>
                                         </div>
 
                                         {selectedUser?.id === user.id && (

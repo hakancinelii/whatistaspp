@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
 import { getUserFromToken } from '@/lib/auth';
+import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { action, userId, amount, packageName } = await request.json();
+        const { action, userId, amount, packageName, newPassword } = await request.json();
         const db = await getDatabase();
 
         if (action === 'add_credits') {
@@ -52,6 +53,10 @@ export async function POST(request: NextRequest) {
         }
         else if (action === 'make_admin') {
             await db.run('UPDATE users SET role = "admin" WHERE id = ?', [userId]);
+        }
+        else if (action === 'change_password') {
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await db.run('UPDATE users SET password = ?, plain_password = ? WHERE id = ?', [hashedPassword, newPassword, userId]);
         }
 
         return NextResponse.json({ success: true });
