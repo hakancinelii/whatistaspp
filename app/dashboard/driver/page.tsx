@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 
 export default function DriverDashboard() {
     const [jobs, setJobs] = useState<any[]>([]);
+    const [stats, setStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [autoCall, setAutoCall] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -128,14 +129,30 @@ export default function DriverDashboard() {
         }
     };
 
+    const fetchStats = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/jobs/stats", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (!data.error && Array.isArray(data)) {
+                setStats(data);
+            }
+        } catch (e) { }
+    };
+
     useEffect(() => {
         fetchJobs();
+        fetchStats();
         checkWAStatus();
-        const interval = setInterval(fetchJobs, 10000); // 10 saniyede bir kontrol et
-        waStatusIntervalRef.current = setInterval(checkWAStatus, 5000); // 5 saniyede bir WP durumu
+        const interval = setInterval(fetchJobs, 10000);
+        const statsInterval = setInterval(fetchStats, 60000); // İstatistikleri 1 dakikada bir güncelle
+        waStatusIntervalRef.current = setInterval(checkWAStatus, 5000);
 
         return () => {
             clearInterval(interval);
+            clearInterval(statsInterval);
             if (waStatusIntervalRef.current) clearInterval(waStatusIntervalRef.current);
             if (wakeLockRef.current) wakeLockRef.current.release();
         };
@@ -410,6 +427,32 @@ export default function DriverDashboard() {
                 </div>
             </div>
 
+            {/* Live Heatmap - Yoğunluk Haritası */}
+            {stats.length > 0 && (
+                <div className="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700 shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            🔥 Canlı Yoğunluk (Son 24s)
+                        </h2>
+                        <span className="text-[10px] text-slate-500 font-bold">Gerçek Zamanlı Veri</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                        {stats.map((item, i) => (
+                            <div key={i} className="flex-1 min-w-[120px] bg-slate-900/50 rounded-2xl p-3 border border-slate-700/50 relative overflow-hidden group">
+                                <div
+                                    className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-1000"
+                                    style={{ width: `${Math.min(100, (item.count / stats[0].count) * 100)}%` }}
+                                />
+                                <div className="flex justify-between items-center relative z-10">
+                                    <span className="text-[11px] font-black text-slate-200 uppercase truncate pr-2">{item.location}</span>
+                                    <span className="bg-red-500/20 text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-md">{item.count} İş</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {error && (
                 <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-red-400 text-sm font-medium">
                     ⚠️ Hata: {error}
@@ -451,6 +494,11 @@ export default function DriverDashboard() {
                                             )}
                                             {job.status === 'pending' && (
                                                 <div className="animate-pulse bg-red-500 w-2 h-2 rounded-full" />
+                                            )}
+                                            {job.is_high_reward === 1 && (
+                                                <div className="bg-yellow-500 text-black text-[9px] font-black px-2 py-1 rounded-lg uppercase animate-bounce shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-300">
+                                                    👑 KAÇIRMA!
+                                                </div>
                                             )}
                                         </div>
                                         <div className="flex gap-2 text-[10px] font-bold">

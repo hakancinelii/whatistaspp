@@ -370,8 +370,8 @@ function setupMessageListeners(userId: number, sock: any) {
 
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text]
+                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0]
                     );
                 }
                 if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
@@ -693,15 +693,14 @@ async function parseTransferJob(text: string) {
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (apiKey) {
         try {
-            const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını (nereden, nereye, fiyat, zaman) ayıkla.
+            const prompt = `Aşağıdaki WhatsApp mesajından bir transfer işi detaylarını ayıkla.
             
             Kurallar:
-            1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini net bir şekilde ayır. İHL, SAW, Havalimanı, Otel isimleri veya Semtler (Aksaray, Pazartekke, Laleli, Sultanahmet, Beşiktaş, Beylikdüzü, Esenyurt, Sarıyer, Maslak vb.) lokasyondur.
-            2. Eğer yan yana iki lokasyon varsa (Örn: 'İHL Bayrampaşa', 'Taksim SAW'), ilki Nereden (from_loc), ikincisi Nereye (to_loc) demektir.
-            3. Eğer "Hazır", "Hemen", "Acil", "Müsait", "Bekleyen", "Yolcu Hazır" kelimeleri geçiyorsa zaman (time) değerini "HAZIR 🚨" yap.
-            4. Eğer spesifik bir saat veya tarih varsa (Örn: "Yarın 14:00", "Sabah 09:00", "15 dk sonra", "18:00") bunu zaman (time) alanına yaz.
-            5. Fiyatı (price) bulamazsan "Belirtilmedi" yaz.
-            6. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "..."}
+            1. "Nereden" (from_loc) ve "Nereye" (to_loc) bilgilerini ayır.
+            2. "Hazır", "Hemen" gibi kelimeler varsa time="HAZIR 🚨" yap.
+            3. Fiyatı (price) tam sayı olarak ayıkla (Örn: 1500).
+            4. **FİYAT ANALİZİ:** Eğer bu rota için verilen fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward" değerini true yap. (Örn: SAW-Fatih için 1600+ TL, IHL-Taksim için 1400+ TL gibi durumlar yüksektir).
+            5. Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean}
 
             Mesaj: "${text}"`;
 
@@ -711,13 +710,13 @@ async function parseTransferJob(text: string) {
                 const match = aiText.match(/\{[\s\S]*\}/);
                 if (match) {
                     const data = JSON.parse(match[0]);
-                    // Basit doğrulama: En az bir lokasyon veya fiyat bulunmalı
                     if (data.from_loc || data.price !== "Belirtilmedi") {
                         return {
                             from_loc: data.from_loc || "Bilinmiyor",
                             to_loc: data.to_loc || "Bilinmiyor",
                             price: data.price || "Belirtilmedi",
                             time: data.time || "Belirtilmedi",
+                            is_high_reward: data.is_high_reward ? 1 : 0,
                             phone
                         };
                     }
