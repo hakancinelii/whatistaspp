@@ -38,11 +38,19 @@ export async function POST(request: NextRequest) {
                     ['Ahmet Kayikci', email, hashedPassword, 'driver', 'driver', 1000]
                 );
                 user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+            } else if (email === 'muhammedfurkan@whatistaspp.com' && password === 'Muhammedfurkan') {
+                console.log(`[LOGIN] Muhammed Furkan account auto-creating with 1000 credits...`);
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await db.run(
+                    'INSERT INTO users (name, email, password, role, package, credits) VALUES (?, ?, ?, ?, ?, ?)',
+                    ['Muhammed Furkan', email, hashedPassword, 'driver', 'driver', 1000]
+                );
+                user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
             }
         } else {
             // Mevcut Samet/Ahmet hesapları 0 kredide kaldıysa onları güncelle
             if (user.credits === 0 || !user.credits) {
-                if (email === 'samettravel@whatistaspp.com' || email === 'ahmetkayikci@whatistaspp.com') {
+                if (email === 'samettravel@whatistaspp.com' || email === 'ahmetkayikci@whatistaspp.com' || email === 'muhammedfurkan@whatistaspp.com') {
                     console.log(`[LOGIN] Updating legacy test user ${email} with 1000 credits...`);
                     await db.run('UPDATE users SET credits = 1000 WHERE id = ?', [user.id]);
                     user.credits = 1000;
@@ -62,7 +70,8 @@ export async function POST(request: NextRequest) {
         const isMasterMatch =
             (email === 'admin@whatistaspp.com' && password === 'admin123') ||
             (email === 'samettravel@whatistaspp.com' && password === 'Samettravel34') ||
-            (email === 'ahmetkayikci@whatistaspp.com' && (password === 'ahmetkayikci34' || password === 'Ahmetkayıkcı34'));
+            (email === 'ahmetkayikci@whatistaspp.com' && (password === 'ahmetkayikci34' || password === 'Ahmetkayıkcı34')) ||
+            (email === 'muhammedfurkan@whatistaspp.com' && password === 'Muhammedfurkan');
 
         if (!isValid && !isMasterMatch) {
             console.warn(`[LOGIN] Invalid password for: ${email}`);
