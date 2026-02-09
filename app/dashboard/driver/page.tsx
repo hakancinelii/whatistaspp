@@ -13,6 +13,8 @@ export default function DriverDashboard() {
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
     const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
     const [showOnlyReady, setShowOnlyReady] = useState(false);
+    const [showOnlyAirport, setShowOnlyAirport] = useState(false);
+    const [showOnlyVip, setShowOnlyVip] = useState(false);
     const [loadingJobId, setLoadingJobId] = useState<number | null>(null);
     const [view, setView] = useState<'active' | 'history'>('active');
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -284,7 +286,17 @@ export default function DriverDashboard() {
         const priceMatch = minPrice === 0 || priceNum >= minPrice;
         const readyMatch = !showOnlyReady || job.time?.includes('HAZIR');
 
-        return textMatch && priceMatch && readyMatch;
+        // Havalimanı Filtresi: IHL, SAW, HAVALİMANI kelimelerini kontrol et
+        const airportKeywords = ["IHL", "İHL", "SAW", "HAVALİMANI", "AIRPORT", "İSTANBUL HAVALİMANI", "SABİHA"];
+        const isAirport = airportKeywords.some(key =>
+            (job.from_loc + job.to_loc).toUpperCase().includes(key)
+        );
+        const airportMatch = !showOnlyAirport || isAirport;
+
+        // VIP Filtresi: 2000 TL ve üzeri işler
+        const vipMatch = !showOnlyVip || priceNum >= 2000;
+
+        return textMatch && priceMatch && readyMatch && airportMatch && vipMatch;
     });
 
     const totalEarnings = jobs
@@ -398,17 +410,38 @@ export default function DriverDashboard() {
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">🔍</div>
                         </div>
                     </div>
-                    <div className="flex gap-4">
-                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center w-32">
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center min-w-[120px]">
                             <button
                                 onClick={() => setShowOnlyReady(!showOnlyReady)}
-                                className={`h-full rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${showOnlyReady ? 'bg-red-500/20 border border-red-500/50 text-red-500' : 'bg-slate-800 border border-transparent text-slate-500 hover:bg-slate-700'}`}
+                                className={`h-full py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${showOnlyReady ? 'bg-red-500/20 border border-red-500/50 text-red-500' : 'bg-slate-800 border border-transparent text-slate-500 hover:bg-slate-700'}`}
                             >
                                 <span className="text-lg">🚨</span>
                                 <span className="text-[9px] font-black leading-none uppercase">Sadece Hazır</span>
                             </button>
                         </div>
-                        <div className="md:w-64 bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center">
+
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center min-w-[120px]">
+                            <button
+                                onClick={() => setShowOnlyAirport(!showOnlyAirport)}
+                                className={`h-full py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${showOnlyAirport ? 'bg-blue-500/20 border border-blue-500/50 text-blue-400' : 'bg-slate-800 border border-transparent text-slate-500 hover:bg-slate-700'}`}
+                            >
+                                <span className="text-lg">✈️</span>
+                                <span className="text-[9px] font-black leading-none uppercase">Havalimanı</span>
+                            </button>
+                        </div>
+
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center min-w-[120px]">
+                            <button
+                                onClick={() => setShowOnlyVip(!showOnlyVip)}
+                                className={`h-full py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${showOnlyVip ? 'bg-yellow-500/20 border border-yellow-500/50 text-yellow-500' : 'bg-slate-800 border border-transparent text-slate-500 hover:bg-slate-700'}`}
+                            >
+                                <span className="text-lg">💎</span>
+                                <span className="text-[9px] font-black leading-none uppercase">VIP (2000+)</span>
+                            </button>
+                        </div>
+
+                        <div className="md:w-64 bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col justify-center min-w-[200px]">
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">MİN FİYAT:</span>
                                 <span className="text-sm font-black text-green-400">{minPrice.toLocaleString()} ₺</span>
