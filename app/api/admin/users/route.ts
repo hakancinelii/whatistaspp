@@ -22,9 +22,8 @@ export async function GET(request: NextRequest) {
         // Users
         const users = await db.all(`
             SELECT u.id, u.name, u.email, u.role, u.credits, u.package, u.plain_password, u.created_at,
-                   w.is_connected
+                   (SELECT MAX(is_connected) FROM whatsapp_sessions WHERE user_id = u.id) as is_connected
             FROM users u
-            LEFT JOIN whatsapp_sessions w ON u.id = w.user_id
             ORDER BY u.created_at DESC
         `);
 
