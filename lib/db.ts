@@ -312,6 +312,20 @@ function initDatabase(): any {
   } catch (e: any) { }
 
   try {
+    rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS group_discovery (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invite_code TEXT UNIQUE,
+        invite_link TEXT,
+        group_name TEXT,
+        found_by_user_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("[DB] Migration: Created group_discovery table");
+  } catch (e: any) { }
+
+  try {
     rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_high_reward BOOLEAN DEFAULT 0;");
     rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_swap BOOLEAN DEFAULT 0;");
     console.log("[DB] Migration: Added is_high_reward and is_swap to captured_jobs");

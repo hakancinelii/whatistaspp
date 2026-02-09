@@ -355,6 +355,20 @@ function setupMessageListeners(userId: number, sock: any) {
             // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
             // Hem Grup Hem Bireysel Mesajlarda Çalışır
             if (isDriverPackage) {
+                // 1. Yeni Grup Linklerini Keşfet
+                const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
+                const invites = [...text.matchAll(inviteRegex)];
+                for (const match of invites) {
+                    const code = match[1];
+                    const link = `https://chat.whatsapp.com/${code}`;
+                    try {
+                        await db.run(
+                            'INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, found_by_user_id) VALUES (?, ?, ?)',
+                            [code, link, userId]
+                        );
+                    } catch (e) { }
+                }
+
                 const job = await parseTransferJob(text);
                 if (job) {
                     const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
