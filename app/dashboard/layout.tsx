@@ -131,21 +131,29 @@ export default function DashboardLayout({
               </li>
             )}
 
-            {menuItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === item.href
-                    ? "bg-purple-600/20 text-purple-400 border border-purple-500/30"
-                    : "text-gray-400 hover:bg-slate-800 hover:text-white"
-                    }`}
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              </li>
-            ))}
+            {menuItems
+              .filter(item => {
+                if (user?.package === 'driver') {
+                  const hiddenForDrivers = ['/dashboard/inbox', '/dashboard/reports', '/dashboard/history'];
+                  return !hiddenForDrivers.includes(item.href);
+                }
+                return true;
+              })
+              .map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === item.href
+                      ? "bg-purple-600/20 text-purple-400 border border-purple-500/30"
+                      : "text-gray-400 hover:bg-slate-800 hover:text-white"
+                      }`}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                </li>
+              ))}
 
             {/* Admin Links */}
             {user?.role === 'admin' && (
