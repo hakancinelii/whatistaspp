@@ -372,6 +372,21 @@ export default function DriverDashboard() {
         }
     };
 
+    // Metin normalizasyonu için yardımcı fonksiyon
+    const normalizeText = (str: string) => {
+        if (!str) return "";
+        return str
+            .replace(/İ/g, 'i')
+            .replace(/I/g, 'ı')
+            .toLowerCase()
+            .replace(/ğ/g, 'g')
+            .replace(/ü/g, 'u')
+            .replace(/ş/g, 's')
+            .replace(/ö/g, 'o')
+            .replace(/ç/g, 'c')
+            .trim();
+    };
+
     // Filter Logic
     const filteredJobs = jobs.filter(job => {
         if (view === 'active') {
@@ -380,50 +395,31 @@ export default function DriverDashboard() {
             if (job.status !== 'won') return false;
         }
 
-        // Türkçe karakterli eşleştirme için basit normalizer
-        const normalize = (str: string) => {
-            if (!str) return "";
-            return str
-                .replace(/İ/g, 'i')
-                .replace(/I/g, 'ı')
-                .toLowerCase()
-                .replace(/ğ/g, 'g')
-                .replace(/ü/g, 'u')
-                .replace(/ş/g, 's')
-                .replace(/ö/g, 'o')
-                .replace(/ç/g, 'c')
-                .trim();
-        };
-
         const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
-        const normalizedSearch = normalize(regionSearch);
-        const jobContent = normalize(job.from_loc + job.to_loc + job.raw_message + (job.time || ''));
+        const normalizedSearch = normalizeText(regionSearch);
+        const jobContent = normalizeText(job.from_loc + job.to_loc + job.raw_message + (job.time || ''));
         const textMatch = !regionSearch || jobContent.includes(normalizedSearch);
         const priceMatch = minPrice === 0 || priceNum >= minPrice;
 
         // Gelişmiş Filtreleme Mantığı
-        // 1. İş Modu (Hazır / İleri Tarihli)
         let readyMatch = true;
         if (jobMode === 'ready') readyMatch = !!job.time?.includes('HAZIR');
         if (jobMode === 'scheduled') readyMatch = !job.time?.includes('HAZIR') && job.time !== 'Belirtilmedi';
-        // Eski "Sadece Hazır" butonuyla da uyumlu olsun
         if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
 
-        // 2. Bölge Filtresi (Kalkış & Varış Kontrolü)
         let regionMatch = true;
         if (selectedRegions.length > 0) {
             regionMatch = selectedRegions.some(regId => {
                 const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
                 if (!reg) return false;
 
-                // Havalimanları için hem kalkış hem varış kontrol et (Havalimanında bekleyenler için)
                 const isAirportReg = reg.id === 'İHL' || reg.id === 'SAW';
 
                 return reg.keywords.some(key => {
-                    const normalizedKey = normalize(key);
-                    const fromMatch = normalize(job.from_loc).includes(normalizedKey);
-                    const toMatch = isAirportReg && normalize(job.to_loc).includes(normalizedKey);
-                    const msgMatch = normalize(job.raw_message).includes(normalizedKey);
+                    const normalizedKey = normalizeText(key);
+                    const fromMatch = normalizeText(job.from_loc).includes(normalizedKey);
+                    const toMatch = isAirportReg && normalizeText(job.to_loc).includes(normalizedKey);
+                    const msgMatch = normalizeText(job.raw_message).includes(normalizedKey);
 
                     return fromMatch || toMatch || msgMatch;
                 });
@@ -892,7 +888,7 @@ export default function DriverDashboard() {
                             key={job.id}
                             className={`group bg-slate-800 rounded-[2rem] p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-green-500/40 shadow-xl shadow-green-500/5 bg-green-500/5' :
                                 job.status === 'ignored' ? 'border-red-900/20 opacity-40 blur-[1px] hover:blur-0' :
-                                    job.is_swap === 1 ? 'border-indigo-500/40 bg-indigo-500/5 shadow-xl shadow-indigo-500/10' :
+                                    (job.is_swap === 1 || normalizeText(job.raw_message).includes('takas')) ? 'border-indigo-500/40 bg-indigo-500/5 shadow-xl shadow-indigo-500/10' :
                                         'border-slate-700/50 hover:border-blue-500/30'
                                 }`}
                         >
@@ -917,7 +913,7 @@ export default function DriverDashboard() {
                                             </div>
                                         )}
 
-                                        {job.is_swap === 1 && (
+                                        {(job.is_swap === 1 || normalizeText(job.raw_message).includes('takas')) && (
                                             <div className="bg-indigo-500/10 px-3 py-1.5 rounded-xl text-[10px] font-black text-indigo-400 border border-indigo-500/20 shadow-xl flex items-center gap-2 animate-pulse">
                                                 🔄 TAKAS İŞ
                                             </div>
