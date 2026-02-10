@@ -360,22 +360,11 @@ function initDatabase(): any {
     console.log("[DB] Migration: Created job_interactions table");
   } catch (e: any) { }
 
-  //captured_jobs tablosuna yeni sütunlar ekle
-  const columnsToAdd = [
-    { name: 'is_high_reward', type: 'BOOLEAN DEFAULT 0' },
-    { name: 'is_swap', type: 'BOOLEAN DEFAULT 0' },
-    { name: 'give_job', type: 'TEXT' },
-    { name: 'take_job', type: 'TEXT' }
-  ];
-
-  for (const col of columnsToAdd) {
-    try {
-      rawDb.exec(`ALTER TABLE captured_jobs ADD COLUMN ${col.name} ${col.type};`);
-      console.log(`[DB] Migration: Added ${col.name} to captured_jobs`);
-    } catch (e) {
-      // Column might already exist
-    }
-  }
+  try {
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_high_reward BOOLEAN DEFAULT 0;");
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_swap BOOLEAN DEFAULT 0;");
+    console.log("[DB] Migration: Added is_high_reward and is_swap to captured_jobs");
+  } catch (e: any) { }
 
   dbInstance = rawDb;
   return rawDb;

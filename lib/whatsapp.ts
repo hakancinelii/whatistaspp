@@ -384,8 +384,8 @@ function setupMessageListeners(userId: number, sock: any) {
 
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap, give_job, take_job) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0, job.give_job || null, job.take_job || null]
+                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
                     );
                 }
                 if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
@@ -707,18 +707,24 @@ async function parseTransferJob(text: string) {
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (apiKey) {
         try {
-            const prompt = `Aşağıdaki WhatsApp mesajındaki transfer işini veya TAKAS (SWAP) teklifini analiz et.
+            const prompt = `Aşağıdaki WhatsApp mesajındaki transfer işini analiz et ve verileri ayıkla.
             
             ÖNEMLİ KURALLAR:
-            1. LOKASYON AYIRMA: Mesajda "İHL Fatih" gibi yan yana iki lokasyon varsa; İLKİ "from_loc", İKİNCİSİ "to_loc" olur.
-            2. **TAKAS (SWAP/ÇEVİRME) ANALİZİ:** Eğer mesajda "verilir-alınır", "yerine", "takas", "karşılama", "çıkış", "iş istenir", "boş araç" gibi ifadeler geçiyorsa bu bir TAKAS işidir. 
-            3. TAKAS DETAYI: Takas ise; "give_job" (neyi veriyor?) ve "take_job" (karşılığında ne istiyor?) alanlarını doldur.
-            4. KISALTMALAR: "İHL", "IHL", "IST", "İST" = İstanbul Havalimanı.
-            5. ZAMAN: "Hazır", "Acil" varsa time="HAZIR 🚨".
-            6. FİYAT: Sadece rakam.
+            1. LOKASYON AYIRMA: Mesajda "İHL Fatih", "SAW Taksim", "Havalimanı Beşiktaş" gibi yan yana iki lokasyon varsa; İLKİ "from_loc" (Nereden), İKİNCİSİ "to_loc" (Nereye) olarak kabul edilir.
+            2. ÖRNEKLER: 
+               - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false, "is_swap": false}
+               - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true, "is_swap": false}
+            3. **TAKAS (SWAP) VE İŞ DEĞİŞİMİ ANALİZİ:** 
+               - Eğer mesajda "verilir", "alınır", "takas", "boş araç", "iş istenir", "karşılama alınır", "çıkış verilir", "yerine iş alınır" gibi ifadeler geçiyorsa;
+               - VEYA mesajda birden fazla farklı iş/zaman dilimi varsa (Örn: "05:00 Tuzla-IHL verilir, 10:00 SAW alınır");
+               - Bu bir TAKAS (SWAP) işidir. "is_swap": true yap. 
+               - Bu durumda "from_loc" değerini "ÇOKLU / TAKAS" olarak ayarla.
+            4. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL", "İGA" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
+            5. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
+            6. FİYAT: Fiyatı sadece rakam olarak ayıkla. Eğer fiyat yoksa "Belirtilmedi" yaz.
+            7. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse "is_high_reward": true yap. 
 
-            Yanıtı SADECE şu JSON formatında ver: 
-            {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean, "give_job": "...", "take_job": "..."}
+            Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean}
 
             Mesaj: "${text}"`;
 
@@ -732,6 +738,7 @@ async function parseTransferJob(text: string) {
                         let from = data.from_loc || "Bilinmiyor";
                         let to = data.to_loc || "Bilinmiyor";
 
+                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayör.
                         if (!data.is_swap && (to === "Bilinmiyor" || to === "Bilinmeyen Konum") && from.includes(' ')) {
                             const parts = from.split(/\s+/).filter((p: string) => p.length > 1);
                             if (parts.length >= 2) {
@@ -747,8 +754,6 @@ async function parseTransferJob(text: string) {
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
                             is_swap: data.is_swap ? 1 : 0,
-                            give_job: data.give_job || null,
-                            take_job: data.take_job || null,
                             phone
                         };
                     }
@@ -759,28 +764,31 @@ async function parseTransferJob(text: string) {
         }
     }
 
-    // 3. Fallback: Eski Regex Mantığı
-    const lowerText = text.toLowerCase();
-    const isSwap = (lowerText.includes("verilir") && lowerText.includes("alınır")) ||
-        lowerText.includes("takas") ||
-        lowerText.includes("karşılama") ||
-        lowerText.includes("çevirme") ||
-        lowerText.includes("yerine");
-
+    // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
     const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft)?/i;
     const priceMatch = text.match(priceRegex);
     const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
+    // Fallback için Zaman Analizi
     let time = "Belirtilmedi";
-    if (lowerText.includes("hazır") || lowerText.includes("acil") || lowerText.includes("hemen") || lowerText.includes("bekleyen")) {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes("hazır") || lowerText.includes("acil") || lowerText.includes("hemen") || lowerText.includes("bekleyen") || lowerText.includes("yolcu hazır")) {
         time = "HAZIR 🚨";
     }
 
+    // Fallback için Takas (Swap) Analizi
+    const isSwapKeywords = ["alınır", "verilir", "takas", "yerine", "boş araç", "iş istenir", "karşılama", "çıkış"];
+    const isSwap = isSwapKeywords.some(kw => lowerText.includes(kw));
+
     const locations = [
-        "SAW", "İHL", "IHL", "IST", "İST", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
+        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
         "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU",
-        "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY",
-        "ATAŞEHİR", "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "AVCILAR"
+        "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY",
+        "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK",
+        "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR",
+        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA",
+        "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE",
+        "AVCILAR", "BAĞCILAR", "GÜNGÖREN"
     ];
 
     const foundLocations: { name: string, index: number }[] = [];
@@ -793,10 +801,17 @@ async function parseTransferJob(text: string) {
         }
     });
 
+    // Mesaj içindeki sırasına göre sırala
     foundLocations.sort((a, b) => a.index - b.index);
 
-    const from_loc = isSwap ? "🔄 TAKAS / ÇEVİRME" : (foundLocations[0]?.name || "Bilinmeyen Konum");
-    const to_loc = isSwap ? "ÇOKLU ROTA" : (foundLocations[1]?.name || "Bilinmeyen Konum");
+    // Lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de kaydet (Genel İş)
+    let from_loc = foundLocations[0]?.name || "Bilinmeyen Konum";
+    let to_loc = foundLocations[1]?.name || "Bilinmeyen Konum";
+
+    if (isSwap) {
+        from_loc = "ÇOKLU / TAKAS";
+        to_loc = "BÖLGE";
+    }
 
     if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi" || isSwap)) {
         return {
@@ -804,9 +819,8 @@ async function parseTransferJob(text: string) {
             to_loc,
             price: price.toUpperCase(),
             time,
+            is_high_reward: 0,
             is_swap: isSwap ? 1 : 0,
-            give_job: null,
-            take_job: null,
             phone
         };
     }
