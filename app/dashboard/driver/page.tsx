@@ -28,7 +28,7 @@ export default function DriverDashboard() {
 
     const ISTANBUL_REGIONS = [
         // Avrupa Yakası
-        { id: "İHL", label: "İstanbul Havalimanı (İHL)", side: "Avrupa", keywords: ["İHL", "IHL", "IST", "İST", "IGA", "İGA"] },
+        { id: "İHL", label: "İstanbul Havalimanı (İHL)", side: "Avrupa", keywords: ["İHL", "IHL", "İGA", "IGA", "İSTANBUL HAVALİMANI", "YENİ HAVALİMANI"] },
         { id: "ARNAVUTKÖY", label: "Arnavutköy", side: "Avrupa", keywords: ["ARNAVUTKÖY"] },
         { id: "AVCILAR", label: "Avcılar", side: "Avrupa", keywords: ["AVCILAR"] },
         { id: "BAĞCILAR", label: "Bağcılar", side: "Avrupa", keywords: ["BAĞCILAR", "GÜNEŞLİ"] },
@@ -392,15 +392,24 @@ export default function DriverDashboard() {
         // Eski "Sadece Hazır" butonuyla da uyumlu olsun
         if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
 
-        // 2. Bölge Filtresi (Kalkış Bölgesi)
+        // 2. Bölge Filtresi (Kalkış & Varış Kontrolü)
         let regionMatch = true;
         if (selectedRegions.length > 0) {
             regionMatch = selectedRegions.some(regId => {
                 const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
-                return reg?.keywords.some(key =>
-                    job.from_loc.toUpperCase().includes(key) ||
-                    job.raw_message.toUpperCase().includes(key)
-                );
+                if (!reg) return false;
+
+                // Havalimanları için hem kalkış hem varış kontrol et (Havalimanında bekleyenler için)
+                const isAirportReg = reg.id === 'İHL' || reg.id === 'SAW';
+
+                return reg.keywords.some(key => {
+                    const fromMatch = job.from_loc.toUpperCase().includes(key);
+                    const toMatch = isAirportReg && job.to_loc.toUpperCase().includes(key);
+                    const msgMatch = job.raw_message.toUpperCase().includes(key);
+
+                    // Eğer havalimanıysa hem kalkış hem varışa bak, değilse öncelikle kalkışa ve mesaja bak
+                    return fromMatch || toMatch || msgMatch;
+                });
             });
         }
 
@@ -964,7 +973,7 @@ export default function DriverDashboard() {
                                                         disabled={!!loadingJobId}
                                                         className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'}`}
                                                     >
-                                                        {loadingJobId === job.id ? '...' : 'EL KALDIR 👋'}
+                                                        {loadingJobId === job.id ? '...' : 'OK MESAJI AT 📩'}
                                                     </button>
                                                     <button
                                                         onClick={() => handleIgnore(job.id)}
