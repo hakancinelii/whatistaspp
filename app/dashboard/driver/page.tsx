@@ -28,7 +28,7 @@ export default function DriverDashboard() {
 
     const ISTANBUL_REGIONS = [
         // Avrupa Yakası
-        { id: "İHL", label: "İstanbul Havalimanı (İHL)", side: "Avrupa", keywords: ["İHL", "IHL", "İGA", "IGA", "İSTANBUL HAVALİMANI", "YENİ HAVALİMANI"] },
+        { id: "İHL", label: "İstanbul Havalimanı (İHL)", side: "Avrupa", keywords: ["İHL", "IHL", "IST", "İST", "ISL", "İSL", "İGA", "IGA", "İSTANBUL HAVALİMANI", "YENİ HAVALİMANI"] },
         { id: "ARNAVUTKÖY", label: "Arnavutköy", side: "Avrupa", keywords: ["ARNAVUTKÖY"] },
         { id: "AVCILAR", label: "Avcılar", side: "Avrupa", keywords: ["AVCILAR"] },
         { id: "BAĞCILAR", label: "Bağcılar", side: "Avrupa", keywords: ["BAĞCILAR", "GÜNEŞLİ"] },
@@ -380,8 +380,26 @@ export default function DriverDashboard() {
             if (job.status !== 'won') return false;
         }
 
+        // Türkçe karakterleri normalize eden ve büyük harfe çeviren yardımcı fonksiyon
+        const normalize = (str: string) => {
+            return str
+                .replace(/İ/g, 'i')
+                .replace(/I/g, 'ı')
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/g/g, 'g') // yumuşak g için düzeltme
+                .replace(/u/g, 'u')
+                .replace(/s/g, 's')
+                .replace(/o/g, 'o')
+                .replace(/c/g, 'c')
+                .toUpperCase();
+        };
+
         const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
-        const textMatch = (job.from_loc + job.to_loc + job.raw_message + (job.time || '')).toLowerCase().includes(regionSearch.toLowerCase());
+        const normalizedSearch = normalize(regionSearch);
+        const jobContent = normalize(job.from_loc + job.to_loc + job.raw_message + (job.time || ''));
+        const textMatch = !regionSearch || jobContent.includes(normalizedSearch);
         const priceMatch = minPrice === 0 || priceNum >= minPrice;
 
         // Gelişmiş Filtreleme Mantığı
@@ -403,11 +421,11 @@ export default function DriverDashboard() {
                 const isAirportReg = reg.id === 'İHL' || reg.id === 'SAW';
 
                 return reg.keywords.some(key => {
-                    const fromMatch = job.from_loc.toUpperCase().includes(key);
-                    const toMatch = isAirportReg && job.to_loc.toUpperCase().includes(key);
-                    const msgMatch = job.raw_message.toUpperCase().includes(key);
+                    const normalizedKey = normalize(key);
+                    const fromMatch = normalize(job.from_loc).includes(normalizedKey);
+                    const toMatch = isAirportReg && normalize(job.to_loc).includes(normalizedKey);
+                    const msgMatch = normalize(job.raw_message).includes(normalizedKey);
 
-                    // Eğer havalimanıysa hem kalkış hem varışa bak, değilse öncelikle kalkışa ve mesaja bak
                     return fromMatch || toMatch || msgMatch;
                 });
             });
