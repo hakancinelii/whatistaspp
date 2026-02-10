@@ -384,8 +384,8 @@ function setupMessageListeners(userId: number, sock: any) {
 
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
                     await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
+                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap, give_job, take_job) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0, job.give_job || null, job.take_job || null]
                     );
                 }
                 if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
@@ -707,20 +707,18 @@ async function parseTransferJob(text: string) {
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (apiKey) {
         try {
-            const prompt = `Aşağıdaki WhatsApp mesajındaki transfer işini analiz et ve verileri ayıkla.
+            const prompt = `Aşağıdaki WhatsApp mesajındaki transfer işini veya TAKAS (SWAP) teklifini analiz et.
             
             ÖNEMLİ KURALLAR:
-            1. LOKASYON AYIRMA: Mesajda "İHL Fatih", "SAW Taksim", "Havalimanı Beşiktaş" gibi yan yana iki lokasyon varsa; İLKİ "from_loc" (Nereden), İKİNCİSİ "to_loc" (Nereye) olarak kabul edilir. Asla bu iki kelimeyi tek bir lokasyon sanma.
-            2. ÖRNEKLER: 
-               - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false, "is_swap": false}
-               - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true, "is_swap": false}
-            3. **TAKAS (SWAP/ÇEVİRME) ANALİZİ:** Eğer mesajda "verilir-alınır", "yerine", "takas", "karşılama", "çıkış", "iş istenir", "boş araç" gibi ifadeler geçiyorsa veya mesajda birden fazla farklı iş teklifi varsa bu bir TAKAS işidir. Bu durumda "is_swap": true yap. 
-            4. KISALTMALAR: "İHL", "IHL", "IST", "İST" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
-            5. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
-            6. FİYAT: Fiyatı sadece rakam olarak ayıkla.
-            7. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse "is_high_reward": true yap. 
+            1. LOKASYON AYIRMA: Mesajda "İHL Fatih" gibi yan yana iki lokasyon varsa; İLKİ "from_loc", İKİNCİSİ "to_loc" olur.
+            2. **TAKAS (SWAP/ÇEVİRME) ANALİZİ:** Eğer mesajda "verilir-alınır", "yerine", "takas", "karşılama", "çıkış", "iş istenir", "boş araç" gibi ifadeler geçiyorsa bu bir TAKAS işidir. 
+            3. TAKAS DETAYI: Takas ise; "give_job" (neyi veriyor?) ve "take_job" (karşılığında ne istiyor?) alanlarını doldur.
+            4. KISALTMALAR: "İHL", "IHL", "IST", "İST" = İstanbul Havalimanı.
+            5. ZAMAN: "Hazır", "Acil" varsa time="HAZIR 🚨".
+            6. FİYAT: Sadece rakam.
 
-            Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean}
+            Yanıtı SADECE şu JSON formatında ver: 
+            {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean, "give_job": "...", "take_job": "..."}
 
             Mesaj: "${text}"`;
 
@@ -749,6 +747,8 @@ async function parseTransferJob(text: string) {
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
                             is_swap: data.is_swap ? 1 : 0,
+                            give_job: data.give_job || null,
+                            take_job: data.take_job || null,
                             phone
                         };
                     }
@@ -805,6 +805,8 @@ async function parseTransferJob(text: string) {
             price: price.toUpperCase(),
             time,
             is_swap: isSwap ? 1 : 0,
+            give_job: null,
+            take_job: null,
             phone
         };
     }

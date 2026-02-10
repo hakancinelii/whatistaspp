@@ -380,20 +380,19 @@ export default function DriverDashboard() {
             if (job.status !== 'won') return false;
         }
 
-        // Türkçe karakterleri normalize eden ve büyük harfe çeviren yardımcı fonksiyon
+        // Türkçe karakterli eşleştirme için basit normalizer
         const normalize = (str: string) => {
+            if (!str) return "";
             return str
                 .replace(/İ/g, 'i')
                 .replace(/I/g, 'ı')
                 .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/g/g, 'g') // yumuşak g için düzeltme
-                .replace(/u/g, 'u')
-                .replace(/s/g, 's')
-                .replace(/o/g, 'o')
-                .replace(/c/g, 'c')
-                .toUpperCase();
+                .replace(/ğ/g, 'g')
+                .replace(/ü/g, 'u')
+                .replace(/ş/g, 's')
+                .replace(/ö/g, 'o')
+                .replace(/ç/g, 'c')
+                .trim();
         };
 
         const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
@@ -893,7 +892,7 @@ export default function DriverDashboard() {
                             key={job.id}
                             className={`group bg-slate-800 rounded-[2rem] p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-green-500/40 shadow-xl shadow-green-500/5 bg-green-500/5' :
                                 job.status === 'ignored' ? 'border-red-900/20 opacity-40 blur-[1px] hover:blur-0' :
-                                    job.is_swap === 1 ? 'border-amber-500/30 bg-amber-500/5 shadow-xl shadow-amber-500/5' :
+                                    job.is_swap === 1 ? 'border-indigo-500/40 bg-indigo-500/5 shadow-xl shadow-indigo-500/10' :
                                         'border-slate-700/50 hover:border-blue-500/30'
                                 }`}
                         >
@@ -919,8 +918,8 @@ export default function DriverDashboard() {
                                         )}
 
                                         {job.is_swap === 1 && (
-                                            <div className="bg-amber-500/10 px-3 py-1.5 rounded-xl text-[10px] font-black text-amber-500 border border-amber-500/20 shadow-xl flex items-center gap-2 animate-pulse">
-                                                🔄 TAKAS / ÇEVİRME
+                                            <div className="bg-indigo-500/10 px-3 py-1.5 rounded-xl text-[10px] font-black text-indigo-400 border border-indigo-500/20 shadow-xl flex items-center gap-2 animate-pulse">
+                                                🔄 TAKAS İŞ
                                             </div>
                                         )}
 
@@ -933,20 +932,39 @@ export default function DriverDashboard() {
                                     </div>
 
                                     <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-5 text-white">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-1">KALKIŞ</span>
-                                                <span className="text-3xl font-black tracking-tighter">{job.from_loc}</span>
+                                        {job.is_swap === 1 && (job.give_job || job.take_job) ? (
+                                            <div className="space-y-3">
+                                                {job.give_job && (
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest pl-1">VERİLECEK</span>
+                                                        <span className="text-2xl font-black text-white tracking-tighter">{job.give_job}</span>
+                                                    </div>
+                                                )}
+                                                {job.take_job && (
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest pl-1">ALINACAK</span>
+                                                        <span className="text-2xl font-black text-white tracking-tighter">{job.take_job}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="text-2xl text-slate-700 mt-5 leading-none">→</div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-1">VARIŞ</span>
-                                                <span className="text-3xl font-black tracking-tighter">{job.to_loc}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-4xl font-black text-green-400 font-mono tracking-tighter mt-1">
-                                            {job.price}
-                                        </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-center gap-5 text-white">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-1">KALKIŞ</span>
+                                                        <span className="text-3xl font-black tracking-tighter">{job.from_loc}</span>
+                                                    </div>
+                                                    <div className="text-2xl text-slate-700 mt-5 leading-none">→</div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-1">VARIŞ</span>
+                                                        <span className="text-3xl font-black tracking-tighter">{job.to_loc}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-4xl font-black text-green-400 font-mono tracking-tighter mt-1">
+                                                    {job.price}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
 
                                     <div className="p-4 bg-slate-900/50 rounded-2xl text-xs text-slate-400 border border-white/5 font-medium leading-relaxed">
