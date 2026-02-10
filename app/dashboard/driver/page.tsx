@@ -21,7 +21,7 @@ export default function DriverDashboard() {
     // Gelişmiş Rota Ayarları
     const [showSettings, setShowSettings] = useState(false);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-    const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled' | 'swap'>('all');
+    const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled' | 'swap' | 'sprinter'>('all');
     const [actionMode, setActionMode] = useState<'manual' | 'auto'>('manual');
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("ROTA 1");
@@ -408,6 +408,11 @@ export default function DriverDashboard() {
         if (jobMode === 'ready') readyMatch = !!job.time?.includes('HAZIR');
         if (jobMode === 'scheduled') readyMatch = !job.time?.includes('HAZIR') && job.time !== 'Belirtilmedi';
         if (jobMode === 'swap') readyMatch = (job.is_swap === 1);
+        if (jobMode === 'sprinter') {
+            const sprinterKeywords = ['sprinter', '10+', '13+', '16+', '10luk', '13lük', '16lık', '10 luk', '13 lük', '16 lık', '10lık', '13luk', '16luk', '10 ve üzeri', '13 ve üzeri', '16 ve üzeri', 'büyük araç', 'minibüs'];
+            const rawLower = (job.raw_message || '').toLowerCase();
+            readyMatch = sprinterKeywords.some(kw => rawLower.includes(kw));
+        }
         // Eski "Sadece Hazır" butonuyla da uyumlu olsun
         if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
 
@@ -582,8 +587,8 @@ export default function DriverDashboard() {
                                 <span className="text-[10px] font-black text-green-400">{minPrice}+ ₺</span>
                             </div>
                             <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
-                                <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : '📋'}</span>
-                                <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : 'İLERİ'}</span>
+                                <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : jobMode === 'swap' ? '🔁' : jobMode === 'sprinter' ? '🚐' : '📋'}</span>
+                                <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : jobMode === 'scheduled' ? 'İLERİ' : jobMode === 'swap' ? 'TAKAS' : jobMode === 'sprinter' ? 'SPRİNTER' : 'TÜMÜ'}</span>
                             </div>
                             <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${actionMode === 'auto' ? 'bg-orange-600/20 border-orange-500/30 text-orange-400' : 'bg-slate-900/80 border-white/5 text-slate-400'}`}>
                                 <span className="text-xs">{actionMode === 'auto' ? '⚡' : '👤'}</span>
@@ -619,17 +624,18 @@ export default function DriverDashboard() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-3">
                                             <div className="text-[10px] font-black text-slate-400 ml-1">İŞ TÜRÜ SEÇİMİ</div>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-wrap gap-2">
                                                 {[
                                                     { id: 'all', label: 'TÜMÜ', icon: '📋' },
                                                     { id: 'ready', label: 'HAZIR', icon: '🚨' },
                                                     { id: 'scheduled', label: 'İLERİ', icon: '📅' },
-                                                    { id: 'swap', label: 'TAKAS', icon: '🔁' }
+                                                    { id: 'swap', label: 'TAKAS', icon: '🔁' },
+                                                    { id: 'sprinter', label: 'SPRİNTER', icon: '🚐' }
                                                 ].map(m => (
                                                     <button
                                                         key={m.id}
                                                         onClick={() => { setJobMode(m.id as any); saveFilters(undefined, m.id); }}
-                                                        className={`flex-1 py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${jobMode === m.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${jobMode === m.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
                                                     >
                                                         <span className="text-base">{m.icon}</span>
                                                         {m.label}
