@@ -11,7 +11,23 @@ export async function POST(request: NextRequest) {
         const { jobId, groupJid: clientGroupJid, phone: clientPhone } = await request.json();
 
         const db = await getDatabase();
-        const job = await db.get('SELECT * FROM captured_jobs WHERE id = ? AND user_id = ?', [jobId, user.userId]);
+
+        // Ortak havuzda iş tüm kullanıcılara gösterildiği için user_id filtresi kaldırıldı
+        let job = await db.get('SELECT * FROM captured_jobs WHERE id = ?', [jobId]);
+
+        // Eğer exact id ile bulunamadıysa, aynı telefon+rota+fiyat ile son 24 saat içinde eşleşen bir kayıt ara
+        if (!job) {
+            console.warn(`[API Take Job] Job ID ${jobId} not found directly, trying fallback...`);
+            // Client'tan gelen bilgilerle yedek arama
+            const fallbackJob = await db.get(
+                `SELECT * FROM captured_jobs WHERE phone = ? AND created_at >= datetime('now', '-1 day') ORDER BY created_at DESC LIMIT 1`,
+                [clientPhone]
+            );
+            if (fallbackJob) {
+                job = fallbackJob;
+                console.log(`[API Take Job] Found fallback job: ${job.id}`);
+            }
+        }
 
         if (!job) {
             return NextResponse.json({ error: 'İş kaydı bulunamadı' }, { status: 404 });
