@@ -21,7 +21,7 @@ export default function DriverDashboard() {
     // Gelişmiş Rota Ayarları
     const [showSettings, setShowSettings] = useState(false);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-    const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled'>('all');
+    const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled' | 'swap'>('all');
     const [actionMode, setActionMode] = useState<'manual' | 'auto'>('manual');
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("ROTA 1");
@@ -407,6 +407,7 @@ export default function DriverDashboard() {
         let readyMatch = true;
         if (jobMode === 'ready') readyMatch = !!job.time?.includes('HAZIR');
         if (jobMode === 'scheduled') readyMatch = !job.time?.includes('HAZIR') && job.time !== 'Belirtilmedi';
+        if (jobMode === 'swap') readyMatch = (job.is_swap === 1);
         // Eski "Sadece Hazır" butonuyla da uyumlu olsun
         if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
 
@@ -622,7 +623,8 @@ export default function DriverDashboard() {
                                                 {[
                                                     { id: 'all', label: 'TÜMÜ', icon: '📋' },
                                                     { id: 'ready', label: 'HAZIR', icon: '🚨' },
-                                                    { id: 'scheduled', label: 'İLERİ', icon: '📅' }
+                                                    { id: 'scheduled', label: 'İLERİ', icon: '📅' },
+                                                    { id: 'swap', label: 'TAKAS', icon: '🔁' }
                                                 ].map(m => (
                                                     <button
                                                         key={m.id}
