@@ -917,6 +917,12 @@ export default function DriverDashboard() {
                                             </div>
                                         )}
 
+                                        {job.is_swap === 1 && (
+                                            <div className="px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-xl bg-purple-600 text-white animate-pulse">
+                                                🔁 TAKAS
+                                            </div>
+                                        )}
+
                                         {job.status === 'pending' && (
                                             <div className="flex items-center gap-1.5 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">
                                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
