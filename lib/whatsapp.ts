@@ -714,11 +714,11 @@ async function parseTransferJob(text: string) {
             2. ÖRNEKLER: 
                - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false, "is_swap": false}
                - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true, "is_swap": false}
-            3. **TAKAS (SWAP) ANALİZİ:** Eğer mesajda birden fazla iş varsa (Örn: 05:00 Tuzla-IHL, 10:00 Kumkapı-SAW) veya "verilir", "alınır", "takas", "boş araç", "iş istenir" gibi ifadeler geçiyorsa, bu bir TAKAS işidir. "is_swap": true yap ve "from_loc" değerini "ÇOKLU / TAKAS" olarak ayarla.
-            4. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
+            3. **TAKAS (SWAP/ÇEVİRME) ANALİZİ:** Eğer mesajda "verilir-alınır", "yerine", "takas", "karşılama", "çıkış", "iş istenir", "boş araç" gibi ifadeler geçiyorsa veya mesajda birden fazla farklı iş teklifi varsa bu bir TAKAS işidir. Bu durumda "is_swap": true yap. 
+            4. KISALTMALAR: "İHL", "IHL", "IST", "İST" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
             5. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
-            6. FİYAT: Fiyatı sadece rakam olarak ayıkla (Örn: 1500).
-            7. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse (Yüksek kazançlıysa) "is_high_reward": true yap. 
+            6. FİYAT: Fiyatı sadece rakam olarak ayıkla.
+            7. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse "is_high_reward": true yap. 
 
             Yanıtı SADECE şu JSON formatında ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean}
 
@@ -734,7 +734,6 @@ async function parseTransferJob(text: string) {
                         let from = data.from_loc || "Bilinmiyor";
                         let to = data.to_loc || "Bilinmiyor";
 
-                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayör.
                         if (!data.is_swap && (to === "Bilinmiyor" || to === "Bilinmeyen Konum") && from.includes(' ')) {
                             const parts = from.split(/\s+/).filter((p: string) => p.length > 1);
                             if (parts.length >= 2) {
@@ -760,27 +759,28 @@ async function parseTransferJob(text: string) {
         }
     }
 
-    // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
+    // 3. Fallback: Eski Regex Mantığı
+    const lowerText = text.toLowerCase();
+    const isSwap = (lowerText.includes("verilir") && lowerText.includes("alınır")) ||
+        lowerText.includes("takas") ||
+        lowerText.includes("karşılama") ||
+        lowerText.includes("çevirme") ||
+        lowerText.includes("yerine");
+
     const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft)?/i;
     const priceMatch = text.match(priceRegex);
     const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
-    // Fallback için Zaman Analizi
     let time = "Belirtilmedi";
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes("hazır") || lowerText.includes("acil") || lowerText.includes("hemen") || lowerText.includes("bekleyen") || lowerText.includes("yolcu hazır")) {
+    if (lowerText.includes("hazır") || lowerText.includes("acil") || lowerText.includes("hemen") || lowerText.includes("bekleyen")) {
         time = "HAZIR 🚨";
     }
 
     const locations = [
-        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
+        "SAW", "İHL", "IHL", "IST", "İST", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
         "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU",
-        "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY",
-        "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK",
-        "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR",
-        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA",
-        "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE",
-        "AVCILAR", "BAĞCILAR", "GÜNGÖREN"
+        "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY",
+        "ATAŞEHİR", "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "AVCILAR"
     ];
 
     const foundLocations: { name: string, index: number }[] = [];
@@ -793,19 +793,18 @@ async function parseTransferJob(text: string) {
         }
     });
 
-    // Mesaj içindeki sırasına göre sırala
     foundLocations.sort((a, b) => a.index - b.index);
 
-    // Lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de kaydet (Genel İş)
-    const from_loc = foundLocations[0]?.name || "Bilinmeyen Konum";
-    const to_loc = foundLocations[1]?.name || "Bilinmeyen Konum";
+    const from_loc = isSwap ? "🔄 TAKAS / ÇEVİRME" : (foundLocations[0]?.name || "Bilinmeyen Konum");
+    const to_loc = isSwap ? "ÇOKLU ROTA" : (foundLocations[1]?.name || "Bilinmeyen Konum");
 
-    if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi")) {
+    if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi" || isSwap)) {
         return {
             from_loc,
             to_loc,
             price: price.toUpperCase(),
             time,
+            is_swap: isSwap ? 1 : 0,
             phone
         };
     }

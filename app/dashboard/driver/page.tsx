@@ -893,7 +893,8 @@ export default function DriverDashboard() {
                             key={job.id}
                             className={`group bg-slate-800 rounded-[2rem] p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-green-500/40 shadow-xl shadow-green-500/5 bg-green-500/5' :
                                 job.status === 'ignored' ? 'border-red-900/20 opacity-40 blur-[1px] hover:blur-0' :
-                                    'border-slate-700/50 hover:border-blue-500/30'
+                                    job.is_swap === 1 ? 'border-amber-500/30 bg-amber-500/5 shadow-xl shadow-amber-500/5' :
+                                        'border-slate-700/50 hover:border-blue-500/30'
                                 }`}
                         >
                             <div className="flex flex-col md:flex-row gap-8">
@@ -914,6 +915,12 @@ export default function DriverDashboard() {
                                         {job.time && job.time !== 'Belirtilmedi' && (
                                             <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-xl ${job.time.includes('HAZIR') ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-slate-100 border border-white/10'}`}>
                                                 {job.time.includes('HAZIR') && '⚡'} {job.time}
+                                            </div>
+                                        )}
+
+                                        {job.is_swap === 1 && (
+                                            <div className="bg-amber-500/10 px-3 py-1.5 rounded-xl text-[10px] font-black text-amber-500 border border-amber-500/20 shadow-xl flex items-center gap-2 animate-pulse">
+                                                🔄 TAKAS / ÇEVİRME
                                             </div>
                                         )}
 
