@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
             groupMessage = `✅ Araç hazır, işi alıyorum!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
         }
 
-        // 1. Mesaj içindeki numaraya mesaj gönder
+        // 1. Mesaj içindeki numaraya mesaj gönder (Müşteriye)
         if (customerPhone && customerPhone !== "Belirtilmedi") {
             try {
                 let cleanPhone = customerPhone.replace(/\D/g, '');
@@ -128,6 +128,20 @@ export async function POST(request: NextRequest) {
                 const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
                 console.log(`[API Take Job] Sending message to Customer Phone: ${jid}`);
                 await session.sock.sendMessage(jid, { text: customerMessage });
+
+                // EĞER PROXY KULLANILIYORSA ADMIN'E BİLGİ VER
+                if (isUsingProxy && adminUser) {
+                    const adminJid = `${adminUser.email.includes('@') ? adminUser.id : adminUser.email}@s.whatsapp.net`; // Admin kendi kendine mesaj atsın
+                    // Not: adminUser nesnesinde email admin@... ise bunu telefon olarak kullanamayız. 
+                    // Ancak genelde admin kendi WhatsApp'ına bağlıdır. JID'sini kendi session'ından alabiliriz.
+                    const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+
+                    const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden bir işe mesaj gönderdi.\n\n👤 *Müşteri:* ${customerPhone}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
+
+                    await session.sock.sendMessage(myJid, { text: adminNotify });
+                    console.log(`[API Take Job] Admin notified about proxy action.`);
+                }
+
             } catch (dmError: any) {
                 console.error('[API Take Job] Customer DM Error:', dmError.message);
             }
@@ -137,6 +151,12 @@ export async function POST(request: NextRequest) {
                 if (!jid.includes('@')) jid += '@s.whatsapp.net';
                 console.log(`[API Take Job] Backup: Sending message to Owner (Sender): ${jid}`);
                 await session.sock.sendMessage(jid, { text: customerMessage });
+
+                if (isUsingProxy) {
+                    const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+                    const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden grup mesaj sahibine ulaştı.\n\n👤 *Müşteri JID:* ${jid}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
+                    await session.sock.sendMessage(myJid, { text: adminNotify });
+                }
             } catch (backupError: any) {
                 console.error('[API Take Job] Backup DM Error:', backupError.message);
             }
