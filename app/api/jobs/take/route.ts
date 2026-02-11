@@ -106,15 +106,15 @@ export async function POST(request: NextRequest) {
         console.log(`[API Take Job] Customer: ${customerPhone}, Group: ${targetGroupJid}, Sender: ${targetSenderJid}, Proxy: ${isUsingProxy}`);
 
         // Mesaj içeriğini hazırla
-        let customerMessage = 'OK';
+        const jobDetails = `📍 ${job.from_loc || '?'} → ${job.to_loc || '?'}${job.price ? `\n💰 ${job.price}` : ''}${job.time ? `\n🕐 ${job.time}` : ''}`;
+
+        // Müşteriye gidecek detaylı mesaj (Profil bilgilerini içerir)
+        let customerMessage = `✅ Araç hazır!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
+
+        // Gruba gidecek mesaj (Proxy modunda detaylı, normal modda kısa)
         let groupMessage = 'Araç hazır, işi alıyorum. 👍';
 
         if (isUsingProxy) {
-            // İş detaylarını hazırla
-            const jobDetails = `📍 ${job.from_loc || '?'} → ${job.to_loc || '?'}${job.price ? `\n💰 ${job.price}` : ''}${job.time ? `\n🕐 ${job.time}` : ''}`;
-
-            // Proxy kullanılıyorsa şoför bilgilerini ve iş detaylarını ekle
-            customerMessage = `✅ Araç hazır!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
             groupMessage = `✅ Araç hazır, işi alıyorum!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
         }
 
