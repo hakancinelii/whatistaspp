@@ -1037,7 +1037,7 @@ export default function DriverDashboard() {
                             {filteredJobs.slice(0, visibleCount).map((job: any) => (
                                 <div
                                     key={job.id}
-                                    className={`relative group bg-slate-800 rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${job.status === 'won' ? 'border-green-500/50 shadow-green-900/20' :
+                                    className={`relative group bg-slate-800 rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${job.status === 'won' ? 'border-red-500 shadow-red-900/40' :
                                         job.status === 'ignored' ? 'border-red-500/50 opacity-60 grayscale' :
                                             job.status === 'called' ? 'border-blue-500/50 shadow-blue-900/20' :
                                                 'border-slate-700 hover:border-slate-500'
@@ -1048,7 +1048,7 @@ export default function DriverDashboard() {
                                         <div className="flex items-center gap-3">
                                             <div
                                                 title={job.status === 'won' ? 'İşi Kazandınız' : job.status === 'ignored' ? 'Yoksayıldı' : job.status === 'called' ? 'Arandı / İlgilenildi' : 'Yeni İş / Bekliyor'}
-                                                className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg cursor-help ${job.status === 'won' ? 'bg-green-500' :
+                                                className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg cursor-help ${job.status === 'won' ? 'bg-red-600' :
                                                     job.status === 'ignored' ? 'bg-red-500' :
                                                         job.status === 'called' ? 'bg-blue-500' :
                                                             'bg-gradient-to-br from-slate-600 to-slate-700'
@@ -1057,7 +1057,9 @@ export default function DriverDashboard() {
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{job.time || 'BELİRTİLMEDİ'}</span>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${job.status === 'won' ? 'text-red-500' : 'text-slate-500'}`}>
+                                                        {job.status === 'won' ? '🚀 İŞ SENDE' : (job.time || 'BELİRTİLMEDİ')}
+                                                    </span>
                                                     {job.created_at && (
                                                         <span className="text-[9px] font-bold text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded">
                                                             {(() => {
@@ -1123,9 +1125,9 @@ export default function DriverDashboard() {
                                     {/* Action Buttons */}
                                     <div className="grid grid-cols-2 gap-3">
                                         {job.status === 'won' ? (
-                                            <div className="col-span-2 bg-green-500/10 border border-green-500/20 rounded-2xl p-3 text-center">
-                                                <div className="text-green-400 font-black text-sm uppercase">BU İŞ SENİN! 🎉</div>
-                                                <div className="text-[10px] text-green-500 font-bold mt-1 opacity-80">Müşteri ile iletişime geçildi.</div>
+                                            <div className="col-span-2 bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-center animate-in zoom-in-95 duration-300">
+                                                <div className="text-red-500 font-black text-sm uppercase">İŞ SENİN! 🚀</div>
+                                                <div className="text-[10px] text-red-500/60 font-bold mt-1 uppercase tracking-widest">Müşteriye mesajın gönderildi.</div>
                                             </div>
                                         ) : (
                                             <>
