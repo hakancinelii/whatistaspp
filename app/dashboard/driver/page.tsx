@@ -790,7 +790,7 @@ export default function DriverDashboard() {
                                             <div className="flex gap-2">
                                                 {[
                                                     { id: 'manual', label: 'MANUEL', icon: '👤', color: 'bg-blue-600' },
-                                                    { id: 'auto', label: 'OTO-ARA', icon: '⚡', color: 'bg-orange-600' }
+                                                    { id: 'auto', label: 'OTO-İŞ AL', icon: '⚡', color: 'bg-orange-600' }
                                                 ].map(m => (
                                                     <button
                                                         key={m.id}
@@ -847,7 +847,7 @@ export default function DriverDashboard() {
                                         <div>
                                             <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-tight mb-1">Rota Bilgilendirmesi</h4>
                                             <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-                                                Şu an <strong>{rotaName}</strong> stratejisi aktif. Seçtiğiniz bölgelerden ve belirlediğiniz fiyattan bir iş geldiğinde panel saniyeler içinde sizi uyarır. Otomasyon modunda ise müşteri doğrudan aranır.
+                                                Şu an <strong>{rotaName}</strong> stratejisi aktif. Seçtiğiniz bölgelerden ve belirlediğiniz fiyattan bir iş geldiğinde panel saniyeler içinde sizi uyarır. Otomasyon modunda ise müşteri hem aranır, hem de <strong>otomatik olarak iş alınır</strong> (WhatsApp mesajı gönderilir).
                                             </p>
                                         </div>
                                     </div>

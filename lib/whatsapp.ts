@@ -399,10 +399,16 @@ function setupMessageListeners(userId: number, sock: any) {
                     );
 
                     if (!duplicateCheck) {
-                        await db.run(
+                        const result = await db.run(
                             'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                             [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
                         );
+
+                        // --- OTOMATİK İŞ ALMA TETİKLE ---
+                        if (result.lastID) {
+                            const { runJobAutomation } = require('./job_automation');
+                            runJobAutomation(result.lastID).catch((e: any) => console.error('[WA] Automation Error:', e.message));
+                        }
                     } else {
                         console.log(`[WA] ⚠️ Duplicate job detected from ${senderJid}, skipping...`);
                     }
