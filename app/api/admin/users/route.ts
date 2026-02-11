@@ -16,23 +16,24 @@ export async function GET(request: NextRequest) {
 
         // Stats
         const totalUsers = await db.get('SELECT COUNT(*) as count FROM users');
-        const totalMessages = await db.get('SELECT COUNT(*) as count FROM sent_messages');
+        const onlineUsers = await db.get(`SELECT COUNT(*) as count FROM user_heartbeat WHERE last_seen >= datetime('now', '-60 seconds')`);
         const activeSessions = await db.get('SELECT COUNT(*) as count FROM whatsapp_sessions WHERE is_connected = 1');
 
         // Users
         const users = await db.all(`
             SELECT u.id, u.name, u.email, u.role, u.credits, u.package, u.plain_password, u.created_at,
-                   (SELECT MAX(is_connected) FROM whatsapp_sessions WHERE user_id = u.id) as is_connected
+                   (SELECT MAX(is_connected) FROM whatsapp_sessions WHERE user_id = u.id) as is_connected,
+                   (SELECT last_seen >= datetime('now', '-60 seconds') FROM user_heartbeat WHERE user_id = u.id) as is_online
             FROM users u
             ORDER BY u.created_at DESC
         `);
 
         return NextResponse.json({
-            users,
+            users: users.map((u: any) => ({ ...u, is_online: !!u.is_online })),
             stats: {
-                totalUsers: totalUsers.count,
-                totalMessages: totalMessages.count,
-                activeSessions: activeSessions.count
+                totalUsers: totalUsers?.count || 0,
+                onlineUsers: onlineUsers?.count || 0,
+                activeSessions: activeSessions?.count || 0
             }
         });
     } catch (error: any) {

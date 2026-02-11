@@ -59,14 +59,32 @@ export default function DashboardLayout({
 
     setLoading(false); // Set loading to false after successful token parsing
 
+    // Heartbeat: Kullanıcının aktif olduğunu bildir (30 saniyede bir)
+    const sendHeartbeat = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          await fetch("/api/heartbeat", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+        }
+      } catch (e) { }
+    };
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 30000);
+
     // Poll scheduler every minute
-    const interval = setInterval(() => {
+    const schedulerInterval = setInterval(() => {
       fetch("/api/scheduler/run").catch((err) =>
         console.error("Scheduler poll failed", err)
       );
     }, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(heartbeatInterval);
+      clearInterval(schedulerInterval);
+    };
   }, [router]);
 
   const handleLogout = () => {

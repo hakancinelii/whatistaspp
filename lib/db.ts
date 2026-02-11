@@ -383,6 +383,18 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added proxy_message_mode to user_settings");
   } catch (e: any) { }
 
+  // Kullanıcı heartbeat tablosu (çevrimiçi takibi)
+  try {
+    rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_heartbeat (
+        user_id INTEGER PRIMARY KEY,
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+    console.log("[DB] Migration: Created user_heartbeat table");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }
