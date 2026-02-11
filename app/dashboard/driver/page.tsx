@@ -95,6 +95,104 @@ export default function DriverDashboard() {
     const wakeLockRef = useRef<any>(null);
     const waStatusIntervalRef = useRef<any>(null);
 
+    // Yardımcı: Türkçe karakterleri normalize et
+    const normalize = (str: string) => {
+        return str
+            .replace(/İ/g, 'i')
+            .replace(/I/g, 'ı')
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/g/g, 'g')
+            .replace(/u/g, 'u')
+            .replace(/s/g, 's')
+            .replace(/o/g, 'o')
+            .replace(/c/g, 'c')
+            .toUpperCase();
+    };
+
+    // MERKEZİ FİLTRELEME FONKSİYONU
+    const checkJobMatch = (job: any, isForAutoCall = false) => {
+        // Görünüm Modu (Aktif/Geçmiş) - Sadece liste için geçerli
+        if (!isForAutoCall) {
+            if (view === 'active') {
+                if (job.status === 'won' || job.status === 'ignored') return false;
+            } else {
+                if (job.status !== 'won') return false;
+            }
+        } else {
+            // Otomatik Arama için sadece beklemede olan işler
+            if (job.status !== 'pending') return false;
+        }
+
+        const priceNum = parseInt(job.price?.toString().replace(/\D/g, '')) || 0;
+        const normalizedSearch = normalize(regionSearch || '');
+        const jobContent = normalize((job.from_loc || '') + (job.to_loc || '') + (job.raw_message || '') + (job.time || ''));
+
+        // 1. Manuel Arama Kutusu
+        if (regionSearch && !jobContent.includes(normalizedSearch)) return false;
+
+        // 2. Minimum Fiyat
+        if (minPrice > 0 && priceNum < minPrice) return false;
+
+        // 3. İş Modu (Hazır / İleri Tarihli)
+        if (jobMode === 'ready' && !job.time?.includes('HAZIR')) return false;
+        if (jobMode === 'scheduled' && (job.time?.includes('HAZIR') || job.time === 'Belirtilmedi')) return false;
+
+        // 4. Sprinter Filtresi
+        if (filterSprinter) {
+            const sprinterKeywords = ['SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK', '10 LUK', '13 LUK', '16 LIK', '10LIK', '13LUK', '16LUK', '10 VE UZERI', '13 VE UZERI', '16 VE UZERI', 'BUYUK ARAC', 'MINIBUS'];
+            if (!sprinterKeywords.some(kw => jobContent.includes(kw))) return false;
+        }
+
+        // 5. Takas Filtresi
+        if (filterSwap && job.is_swap !== 1) return false;
+
+        // 6. Bölge Filtresi (Kalkış)
+        if (selectedRegions.length > 0) {
+            const normalizedFrom = normalize(job.from_loc || '');
+            const normalizedRaw = normalize(job.raw_message || '');
+            const hasFromMatch = selectedRegions.some(regId => {
+                const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
+                if (!reg) return false;
+                return reg.keywords.some(key => {
+                    const normalizedKey = normalize(key);
+                    if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return normalizedRaw.includes(normalizedKey);
+                    return normalizedFrom.includes(normalizedKey);
+                });
+            });
+            if (!hasFromMatch) return false;
+        }
+
+        // 7. Bölge Filtresi (Varış)
+        if (selectedToRegions.length > 0) {
+            const normalizedTo = normalize(job.to_loc || '');
+            const normalizedRaw = normalize(job.raw_message || '');
+            const hasToMatch = selectedToRegions.some(regId => {
+                const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
+                if (!reg) return false;
+                return reg.keywords.some(key => {
+                    const normalizedKey = normalize(key);
+                    if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return normalizedRaw.includes(normalizedKey);
+                    return normalizedTo.includes(normalizedKey);
+                });
+            });
+            if (!hasToMatch) return false;
+        }
+
+        // 8. Havalimanı Filtresi (Buton)
+        if (showOnlyAirport) {
+            const airportKeywords = ["IHL", "İHL", "SAW", "HAVALİMANI", "AIRPORT", "İSTANBUL HAVALİMANI", "SABİHA"];
+            const rawLocs = (job.from_loc + job.to_loc).toUpperCase();
+            if (!airportKeywords.some(key => rawLocs.includes(key))) return false;
+        }
+
+        // 9. VIP Filtresi
+        if (showOnlyVip && priceNum < 2000) return false;
+
+        return true;
+    };
+
     // Ekranı uyanık tutma (Wake Lock)
     const toggleWakeLock = async () => {
         if ("wakeLock" in navigator) {
@@ -204,6 +302,32 @@ export default function DriverDashboard() {
         }
     };
 
+    const handleCall = async (phone: string, jobId: number) => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/jobs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ jobId, status: 'called' })
+            });
+
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
+            // Telefonu ara
+            window.location.href = `tel:${phone}`;
+        } catch (e: any) {
+            console.error("[Driver] Call Error:", e);
+        }
+    };
+
+
     const fetchJobs = async () => {
         try {
             const token = localStorage.getItem("token");
@@ -231,11 +355,11 @@ export default function DriverDashboard() {
 
                     const newJobs = data.filter((dj: any) => !jobs.some((j: any) => j.id === dj.id));
                     if (autoCall && newJobs.length > 0) {
-                        const bestJob = newJobs[0];
-                        // Fiyat filtresine uyuyorsa otomatik ara
-                        const priceNum = parseInt(bestJob.price.replace(/\D/g, '')) || 0;
-                        if (priceNum >= minPrice) {
-                            handleCall(bestJob.phone, bestJob.id);
+                        // Sadece filtrelerime uyan İLK işi otomatik ara
+                        const matchingNewJob = newJobs.find(job => checkJobMatch(job, true));
+                        if (matchingNewJob) {
+                            console.log("[OTO-ARA] Filtrelere uyan iş bulundu, aranıyor:", matchingNewJob.id);
+                            handleCall(matchingNewJob.phone, matchingNewJob.id);
                         }
                     }
                 }
@@ -300,151 +424,16 @@ export default function DriverDashboard() {
 
     // Filter Logic - useMemo ile optimize edildi
     const filteredJobs = useMemo(() => {
-        return jobs.filter(job => {
-            if (view === 'active') {
-                if (job.status === 'won' || job.status === 'ignored') return false;
-            } else {
-                if (job.status !== 'won') return false;
-            }
-
-            // Türkçe karakterleri normalize eden ve büyük harfe çeviren yardımcı fonksiyon
-            const normalize = (str: string) => {
-                return str
-                    .replace(/İ/g, 'i')
-                    .replace(/I/g, 'ı')
-                    .toLowerCase()
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .replace(/g/g, 'g') // yumuşak g için düzeltme
-                    .replace(/u/g, 'u')
-                    .replace(/s/g, 's')
-                    .replace(/o/g, 'o')
-                    .replace(/c/g, 'c')
-                    .toUpperCase();
-            };
-
-            const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
-            const normalizedSearch = normalize(regionSearch);
-            // jobContent'i bir kere oluştur
-            const jobContent = normalize((job.from_loc || '') + (job.to_loc || '') + (job.raw_message || '') + (job.time || ''));
-
-            // Text araması (boşsa true)
-            if (regionSearch && !jobContent.includes(normalizedSearch)) return false;
-
-            // Fiyat filtresi
-            if (minPrice > 0 && priceNum < minPrice) return false;
-
-            // Gelişmiş Filtreleme Mantığı
-            // 1. İş Modu (Hazır / İleri Tarihli)
-            if (jobMode === 'ready' && !job.time?.includes('HAZIR')) return false;
-            if (jobMode === 'scheduled' && (job.time?.includes('HAZIR') || job.time === 'Belirtilmedi')) return false;
-            if (showOnlyReady && !job.time?.includes('HAZIR')) return false;
-
-            // 2. Sprinter Filtresi
-            if (filterSprinter) {
-                const sprinterKeywords = ['SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK', '10 LUK', '13 LUK', '16 LIK', '10LIK', '13LUK', '16LUK', '10 VE UZERI', '13 VE UZERI', '16 VE UZERI', 'BUYUK ARAC', 'MINIBUS'];
-                // raw_message normalize edilmişti, jobContent içinde var ama sadece raw_message lazım olabilir.
-                // Performans için jobContent içinde arayalım (fazla match olması sorun değil)
-                if (!sprinterKeywords.some(kw => jobContent.includes(kw))) return false;
-            }
-
-            // 3. Takas Filtresi
-            if (filterSwap && job.is_swap !== 1) return false;
-
-            // 4. Bölge Filtresi (Kalkış ve Varış - Ayrı Ayrı)
-            // FROM (Kalkış) Kontrolü
-            if (selectedRegions.length > 0) {
-                const normalizedFrom = normalize(job.from_loc || '');
-                const normalizedRaw = normalize(job.raw_message || '');
-
-                const hasFromMatch = selectedRegions.some(regId => {
-                    const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
-                    if (!reg) return false;
-
-                    return reg.keywords.some(key => {
-                        const normalizedKey = normalize(key);
-                        // Eğer iş takaslıysa veya çoklu ise raw_message içinde ara
-                        if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') {
-                            return normalizedRaw.includes(normalizedKey);
-                        }
-                        return normalizedFrom.includes(normalizedKey);
-                    });
-                });
-                if (!hasFromMatch) return false;
-            }
-
-            // TO (Varış) Kontrolü
-            if (selectedToRegions.length > 0) {
-                const normalizedTo = normalize(job.to_loc || '');
-                const normalizedRaw = normalize(job.raw_message || '');
-
-                const hasToMatch = selectedToRegions.some(regId => {
-                    const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
-                    if (!reg) return false;
-
-                    return reg.keywords.some(key => {
-                        const normalizedKey = normalize(key);
-                        // Takaslı işler için raw message kontrolü
-                        if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') {
-                            return normalizedRaw.includes(normalizedKey);
-                        }
-                        return normalizedTo.includes(normalizedKey);
-                    });
-                });
-                if (!hasToMatch) return false;
-            }
-
-            // 5. Havalimanı Filtresi (Buton için)
-            if (showOnlyAirport) {
-                const airportKeywords = ["IHL", "İHL", "SAW", "HAVALİMANI", "AIRPORT", "İSTANBUL HAVALİMANI", "SABİHA"];
-                // Normalizasyon yapmadan hızlı kontrol (zaten uppercase keywords)
-                const rawLocs = (job.from_loc + job.to_loc).toUpperCase();
-                if (!airportKeywords.some(key => rawLocs.includes(key))) return false;
-            }
-
-            // 6. VIP Filtresi
-            if (showOnlyVip && priceNum < 2000) return false;
-
-            return true;
-        });
-    }, [jobs, view, regionSearch, minPrice, jobMode, filterSprinter, filterSwap, selectedRegions, selectedToRegions, showOnlyAirport, showOnlyVip]);
+        return jobs.filter(job => checkJobMatch(job));
+    }, [jobs, view, regionSearch, minPrice, jobMode, filterSprinter, filterSwap, selectedRegions, selectedToRegions, showOnlyAirport, showOnlyVip, view]);
 
     // OTO-ARA Logic (useEffect ile)
     useEffect(() => {
         if (actionMode === 'auto' && jobs.length > 0) {
-            // Sadece pending olan işleri ve son 3 dakika içindekileri
+            // Sadece pending olan işleri
             const pendingJobs = filteredJobs.filter(j => j.status === 'pending');
-            // Burada iterate etmiyoruz, zaten fetchJobs içinde newJobs kontrol ediliyor.
-            // Ancak, filtreler değiştiğinde (örneğin Rota değiştiğinde) mevcut işlerden uygun olan var mı diye bakmak gerekebilir.
-            // Şimdilik fetchJobs içindeki logic yeterli ve güvenli.
         }
-    }, [actionMode, jobs]); // filteredJobs dependency'sini kaldırdım, infinite loop riski için.
-
-
-    const handleCall = async (phone: string, jobId: number) => {
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ jobId, status: 'called' })
-            });
-
-            if (res.status === 401) {
-                localStorage.removeItem("token");
-                window.location.href = "/login";
-                return;
-            }
-
-            // Telefonu ara
-            window.location.href = `tel:${phone}`;
-        } catch (e: any) {
-            console.error("[Driver] Call Error:", e);
-        }
-    };
+    }, [actionMode, jobs, filteredJobs]);
 
     const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
         setLoadingJobId(jobId);
