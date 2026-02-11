@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
-import { getSession } from '@/lib/whatsapp';
+import { getSession, getActiveSession } from '@/lib/whatsapp';
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'No groups found to join' });
         }
 
-        const session = await getSession(user.userId);
-        if (!session.sock || !session.isConnected) {
+        const session = await getActiveSession(user.userId);
+        if (!session || !session.sock || !session.isConnected) {
             return NextResponse.json({ error: 'WhatsApp not connected' }, { status: 400 });
         }
 

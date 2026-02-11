@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
-import { getSession } from '@/lib/whatsapp';
+import { getSession, getActiveSession } from '@/lib/whatsapp';
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         // Adminin bağlı olduğu grupları çek
         let participatingGroups: any = {};
         try {
-            const session = await getSession(user.userId);
+            const session = await getActiveSession(user.userId);
             if (session?.sock?.groupFetchAllParticipating) {
                 participatingGroups = await session.sock.groupFetchAllParticipating();
             }
@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
         const { code } = await request.json();
         if (!code) return NextResponse.json({ error: 'Invite code required' }, { status: 400 });
 
-        const session = await getSession(user.userId);
-        if (!session.sock || !session.isConnected) {
+        const session = await getActiveSession(user.userId);
+        if (!session || !session.sock || !session.isConnected) {
             return NextResponse.json({ error: 'WhatsApp not connected' }, { status: 400 });
         }
 

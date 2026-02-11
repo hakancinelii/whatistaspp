@@ -54,6 +54,22 @@ export async function getSession(userId: number, instanceId: string = 'main'): P
     return sessions.get(sessionKey)!;
 }
 
+/**
+ * Returns the first active (connected) session for a user.
+ * Prioritizes 'gathering' bot instance over 'main' device for admin tasks.
+ */
+export async function getActiveSession(userId: number): Promise<WhatsAppSession | null> {
+    // Try gathering first (bot)
+    const gathering = await getSession(userId, 'gathering');
+    if (gathering.isConnected && gathering.sock) return gathering;
+
+    // Try main next
+    const main = await getSession(userId, 'main');
+    if (main.isConnected && main.sock) return main;
+
+    return null;
+}
+
 export async function connectWhatsApp(userId: number, instanceId: string = 'main', force = false): Promise<void> {
     const sessionKey = `${userId}_${instanceId}`;
     const session = await getSession(userId, instanceId);
