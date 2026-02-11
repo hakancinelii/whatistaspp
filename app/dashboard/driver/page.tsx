@@ -32,6 +32,17 @@ export default function DriverDashboard() {
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("ROTA 1");
 
+    // Manuel İş Ekleme State
+    const [isAddingJob, setIsAddingJob] = useState(false);
+    const [newJobData, setNewJobData] = useState({
+        from_loc: '',
+        to_loc: '',
+        price: '',
+        description: '',
+        time: '',
+        contact_phone: ''
+    });
+
     const ISTANBUL_REGIONS = [
         // Avrupa Yakası
         { id: "İHL", label: "İstanbul Havalimanı (İHL)", side: "Avrupa", keywords: ["İHL", "IHL", "IST", "İST", "ISL", "İSL", "İGA", "IGA", "İSTANBUL HAVALİMANI", "YENİ HAVALİMANI"] },
@@ -108,6 +119,17 @@ export default function DriverDashboard() {
             const res = await fetch("/api/whatsapp/status", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            // Kullanıcı bilgilerini de çekelim (telefon için)
+            // Bu endpoint user bilgisini de dönüyor olabilir mi? Hayır.
+            // Ayrı bir user info endpoint'i çağıralım veya en azından telefon numarasını localstorage'dan alalım.
+            // Basitçe:
+            const meRes = await fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } });
+            if (meRes.ok) {
+                const me = await meRes.json();
+                if (me.phone || me.driver_phone) {
+                    setNewJobData(prev => ({ ...prev, contact_phone: me.driver_phone || me.phone || '' }));
+                }
+            }
 
             if (res.status === 401) {
                 localStorage.removeItem("token");
@@ -479,6 +501,37 @@ export default function DriverDashboard() {
         }
     };
 
+    const handleAddJob = async () => {
+        if (!newJobData.from_loc || !newJobData.to_loc || !newJobData.price || !newJobData.contact_phone) {
+            alert("Lütfen zorunlu alanları doldurun (Nereden, Nereye, Fiyat, Telefon).");
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/jobs/manual", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(newJobData)
+            });
+
+            if (res.ok) {
+                alert("✅ İş başarıyla paylaşıldı!");
+                setIsAddingJob(false);
+                setNewJobData({ from_loc: '', to_loc: '', price: '', description: '', time: '', contact_phone: '' });
+                fetchJobs();
+            } else {
+                const err = await res.json();
+                alert("❌ Hata: " + (err.error || "Bilinmeyen hata"));
+            }
+        } catch (e: any) {
+            alert("🚨 Sistem hatası: " + e.message);
+        }
+    };
+
     const totalEarnings = jobs
         .filter(j => j.status === 'won')
         .reduce((sum, j) => sum + (parseInt(j.price.replace(/\D/g, '')) || 0), 0);
@@ -527,6 +580,15 @@ export default function DriverDashboard() {
                 </div>
 
                 <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+                    <button
+                        onClick={() => setIsAddingJob(true)}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black px-4 py-2 rounded-xl shadow-lg shadow-green-900/20 active:scale-95 transition-all text-xs uppercase tracking-widest flex items-center gap-2"
+                    >
+                        ➕ İŞ EKLE
+                    </button>
+
+                    <div className="w-px h-8 bg-slate-700/50 hidden sm:block"></div>
+
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OTOMATİK ARA</span>
                         <span className={`text-xs font-bold ${autoCall ? 'text-green-400' : 'text-slate-400'}`}>
@@ -1049,6 +1111,101 @@ export default function DriverDashboard() {
                     </>
                 )}
             </div>
+            {/* Manual Job Modal */}
+            {isAddingJob && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-slate-800 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 bg-slate-900/50 border-b border-slate-700 flex justify-between items-center">
+                            <h3 className="text-xl font-black text-white flex items-center gap-2">
+                                ➕ YENİ İŞ EKLE
+                            </h3>
+                            <button
+                                onClick={() => setIsAddingJob(false)}
+                                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">NEREDEN *</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        placeholder="Örn: Havalimanı"
+                                        value={newJobData.from_loc}
+                                        onChange={e => setNewJobData({ ...newJobData, from_loc: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">NEREYE *</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        placeholder="Örn: Taksim"
+                                        value={newJobData.to_loc}
+                                        onChange={e => setNewJobData({ ...newJobData, to_loc: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">FİYAT (TL) *</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-green-400 font-black text-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        placeholder="0"
+                                        value={newJobData.price}
+                                        onChange={e => setNewJobData({ ...newJobData, price: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">SAAT / TARİH</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        placeholder="Örn: HEMEN veya 14:30"
+                                        value={newJobData.time}
+                                        onChange={e => setNewJobData({ ...newJobData, time: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">İLETİŞİM NUMARASI *</label>
+                                <input
+                                    type="tel"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                    placeholder="05xxxxxxxxx"
+                                    value={newJobData.contact_phone}
+                                    onChange={e => setNewJobData({ ...newJobData, contact_phone: e.target.value })}
+                                />
+                                <p className="text-[10px] text-slate-500 ml-1">Diğer sürücüler sizi bu numaradan arayacaktır.</p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">AÇIKLAMA / NOT</label>
+                                <textarea
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600 h-24 resize-none"
+                                    placeholder="Araç tipi, yolcu sayısı veya diğer detaylar..."
+                                    value={newJobData.description}
+                                    onChange={e => setNewJobData({ ...newJobData, description: e.target.value })}
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleAddJob}
+                                className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-xl shadow-lg shadow-green-900/20 active:scale-95 transition-all text-sm uppercase tracking-widest mt-2"
+                            >
+                                ✅ İŞİ YAYINLA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
