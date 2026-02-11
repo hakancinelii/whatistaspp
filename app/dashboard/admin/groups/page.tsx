@@ -15,15 +15,31 @@ export default function GroupDiscovery() {
     const [groups, setGroups] = useState<DiscoveredGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [joiningId, setJoiningId] = useState<number | null>(null);
+    const [instanceId, setInstanceId] = useState<'main' | 'gathering'>('gathering');
+    const [instanceStatus, setInstanceStatus] = useState<{ isConnected: boolean; isConnecting: boolean } | null>(null);
 
     useEffect(() => {
         fetchGroups();
-    }, []);
+        checkInstanceStatus();
+    }, [instanceId]);
 
-    const fetchGroups = async () => {
+    const checkInstanceStatus = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/admin/groups", {
+            const res = await fetch(`/api/whatsapp/status?instanceId=${instanceId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setInstanceStatus(await res.json());
+            }
+        } catch (e) { }
+    };
+
+    const fetchGroups = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/admin/groups?instanceId=${instanceId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -49,7 +65,7 @@ export default function GroupDiscovery() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ code })
+                body: JSON.stringify({ code, instanceId })
             });
 
             const data = await res.json();
@@ -73,29 +89,71 @@ export default function GroupDiscovery() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-slate-800 p-4 rounded-2xl border border-slate-700">
-                <div>
-                    <h1 className="text-2xl font-bold text-white">🔍 Grup Keşfi</h1>
-                    <p className="text-slate-400 text-sm mt-1">
-                        Sistemdeki kullanıcıların mesajlarından otomatik olarak yakalanan WhatsApp iş grupları.
-                    </p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-[2rem] border border-white/5 shadow-2xl">
+                <div className="flex items-center gap-4">
+                    <div className="bg-blue-500/10 p-4 rounded-3xl">
+                        <span className="text-3xl">🔍</span>
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-white">Grup Keşfi</h1>
+                        <p className="text-slate-500 text-sm mt-1">
+                            Grupları hangi cihazla yönetmek istediğinizi seçin.
+                        </p>
+                    </div>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                    {/* Instance Toggle */}
+                    <div className="flex bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                        <button
+                            onClick={() => setInstanceId('main')}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${instanceId === 'main' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            Ana Cihaz
+                        </button>
+                        <button
+                            onClick={() => setInstanceId('gathering')}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${instanceId === 'gathering' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            Bot (Gathering)
+                        </button>
+                    </div>
+
+                    <div className="h-8 w-px bg-white/5 hidden md:block"></div>
+
+                    {/* Connection Info */}
+                    <div className="flex items-center gap-2 bg-slate-900/50 px-4 py-2 rounded-xl border border-white/5">
+                        <div className={`w-2 h-2 rounded-full ${instanceStatus?.isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            {instanceId === 'main' ? 'Ana Cihaz' : 'Bot'} {instanceStatus?.isConnected ? 'Bağlı' : 'Bağlı Değil'}
+                        </span>
+                    </div>
+                </div>
+
                 <button
                     onClick={async () => {
-                        if (!confirm("Tüm gruplara sırayla katılmak istediğinize emin misiniz? Bu işlem biraz zaman alabilir.")) return;
+                        if (!instanceStatus?.isConnected) {
+                            alert(`❌ Seçilen cihaz (${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'}) bağlı değil! Önce WhatsApp bağlantısını kurun.`);
+                            return;
+                        }
+                        if (!confirm(`${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'} cihazı ile tüm gruplara katılmak istediğinize emin misiniz?`)) return;
 
-                        setLoading(true); // Loading maskesi yerine buton durumu da kullanılabilir ama sayfa blocklansın istenebilir.
+                        setLoading(true);
                         try {
                             const token = localStorage.getItem("token");
                             const res = await fetch("/api/admin/groups/join-all", {
                                 method: "POST",
-                                headers: { Authorization: `Bearer ${token}` }
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${token}`
+                                },
+                                body: JSON.stringify({ instanceId })
                             });
                             const data = await res.json();
 
                             if (res.ok && data.success) {
                                 alert(`✅ İşlem Tamamlandı!\nBaşarılı: ${data.stats.success}\nBaşarısız: ${data.stats.failed}`);
-                                fetchGroups(); // Listeyi güncelle (gerekirse statü güncellemesi için)
+                                fetchGroups();
                             } else {
                                 alert("❌ Hata: " + (data.error || "Beklenmeyen bir hata oluştu."));
                             }
@@ -105,9 +163,9 @@ export default function GroupDiscovery() {
                             setLoading(false);
                         }
                     }}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-blue-900/20 active:scale-95 transition-all text-xs uppercase tracking-widest flex items-center gap-2"
+                    className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02] active:scale-95 text-white font-black px-8 py-4 rounded-2xl shadow-xl shadow-blue-500/20 transition-all text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3"
                 >
-                    🚀 TÜM GRUPLARA KATIL
+                    🚀 GRUPLARA KATIL
                 </button>
             </div>
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
-import { getSession, getActiveSession } from '@/lib/whatsapp';
+import { getSession } from '@/lib/whatsapp';
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
         if (!user || user.role !== 'admin') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const { searchParams } = new URL(request.url);
+        const instanceId = searchParams.get('instanceId') || 'main';
 
         const db = await getDatabase();
         const groups = await db.all(`
@@ -24,12 +27,12 @@ export async function GET(request: NextRequest) {
         // Adminin bağlı olduğu grupları çek
         let participatingGroups: any = {};
         try {
-            const session = await getActiveSession(user.userId);
+            const session = await getSession(user.userId, instanceId);
             if (session?.sock?.groupFetchAllParticipating) {
                 participatingGroups = await session.sock.groupFetchAllParticipating();
             }
         } catch (e) {
-            console.warn("[Group API] Could not fetch participating groups:", e);
+            console.warn(`[Group API] Could not fetch participating groups for ${instanceId}:`, e);
         }
 
         // Grupları işle ve durum ekle
@@ -64,12 +67,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { code } = await request.json();
+        const { code, instanceId = 'main' } = await request.json();
         if (!code) return NextResponse.json({ error: 'Invite code required' }, { status: 400 });
 
-        const session = await getActiveSession(user.userId);
-        if (!session || !session.sock || !session.isConnected) {
-            return NextResponse.json({ error: 'WhatsApp not connected' }, { status: 400 });
+        const session = await getSession(user.userId, instanceId);
+        if (!session.sock || !session.isConnected) {
+            return NextResponse.json({ error: `WhatsApp (${instanceId}) is not connected` }, { status: 400 });
         }
 
         const result = await session.sock.groupAcceptInvite(code);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
-import { getSession, getActiveSession } from '@/lib/whatsapp';
+import { getSession } from '@/lib/whatsapp';
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const { instanceId = 'main' } = await request.json().catch(() => ({}));
+
         const db = await getDatabase();
         // Sadece JID'si olmayan ve henüz katılınmamış (id ile kontrol edemeyiz, jid ile ederiz) grupları alalım
         // Ama "join-all" butonu kullanıcının isteği, hepsini denemekte fayda var.
@@ -21,9 +23,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'No groups found to join' });
         }
 
-        const session = await getActiveSession(user.userId);
-        if (!session || !session.sock || !session.isConnected) {
-            return NextResponse.json({ error: 'WhatsApp not connected' }, { status: 400 });
+        const session = await getSession(user.userId, instanceId);
+        if (!session.sock || !session.isConnected) {
+            return NextResponse.json({ error: `WhatsApp (${instanceId}) not connected` }, { status: 400 });
         }
 
         // Adminin mevcut gruplarını alıp, halihazırda üye olduklarını eleyelim (zaman kazanmak için)
