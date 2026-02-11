@@ -436,45 +436,84 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
-                                {/* Bağlantı & Filtre Bilgisi */}
+                                {/* Profil & Bağlantı Bilgisi */}
                                 <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
-                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">📡 WhatsApp Durumu</div>
-                                        {detailUser.waSession ? (
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${detailUser.waSession.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-                                                <span className={`text-xs font-bold ${detailUser.waSession.is_connected ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {detailUser.waSession.is_connected ? 'BAĞLI' : 'BAĞLI DEĞİL'}
-                                                </span>
-                                                {detailUser.waSession.updated_at && (
-                                                    <span className="text-[10px] text-slate-600 ml-2">
-                                                        Son: {new Date(detailUser.waSession.updated_at).toLocaleString('tr-TR')}
-                                                    </span>
-                                                )}
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 space-y-3">
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">👤 Şoför Profili</div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-500">Telefon:</span>
+                                                <span className="text-white font-bold">{detailUser.user.driver_phone || 'Belirtilmedi'}</span>
                                             </div>
-                                        ) : (
-                                            <span className="text-xs text-slate-500">Oturum bulunamadı</span>
-                                        )}
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-500">Plaka:</span>
+                                                <span className="text-white font-bold">{detailUser.user.driver_plate || 'Belirtilmedi'}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-500">Kayıt:</span>
+                                                <span className="text-slate-400">{new Date(detailUser.user.created_at).toLocaleDateString('tr-TR')}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2 border-t border-white/5">
+                                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">📡 WhatsApp Durumu</div>
+                                            {detailUser.waSession ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${detailUser.waSession.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                                                    <span className={`text-xs font-bold ${detailUser.waSession.is_connected ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {detailUser.waSession.is_connected ? 'BAĞLI' : 'BAĞLI DEĞİL'}
+                                                    </span>
+                                                    {detailUser.waSession.updated_at && (
+                                                        <span className="text-[10px] text-slate-600 ml-2">
+                                                            Son: {new Date(detailUser.waSession.updated_at).toLocaleString('tr-TR')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-500">Oturum bulunamadı</span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
-                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">🎯 Aktif Filtreler</div>
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">🎯 Aktif Filtreler</div>
                                         {detailUser.filters ? (
-                                            <div className="flex flex-wrap gap-1.5">
-                                                <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-green-400 border border-white/5">
-                                                    💰 {detailUser.filters.min_price || 0}+ ₺
-                                                </span>
-                                                <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 border border-white/5">
-                                                    📋 {detailUser.filters.job_mode || 'all'}
-                                                </span>
-                                                <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 border border-white/5">
-                                                    {detailUser.filters.action_mode === 'auto' ? '⚡ OTO' : '👤 MANUEL'}
-                                                </span>
-                                                {detailUser.filters.regions?.length > 0 && (
-                                                    <span className="bg-blue-600/20 px-2 py-1 rounded-lg text-[10px] font-bold text-blue-400 border border-blue-500/20">
-                                                        🚩 {detailUser.filters.regions.length} Bölge
+                                            <div className="space-y-3">
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-green-400 border border-white/5">
+                                                        💰 {detailUser.filters.min_price || 0}+ ₺
                                                     </span>
-                                                )}
+                                                    <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 border border-white/5">
+                                                        📋 {detailUser.filters.job_mode?.toUpperCase() || 'TÜMÜ'}
+                                                    </span>
+                                                    <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 border border-white/5">
+                                                        {detailUser.filters.action_mode === 'auto' ? '⚡ OTO-ARA' : '👤 MANUEL'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[9px] text-slate-500 font-bold uppercase">Nereden (Kalkış):</span>
+                                                        {detailUser.filters.regions?.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {detailUser.filters.regions.map((reg: string) => (
+                                                                    <span key={reg} className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">{reg}</span>
+                                                                ))}
+                                                            </div>
+                                                        ) : <span className="text-[9px] text-slate-600 italic">Seçilmedi</span>}
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[9px] text-slate-500 font-bold uppercase">Nereye (Varış):</span>
+                                                        {detailUser.filters.to_regions?.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {detailUser.filters.to_regions.map((reg: string) => (
+                                                                    <span key={reg} className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20">{reg}</span>
+                                                                ))}
+                                                            </div>
+                                                        ) : <span className="text-[9px] text-slate-600 italic">Seçilmedi</span>}
+                                                    </div>
+                                                </div>
                                             </div>
                                         ) : (
                                             <span className="text-xs text-slate-500">Filtre ayarlanmamış</span>

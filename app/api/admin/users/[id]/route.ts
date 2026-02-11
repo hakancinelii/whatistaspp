@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         const userId = parseInt(params.id);
 
         // Kullanıcı bilgisi
-        const user = await db.get('SELECT id, name, email, role, credits, package, created_at FROM users WHERE id = ?', [userId]);
+        const user = await db.get('SELECT id, name, email, role, credits, package, driver_phone, driver_plate, created_at FROM users WHERE id = ?', [userId]);
         if (!user) {
             return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
         }
@@ -55,9 +55,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         // Filtre ayarları
         const filters = await db.get('SELECT * FROM driver_filters WHERE user_id = ?', [userId]);
 
-        // Toplam kazanç (won olan işlerin fiyat toplamı)
+        // Toplam kazanç - SQLite'da daha güvenli hesaplama (sadece rakamları temizle ve topla)
+        // Eğer karmaşık bir string ise 0 döner
         const totalEarnings = await db.get(`
-            SELECT COALESCE(SUM(CAST(REPLACE(REPLACE(cj.price, '.', ''), ',', '') AS INTEGER)), 0) as total
+            SELECT SUM(COALESCE(CAST(REPLACE(REPLACE(REPLACE(cj.price, '.', ''), ',', ''), ' ₺', '') AS INTEGER), 0)) as total
             FROM job_interactions ji
             JOIN captured_jobs cj ON ji.job_id = cj.id
             WHERE ji.user_id = ? AND ji.status = 'won'
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             recentInteractions: recentInteractions || [],
             filters: filters ? {
                 regions: filters.regions ? JSON.parse(filters.regions) : [],
+                to_regions: filters.to_regions ? JSON.parse(filters.to_regions) : [],
                 min_price: filters.min_price,
                 job_mode: filters.job_mode,
                 action_mode: filters.action_mode,

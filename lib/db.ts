@@ -331,6 +331,7 @@ function initDatabase(): any {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER UNIQUE NOT NULL,
         regions TEXT, -- JSON array of strings
+        to_regions TEXT, -- JSON array of strings
         min_price INTEGER DEFAULT 0,
         job_mode TEXT DEFAULT 'all', -- all, ready, scheduled
         action_mode TEXT DEFAULT 'manual', -- manual, auto
@@ -340,6 +341,10 @@ function initDatabase(): any {
       )
     `);
     console.log("[DB] Migration: Created driver_filters table");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec(`ALTER TABLE driver_filters ADD COLUMN to_regions TEXT`);
   } catch (e: any) { }
 
   try {

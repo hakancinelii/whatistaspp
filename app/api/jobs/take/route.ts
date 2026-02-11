@@ -177,8 +177,8 @@ export async function POST(request: NextRequest) {
         await db.run(`
             INSERT INTO job_interactions (user_id, job_id, status)
             VALUES (?, ?, ?)
-            ON CONFLICT(user_id, job_id) DO UPDATE SET status = 'called'
-        `, [user.userId, job.id, 'called']);
+            ON CONFLICT(user_id, job_id) DO UPDATE SET status = 'won'
+        `, [user.userId, job.id, 'won']);
 
         return NextResponse.json({
             success: true,
