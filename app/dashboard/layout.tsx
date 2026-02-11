@@ -16,6 +16,7 @@ const menuItems = [
   { href: "/dashboard/scheduled", icon: "⏳", label: "Bekleyenler" },
   { href: "/dashboard/history", icon: "📜", label: "Geçmiş" },
   { href: "/dashboard", icon: "📊", label: "Dashboard" },
+  { href: "/dashboard/profile", icon: "👤", label: "Profil" },
   { href: "/dashboard/settings", icon: "⚙️", label: "Ayarlar" },
   { href: "/dashboard/whatsapp", icon: "🟢", label: "WhatsApp" },
 ];
