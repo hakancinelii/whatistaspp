@@ -6,7 +6,6 @@ export default function DriverDashboard() {
     const [jobs, setJobs] = useState<any[]>([]);
     const [stats, setStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [autoCall, setAutoCall] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [minPrice, setMinPrice] = useState<number>(0);
     const [regionSearch, setRegionSearch] = useState("");
@@ -26,6 +25,7 @@ export default function DriverDashboard() {
     const [filterSprinter, setFilterSprinter] = useState(false);
     const [filterSwap, setFilterSwap] = useState(false);
     const [actionMode, setActionMode] = useState<'manual' | 'auto'>('manual');
+    const autoCall = actionMode === 'auto';
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("ROTA 1");
 
@@ -138,7 +138,6 @@ export default function DriverDashboard() {
                 setFilterSprinter(!!data.filter_sprinter);
                 setFilterSwap(!!data.filter_swap);
                 setActionMode(data.action_mode || 'manual');
-                setAutoCall(data.action_mode === 'auto');
                 if (data.rota_name) setRotaName(data.rota_name);
             }
         } catch (e) {
@@ -531,7 +530,11 @@ export default function DriverDashboard() {
                         </span>
                     </div>
                     <button
-                        onClick={() => setAutoCall(!autoCall)}
+                        onClick={() => {
+                            const newMode = autoCall ? 'manual' : 'auto';
+                            setActionMode(newMode as any);
+                            saveFilters(undefined, undefined, newMode);
+                        }}
                         className={`w-14 h-8 rounded-full transition-all relative ${autoCall ? 'bg-green-500' : 'bg-slate-700'}`}
                     >
                         <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all ${autoCall ? 'right-1' : 'left-1'}`} />
@@ -703,7 +706,7 @@ export default function DriverDashboard() {
                                                 ].map(m => (
                                                     <button
                                                         key={m.id}
-                                                        onClick={() => { setActionMode(m.id as any); setAutoCall(m.id === 'auto'); saveFilters(undefined, undefined, m.id); }}
+                                                        onClick={() => { setActionMode(m.id as any); saveFilters(undefined, undefined, m.id); }}
                                                         className={`flex-1 py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-white/20 text-white shadow-lg` : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
                                                     >
                                                         <span className="text-base">{m.icon}</span>
