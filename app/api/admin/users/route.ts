@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
 import { getUserFromToken } from '@/lib/auth';
+import { getSession } from '@/lib/whatsapp';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
@@ -18,14 +19,26 @@ export async function GET(request: NextRequest) {
         const onlineUsers = await db.get(`SELECT COUNT(*) as count FROM user_heartbeat WHERE last_seen >= datetime('now', '-60 seconds')`);
         const activeSessions = await db.get('SELECT COUNT(*) as count FROM whatsapp_sessions WHERE is_connected = 1');
 
-        // Toplam Grup Sayısı (Discovery tablosundan)
+        // WhatsApp Grup Sayıları
         let totalGroups = 0;
+        let joinedGroups = 0;
+
         try {
             const groupCount = await db.get('SELECT COUNT(*) as count FROM group_discovery');
             totalGroups = groupCount?.count || 0;
-        } catch (e) {
-            console.warn("[Admin API] group_discovery table might not exist yet");
-        }
+
+            const botSession = await getSession(user.userId, 'gathering');
+            if (botSession?.sock?.groupFetchAllParticipating) {
+                const parts = await botSession.sock.groupFetchAllParticipating();
+                joinedGroups = Object.keys(parts).length;
+            } else {
+                const mainSession = await getSession(user.userId, 'main');
+                if (mainSession?.sock?.groupFetchAllParticipating) {
+                    const parts = await mainSession.sock.groupFetchAllParticipating();
+                    joinedGroups = Object.keys(parts).length;
+                }
+            }
+        } catch (e) { }
 
         // Users
         const users = await db.all(`
@@ -44,7 +57,8 @@ export async function GET(request: NextRequest) {
                 totalUsers: totalUsers?.count || 0,
                 onlineUsers: onlineUsers?.count || 0,
                 activeSessions: activeSessions?.count || 0,
-                totalGroups: totalGroups
+                totalGroups: totalGroups,
+                joinedGroups: joinedGroups
             }
         });
     } catch (error: any) {

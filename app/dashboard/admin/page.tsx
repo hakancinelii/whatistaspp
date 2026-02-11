@@ -24,6 +24,7 @@ interface Stats {
     onlineUsers: number;
     activeSessions: number;
     totalGroups?: number;
+    joinedGroups?: number;
 }
 
 interface UserDetail {
@@ -307,10 +308,17 @@ export default function AdminPage() {
                             </div>
                             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-blue-500/30 transition-all cursor-pointer group" onClick={() => window.location.href = '/dashboard/admin/groups'}>
                                 <div className="flex justify-between items-start">
-                                    <div className="text-gray-400 text-sm mb-1">Keşfedilen Gruplar</div>
+                                    <div className="text-gray-400 text-sm mb-1 uppercase font-black tracking-widest text-[10px]">Keşfedilen Gruplar</div>
                                     <span className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
                                 </div>
                                 <div className="text-3xl font-bold text-blue-400">{stats.totalGroups || 0}</div>
+                            </div>
+                            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-green-500/30 transition-all cursor-pointer group" onClick={() => window.location.href = '/dashboard/admin/groups'}>
+                                <div className="flex justify-between items-start">
+                                    <div className="text-gray-400 text-sm mb-1 uppercase font-black tracking-widest text-[10px]">Takip Edilen Gruplar</div>
+                                    <span className="text-green-500 opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+                                </div>
+                                <div className="text-3xl font-bold text-green-400">{stats.joinedGroups || 0}</div>
                             </div>
                         </div>
                     )}
