@@ -8,6 +8,7 @@ interface DiscoveredGroup {
     invite_link: string;
     found_by: string;
     created_at: string;
+    is_joined?: boolean;
 }
 
 export default function GroupDiscovery() {
@@ -117,19 +118,20 @@ export default function GroupDiscovery() {
                             <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase">Tarih</th>
                             <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase">Davet Linki</th>
                             <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase">Keşfeden</th>
+                            <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase text-center">Durum</th>
                             <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase text-right">İşlem</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700">
                         {groups.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
                                     Henüz keşfedilen bir grup davet linki bulunamadı.
                                 </td>
                             </tr>
                         ) : (
-                            groups.map((group) => (
-                                <tr key={group.id} className="hover:bg-slate-700/30 transition-colors">
+                            groups.map((group: DiscoveredGroup) => (
+                                <tr key={group.id} className={`transition-colors ${group.is_joined ? 'bg-green-500/5 hover:bg-green-500/10' : 'hover:bg-slate-700/30'}`}>
                                     <td className="px-6 py-4 text-sm text-slate-400">
                                         {new Date(group.created_at).toLocaleString('tr-TR')}
                                     </td>
@@ -143,17 +145,39 @@ export default function GroupDiscovery() {
                                             {group.found_by}
                                         </span>
                                     </td>
+                                    <td className="px-6 py-4 text-center">
+                                        {group.is_joined ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-green-500/20 text-green-400 border border-green-500/30">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                                                KATILDIN
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-slate-700 text-slate-400 border border-slate-600">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                BEKLİYOR
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleJoin(group.id, group.invite_code)}
-                                            disabled={joiningId === group.id}
-                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${joiningId === group.id
-                                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                                : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20 active:scale-95'
-                                                }`}
-                                        >
-                                            {joiningId === group.id ? 'KATILINIYOR...' : 'GRUBA KATIL ✅'}
-                                        </button>
+                                        {group.is_joined ? (
+                                            <button
+                                                disabled
+                                                className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-800 text-green-500/50 cursor-default border border-green-900/30 opacity-60"
+                                            >
+                                                ZATEN ÜYESİNİZ
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleJoin(group.id, group.invite_code)}
+                                                disabled={joiningId === group.id}
+                                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${joiningId === group.id
+                                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                                    : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20 active:scale-95'
+                                                    }`}
+                                            >
+                                                {joiningId === group.id ? 'KATILINIYOR...' : 'GRUBA KATIL ✅'}
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))

@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
         }
 
         const db = await getDatabase();
-        const groups = await db.all('SELECT invite_code, invite_link FROM group_discovery');
+        // Sadece JID'si olmayan ve henüz katılınmamış (id ile kontrol edemeyiz, jid ile ederiz) grupları alalım
+        // Ama "join-all" butonu kullanıcının isteği, hepsini denemekte fayda var.
+        const groups = await db.all('SELECT id, invite_code, invite_link, group_jid FROM group_discovery');
 
         if (!groups || groups.length === 0) {
             return NextResponse.json({ message: 'No groups found to join' });
@@ -24,17 +26,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'WhatsApp not connected' }, { status: 400 });
         }
 
+        // Adminin mevcut gruplarını alıp, halihazırda üye olduklarını eleyelim (zaman kazanmak için)
+        let participatingJids = new Set();
+        try {
+            const parts = await session.sock.groupFetchAllParticipating();
+            participatingJids = new Set(Object.keys(parts));
+        } catch (e) {
+            console.warn("Could not fetch participating groups, proceeding blindly.");
+        }
+
         const stats = {
             total: groups.length,
             success: 0,
+            already_joined: 0,
             failed: 0,
             details: [] as any[]
         };
 
-        // Gruplara sırayla katılmayı dene
         for (const group of groups) {
+            // Eğer veritabanında JID varsa ve zaten üyeysek, geç
+            if (group.group_jid && participatingJids.has(group.group_jid)) {
+                stats.already_joined++;
+                continue;
+            }
+
             try {
-                // Eğer invite_code yoksa linkten çıkarmayı dene (basit regex)
                 let code = group.invite_code;
                 if (!code && group.invite_link) {
                     const match = group.invite_link.match(/chat\.whatsapp\.com\/([A-Za-z0-9]{20,})/);
@@ -42,24 +58,68 @@ export async function POST(request: NextRequest) {
                 }
 
                 if (code) {
-                    await session.sock.groupAcceptInvite(code);
-                    stats.success++;
-                    stats.details.push({ code, status: 'joined' });
-                    // WhatsApp API rate limit yememek için kısa bir bekleme (örn: 1sn)
-                    await new Promise(r => setTimeout(r, 1000));
+                    // Gruba katıl
+                    const jid = await session.sock.groupAcceptInvite(code);
+
+                    if (jid) {
+                        stats.success++;
+                        // JID'yi veritabanına kaydet
+                        await db.run('UPDATE group_discovery SET group_jid = ? WHERE id = ?', [jid, group.id]);
+                        stats.details.push({ code, status: 'joined', jid });
+                    } else {
+                        // JID dönmediyse belki zaten üyeyizdir
+                        // invite info almayı dene
+                        try {
+                            const meta = await session.sock.groupGetInviteInfo(code);
+                            if (meta && meta.id) {
+                                const myJid = session.sock?.user?.id?.split(':')[0];
+                                const isParticipant = myJid ? meta.participants?.some((p: any) => p.id?.includes(myJid)) : false;
+
+                                // Ya da basitçe JID'yi kaydet
+                                await db.run('UPDATE group_discovery SET group_jid = ? WHERE id = ?', [meta.id, group.id]);
+
+                                // Eğer admin listesinde varsa zaten joined say
+                                if (participatingJids.has(meta.id)) {
+                                    stats.already_joined++;
+                                } else {
+                                    stats.success++; // Metadata alabildiysek başarılı sayabiliriz (invite code geçerli)
+                                }
+                            }
+                        } catch (metaErr) {
+                            stats.failed++;
+                            stats.details.push({ code, status: 'failed_metadata', error: String(metaErr) });
+                        }
+                    }
+
+                    // Rate limiting
+                    await new Promise(r => setTimeout(r, 2000));
                 } else {
                     stats.failed++;
                     stats.details.push({ link: group.invite_link, status: 'no_code_found' });
                 }
             } catch (err: any) {
-                console.error(`[Join All] Failed for group ${group.invite_code}:`, err);
-                // Zaten üye ise başarı sayılabilir veya ignored denebilir
-                if (err.message && err.message.includes('already-in-group')) {
-                    stats.success++; // Zaten gruptaysak başarılı sayalım
-                    stats.details.push({ code: group.invite_code, status: 'already_joined' });
+                // Zaten üye hatası
+                if (err.message && (err.message.includes('already-in-group') || err.message.includes('409'))) {
+                    stats.already_joined++;
+                    // JID'yi bulup kaydetmeye çalış (tekrar)
+                    try {
+                        let code = group.invite_code;
+                        if (!code && group.invite_link) {
+                            const match = group.invite_link.match(/chat\.whatsapp\.com\/([A-Za-z0-9]{20,})/);
+                            if (match) code = match[1];
+                        }
+                        if (code) {
+                            const meta = await session.sock.groupGetInviteInfo(code);
+                            if (meta && meta.id) {
+                                await db.run('UPDATE group_discovery SET group_jid = ? WHERE id = ?', [meta.id, group.id]);
+                            }
+                        }
+                    } catch (e) { }
+
                 } else {
+                    console.error(`[Join All] Failed for group ${group.id}:`, err);
                     stats.failed++;
-                    stats.details.push({ code: group.invite_code, error: err.message, status: 'failed' });
+                    stats.details.push({ id: group.id, error: err.message, status: 'failed' });
                 }
             }
         }

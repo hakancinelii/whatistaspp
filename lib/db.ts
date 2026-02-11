@@ -395,6 +395,11 @@ function initDatabase(): any {
     console.log("[DB] Migration: Created user_heartbeat table");
   } catch (e: any) { }
 
+  try {
+    rawDb.exec("ALTER TABLE group_discovery ADD COLUMN group_jid TEXT;");
+    console.log("[DB] Migration: Added group_jid to group_discovery");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }
