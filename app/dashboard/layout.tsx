@@ -30,6 +30,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   useEffect(() => {
     // Desktopta sidebar default açık gelsin
@@ -49,6 +50,17 @@ export default function DashboardLayout({
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
       setUser(payload);
+
+      // Fetch additional profile data (like profile picture)
+      fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.profile_picture) setProfilePicture(data.profile_picture);
+        })
+        .catch(err => console.error("Profile fetch failed:", err));
+
     } catch (error) {
       console.error("Failed to parse token:", error);
       router.push("/login");
@@ -295,8 +307,12 @@ export default function DashboardLayout({
             <div className="flex items-center space-x-2 md:space-x-4">
               <div className="hidden md:block text-sm text-gray-400">{user?.email}</div>
               <Link href="/dashboard/profile" className="group" title="Profil">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ring-2 ring-transparent group-hover:ring-purple-400/50 transition-all">
-                  {user?.name?.charAt(0).toUpperCase()}
+                <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-slate-700/50 group-hover:ring-purple-500/50 transition-all shadow-lg">
+                  <img
+                    src={profilePicture || "/android-chrome-512x512.png"}
+                    alt="Profil"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </Link>
             </div>

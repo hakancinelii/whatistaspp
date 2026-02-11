@@ -40,6 +40,7 @@ function initDatabase(): any {
         credits INTEGER DEFAULT 0,
         package TEXT DEFAULT 'standard',
         status TEXT DEFAULT 'active',
+        profile_picture TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS whatsapp_sessions (
@@ -386,6 +387,11 @@ function initDatabase(): any {
   try {
     rawDb.exec("ALTER TABLE users ADD COLUMN driver_plate TEXT;");
     console.log("[DB] Migration: Added driver_plate to users");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN profile_picture TEXT;");
+    console.log("[DB] Migration: Added profile_picture to users");
   } catch (e: any) { }
 
   // Admin ayarı: Proxy mesaj modu

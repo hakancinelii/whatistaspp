@@ -16,6 +16,7 @@ interface User {
     called_count?: number;
     created_at: string;
     status?: 'active' | 'restricted' | 'banned';
+    profile_picture?: string | null;
 }
 
 interface Stats {
@@ -360,8 +361,12 @@ export default function AdminPage() {
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="relative">
-                                                        <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white">
-                                                            {user.name.charAt(0).toUpperCase()}
+                                                        <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-600 bg-slate-700 flex items-center justify-center">
+                                                            <img
+                                                                src={user.profile_picture || "/android-chrome-512x512.png"}
+                                                                alt={user.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
                                                         </div>
                                                         {user.is_online && (
                                                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-slate-800 rounded-full animate-pulse" title="Çevrimiçi"></div>

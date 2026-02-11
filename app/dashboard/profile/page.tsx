@@ -9,7 +9,8 @@ export default function DriverProfilePage() {
         name: "",
         email: "",
         driver_phone: "",
-        driver_plate: ""
+        driver_plate: "",
+        profile_picture: null as string | null
     });
 
     useEffect(() => {
@@ -32,6 +33,41 @@ export default function DriverProfilePage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Dosya boyutu kontrolü (örn. 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert("❌ Dosya boyutu çok büyük (Maksimum 2MB)");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64String = reader.result as string;
+            setProfile(prev => ({ ...prev, profile_picture: base64String }));
+
+            // Hemen kaydet
+            try {
+                const token = localStorage.getItem("token");
+                await fetch("/api/profile", {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        profile_picture: base64String
+                    })
+                });
+            } catch (err) {
+                console.error("Fotoğraf kaydı başarısız", err);
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     const saveProfile = async (e: React.FormEvent) => {
@@ -67,8 +103,34 @@ export default function DriverProfilePage() {
 
     return (
         <div className="fade-in max-w-2xl">
-            <h1 className="text-3xl font-bold text-white mb-2">👤 Profil Bilgilerim</h1>
-            <p className="text-gray-400 mb-8">Şoför bilgilerinizi buradan güncelleyebilirsiniz.</p>
+            <div className="flex flex-col md:flex-row items-center gap-8 mb-10">
+                <div className="relative group">
+                    <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-slate-700 shadow-2xl relative">
+                        <img
+                            src={profile.profile_picture || "/android-chrome-512x512.png"}
+                            alt="Profil"
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                            <span className="text-white text-[10px] font-black uppercase tracking-widest text-center px-4">Fotoğrafı Değiştir</span>
+                        </div>
+                    </div>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        title="Fotoğraf seç"
+                    />
+                    <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white p-2 rounded-xl shadow-lg">
+                        📷
+                    </div>
+                </div>
+                <div className="text-center md:text-left">
+                    <h1 className="text-4xl font-black text-white mb-2">{profile.name}</h1>
+                    <p className="text-slate-400 font-medium">Şoför bilgilerinizi buradan güncelleyebilirsiniz.</p>
+                </div>
+            </div>
 
             <form onSubmit={saveProfile}>
                 <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-6">
