@@ -22,7 +22,9 @@ export default function DriverDashboard() {
     // Gelişmiş Rota Ayarları
     const [showSettings, setShowSettings] = useState(false);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-    const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled' | 'swap' | 'sprinter'>('all');
+    const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled'>('all');
+    const [filterSprinter, setFilterSprinter] = useState(false);
+    const [filterSwap, setFilterSwap] = useState(false);
     const [actionMode, setActionMode] = useState<'manual' | 'auto'>('manual');
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("ROTA 1");
@@ -131,7 +133,10 @@ export default function DriverDashboard() {
                 const data = await res.json();
                 setSelectedRegions(data.regions || []);
                 setMinPrice(data.min_price || 0);
-                setJobMode(data.job_mode || 'all');
+                const mode = data.job_mode || 'all';
+                if (mode === 'all' || mode === 'ready' || mode === 'scheduled') setJobMode(mode);
+                setFilterSprinter(!!data.filter_sprinter);
+                setFilterSwap(!!data.filter_swap);
                 setActionMode(data.action_mode || 'manual');
                 setAutoCall(data.action_mode === 'auto');
                 if (data.rota_name) setRotaName(data.rota_name);
@@ -141,7 +146,7 @@ export default function DriverDashboard() {
         }
     };
 
-    const saveFilters = async (newRegions?: string[], newJobMode?: string, newActionMode?: string, newMinPrice?: number, newRotaName?: string) => {
+    const saveFilters = async (newRegions?: string[], newJobMode?: string, newActionMode?: string, newMinPrice?: number, newRotaName?: string, newFilterSprinter?: boolean, newFilterSwap?: boolean) => {
         setIsSaving(true);
         try {
             const token = localStorage.getItem("token");
@@ -155,6 +160,8 @@ export default function DriverDashboard() {
                     regions: newRegions ?? selectedRegions,
                     min_price: newMinPrice ?? minPrice,
                     job_mode: newJobMode ?? jobMode,
+                    filter_sprinter: newFilterSprinter ?? filterSprinter,
+                    filter_swap: newFilterSwap ?? filterSwap,
                     action_mode: newActionMode ?? actionMode,
                     rota_name: newRotaName ?? rotaName
                 })
@@ -404,18 +411,25 @@ export default function DriverDashboard() {
         const priceMatch = minPrice === 0 || priceNum >= minPrice;
 
         // Gelişmiş Filtreleme Mantığı
-        // 1. İş Modu (Hazır / İleri Tarihli)
+        // 1. İş Modu (Hazır / İleri Tarihli) — Zaman filtresi
         let readyMatch = true;
         if (jobMode === 'ready') readyMatch = !!job.time?.includes('HAZIR');
         if (jobMode === 'scheduled') readyMatch = !job.time?.includes('HAZIR') && job.time !== 'Belirtilmedi';
-        if (jobMode === 'swap') readyMatch = (job.is_swap === 1);
-        if (jobMode === 'sprinter') {
+        if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
+
+        // 2. Sprinter Filtresi (Bağımsız toggle)
+        let sprinterMatch = true;
+        if (filterSprinter) {
             const sprinterKeywords = ['sprinter', '10+', '13+', '16+', '10luk', '13lük', '16lık', '10 luk', '13 lük', '16 lık', '10lık', '13luk', '16luk', '10 ve üzeri', '13 ve üzeri', '16 ve üzeri', 'büyük araç', 'minibüs'];
             const rawLower = (job.raw_message || '').toLowerCase();
-            readyMatch = sprinterKeywords.some(kw => rawLower.includes(kw));
+            sprinterMatch = sprinterKeywords.some(kw => rawLower.includes(kw));
         }
-        // Eski "Sadece Hazır" butonuyla da uyumlu olsun
-        if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
+
+        // 3. Takas Filtresi (Bağımsız toggle)
+        let swapMatch = true;
+        if (filterSwap) {
+            swapMatch = (job.is_swap === 1);
+        }
 
         // 2. Bölge Filtresi (Kalkış & Varış Kontrolü)
         let regionMatch = true;
@@ -459,7 +473,7 @@ export default function DriverDashboard() {
             }
         }
 
-        return textMatch && priceMatch && readyMatch && regionMatch && airportBtnMatch && vipMatch;
+        return textMatch && priceMatch && readyMatch && sprinterMatch && swapMatch && regionMatch && airportBtnMatch && vipMatch;
     });
 
     const totalEarnings = jobs
@@ -594,9 +608,21 @@ export default function DriverDashboard() {
                                 <span className="text-[10px] font-black text-green-400">{minPrice}+ ₺</span>
                             </div>
                             <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
-                                <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : jobMode === 'swap' ? '🔁' : jobMode === 'sprinter' ? '🚐' : '📋'}</span>
-                                <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : jobMode === 'scheduled' ? 'İLERİ' : jobMode === 'swap' ? 'TAKAS' : jobMode === 'sprinter' ? 'SPRİNTER' : 'TÜMÜ'}</span>
+                                <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : '📋'}</span>
+                                <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : 'İLERİ'}</span>
                             </div>
+                            {filterSprinter && (
+                                <div className="bg-amber-600/20 px-3 py-1.5 rounded-xl border border-amber-500/30 flex items-center gap-2">
+                                    <span className="text-xs">🚐</span>
+                                    <span className="text-[10px] font-black text-amber-400 uppercase">SPRİNTER</span>
+                                </div>
+                            )}
+                            {filterSwap && (
+                                <div className="bg-purple-600/20 px-3 py-1.5 rounded-xl border border-purple-500/30 flex items-center gap-2">
+                                    <span className="text-xs">🔁</span>
+                                    <span className="text-[10px] font-black text-purple-400 uppercase">TAKAS</span>
+                                </div>
+                            )}
                             <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${actionMode === 'auto' ? 'bg-orange-600/20 border-orange-500/30 text-orange-400' : 'bg-slate-900/80 border-white/5 text-slate-400'}`}>
                                 <span className="text-xs">{actionMode === 'auto' ? '⚡' : '👤'}</span>
                                 <span className="text-[10px] font-black uppercase text-center">{actionMode === 'auto' ? 'OTO-ARA' : 'MANUEL'}</span>
@@ -632,12 +658,11 @@ export default function DriverDashboard() {
                                         <div className="space-y-3">
                                             <div className="text-[10px] font-black text-slate-400 ml-1">İŞ TÜRÜ SEÇİMİ</div>
                                             <div className="flex flex-wrap gap-2">
+                                                {/* Zaman Filtresi (Radyo — tek seçim) */}
                                                 {[
                                                     { id: 'all', label: 'TÜMÜ', icon: '📋' },
                                                     { id: 'ready', label: 'HAZIR', icon: '🚨' },
-                                                    { id: 'scheduled', label: 'İLERİ', icon: '📅' },
-                                                    { id: 'swap', label: 'TAKAS', icon: '🔁' },
-                                                    { id: 'sprinter', label: 'SPRİNTER', icon: '🚐' }
+                                                    { id: 'scheduled', label: 'İLERİ', icon: '📅' }
                                                 ].map(m => (
                                                     <button
                                                         key={m.id}
@@ -648,6 +673,25 @@ export default function DriverDashboard() {
                                                         {m.label}
                                                     </button>
                                                 ))}
+
+                                                {/* Ayırıcı */}
+                                                <div className="w-px bg-slate-700 mx-1 self-stretch" />
+
+                                                {/* Araç Tipi Filtreleri (Toggle — bağımsız) */}
+                                                <button
+                                                    onClick={() => { const newVal = !filterSwap; setFilterSwap(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, newVal); }}
+                                                    className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSwap ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                >
+                                                    <span className="text-base">🔁</span>
+                                                    TAKAS
+                                                </button>
+                                                <button
+                                                    onClick={() => { const newVal = !filterSprinter; setFilterSprinter(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, newVal); }}
+                                                    className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSprinter ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                >
+                                                    <span className="text-base">🚐</span>
+                                                    SPRİNTER
+                                                </button>
                                             </div>
                                         </div>
                                         <div className="space-y-3">
