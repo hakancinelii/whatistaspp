@@ -337,8 +337,11 @@ function setupMessageListeners(userId: number, sock: any) {
             // Adminler de şoför paketine sahipmiş gibi işlem yapabilsin
             const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
 
+            console.log(`[WA DEBUG] User: ${userId}, Role: ${dbUser?.role}, Pkg: ${dbUser?.package} -> IsDriver/Admin: ${isDriverPackage}`);
+
             // Grup mesajıysa ve şoför paketi veya admin yetkisi yoksa yoksay
             if (isGroup && !isDriverPackage) {
+                console.log(`[WA DEBUG] Group message ignored because user ${userId} is not driver/admin.`);
                 return;
             }
 
