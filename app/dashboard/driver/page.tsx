@@ -30,7 +30,7 @@ export default function DriverDashboard() {
     const [actionMode, setActionMode] = useState<'manual' | 'auto'>('manual');
     const autoCall = actionMode === 'auto';
     const [isSaving, setIsSaving] = useState(false);
-    const [rotaName, setRotaName] = useState("ROTA 1");
+    const [rotaName, setRotaName] = useState("STRATEJİ 1");
 
     // Manuel İş Ekleme State
     const [isAddingJob, setIsAddingJob] = useState(false);
@@ -684,7 +684,7 @@ export default function DriverDashboard() {
                                         saveFilters(undefined, undefined, undefined, undefined, val);
                                     }}
                                     className="bg-transparent border-none text-white font-black text-xl focus:ring-0 p-0 w-32 tracking-tighter"
-                                    placeholder="ROTA ADI"
+                                    placeholder="STRATEJİ ADI"
                                 />
                                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Aktif Strateji</div>
                             </div>
@@ -935,6 +935,7 @@ export default function DriverDashboard() {
                                                                     ? selectedToRegions.filter(id => id !== reg.id)
                                                                     : [...selectedToRegions, reg.id];
                                                                 setSelectedToRegions(newRegs);
+                                                                saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
                                                             }
                                                         }}
                                                         className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
@@ -971,6 +972,7 @@ export default function DriverDashboard() {
                                                                     ? selectedToRegions.filter(id => id !== reg.id)
                                                                     : [...selectedToRegions, reg.id];
                                                                 setSelectedToRegions(newRegs);
+                                                                saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
                                                             }
                                                         }}
                                                         className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
