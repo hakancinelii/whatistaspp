@@ -182,6 +182,18 @@ export default function DashboardLayout({
                     <span className="font-medium">Admin</span>
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    href="/dashboard/admin/settings"
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/admin/settings"
+                      ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
+                      : "text-gray-400 hover:bg-slate-800 hover:text-white"
+                      }`}
+                  >
+                    <span className="text-xl">⚙️</span>
+                    <span className="font-medium">Ayarlar</span>
+                  </Link>
+                </li>
               </>
             )}
           </ul>

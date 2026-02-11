@@ -366,6 +366,23 @@ function initDatabase(): any {
     console.log("[DB] Migration: Added is_high_reward and is_swap to captured_jobs");
   } catch (e: any) { }
 
+  // Şoför bilgileri için users tablosuna alanlar
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN driver_phone TEXT;");
+    console.log("[DB] Migration: Added driver_phone to users");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN driver_plate TEXT;");
+    console.log("[DB] Migration: Added driver_plate to users");
+  } catch (e: any) { }
+
+  // Admin ayarı: Proxy mesaj modu
+  try {
+    rawDb.exec("ALTER TABLE user_settings ADD COLUMN proxy_message_mode BOOLEAN DEFAULT 0;");
+    console.log("[DB] Migration: Added proxy_message_mode to user_settings");
+  } catch (e: any) { }
+
   dbInstance = rawDb;
   return rawDb;
 }
