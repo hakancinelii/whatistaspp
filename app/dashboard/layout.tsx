@@ -135,7 +135,18 @@ export default function DashboardLayout({
             {menuItems
               .filter(item => {
                 if (user?.package === 'driver') {
-                  const hiddenForDrivers = ['/dashboard/inbox', '/dashboard/reports', '/dashboard/history'];
+                  const hiddenForDrivers = [
+                    '/dashboard/inbox',           // Sohbetler (zaten gizliydi)
+                    '/dashboard/messages',        // 📨 Toplu Mesaj Gönder
+                    '/dashboard/operation',       // 🏝️ Operasyon
+                    '/dashboard/customers',       // 👥 Müşteriler
+                    '/dashboard/automation',      // 🤖 Otomasyon
+                    '/dashboard/knowledge',       // 🧠 Bilgi Bankası
+                    '/dashboard/templates',       // 📝 Şablonlar
+                    '/dashboard/scheduled',       // ⏳ Bekleyenler
+                    '/dashboard/reports',         // Raporlar (zaten gizliydi)
+                    '/dashboard/history'          // Geçmiş (zaten gizliydi)
+                  ];
                   return !hiddenForDrivers.includes(item.href);
                 }
                 return true;
