@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         }
 
         // 1. Kullanıcı bilgisi
-        const user = await db.get('SELECT id, name, email, role, credits, package, driver_phone, driver_plate, created_at FROM users WHERE id = ?', [userId]);
+        const user = await db.get('SELECT id, name, email, role, credits, package, driver_phone, driver_plate, status, created_at FROM users WHERE id = ?', [userId]);
         if (!user) {
             return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
         }

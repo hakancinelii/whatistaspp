@@ -31,6 +31,17 @@ export default function DriverDashboard() {
     const autoCall = actionMode === 'auto';
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("STRATEJİ 1");
+    // Profil Zorunluluğu State
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [profileFormData, setProfileFormData] = useState({
+        name: '',
+        driver_phone: '',
+        driver_plate: ''
+    });
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [isBanned, setIsBanned] = useState(false);
+    const [isRestricted, setIsRestricted] = useState(false);
 
     // Manuel İş Ekleme State
     const [isAddingJob, setIsAddingJob] = useState(false);
@@ -405,22 +416,98 @@ export default function DriverDashboard() {
         } catch (e) { }
     };
 
+    const fetchProfile = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/profile", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+            if (data) {
+                setUserProfile(data);
+                setProfileFormData({
+                    name: data.name || '',
+                    driver_phone: data.driver_phone || '',
+                    driver_plate: data.driver_plate || ''
+                });
+
+                // Ban/Kısıt Kontrolü
+                if (data.status === 'banned') {
+                    setIsBanned(true);
+                    alert("🚫 Hesabınız kapatılmıştır. Lütfen yönetici ile iletişime geçin.");
+                    localStorage.removeItem("token");
+                    window.location.href = "/login";
+                    return;
+                }
+                if (data.status === 'restricted') {
+                    setIsRestricted(true);
+                }
+
+                // Eksik bilgi kontrolü (Admin hariç)
+                if (data.role !== 'admin') {
+                    if (!data.name || !data.driver_phone || !data.driver_plate) {
+                        setShowProfileModal(true);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Profile fetch error:", e);
+        }
+    };
+
+    const handleUpdateProfile = async () => {
+        if (!profileFormData.name || !profileFormData.driver_phone || !profileFormData.driver_plate) {
+            alert("⚠️ Lütfen tüm alanları doldurun.");
+            return;
+        }
+        setIsSavingProfile(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(profileFormData)
+            });
+            if (res.ok) {
+                setShowProfileModal(false);
+                fetchProfile();
+            } else {
+                const data = await res.json();
+                alert("❌ Hata: " + (data.error || "Güncelleme başarısız."));
+            }
+        } catch (e: any) {
+            alert("🚨 Sistem hatası: " + e.message);
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
+
     useEffect(() => {
+        fetchProfile();
         fetchJobs();
-        fetchStats();
         fetchStats();
         fetchFilters();
         const interval = setInterval(fetchJobs, 10000); // 10 saniyede bir
         const statsInterval = setInterval(fetchStats, 60000); // İstatistikleri 1 dakikada bir güncelle
+        const profileInterval = setInterval(fetchProfile, 120000); // Profil/Statü 2 dakikada bir kontrol
         waStatusIntervalRef.current = setInterval(checkWAStatus, 5000);
 
         return () => {
             clearInterval(interval);
             clearInterval(statsInterval);
+            clearInterval(profileInterval);
             if (waStatusIntervalRef.current) clearInterval(waStatusIntervalRef.current);
             if (wakeLockRef.current) wakeLockRef.current.release();
         };
-    }, []); // jobs.length, autoCall, minPrice dependencies removed to avoid infinite loops, logic moved inside
+    }, []);
 
     // Filter Logic - useMemo ile optimize edildi
     const filteredJobs = useMemo(() => {
@@ -436,6 +523,10 @@ export default function DriverDashboard() {
     }, [actionMode, jobs, filteredJobs]);
 
     const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
+        if (isRestricted) {
+            alert("🚫 Hesabınız kısıtlı moddadır, iş alamazsınız.");
+            return;
+        }
         setLoadingJobId(jobId);
         const token = localStorage.getItem("token");
         try {
@@ -1295,6 +1386,66 @@ export default function DriverDashboard() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Profil Tamamlama Modal */}
+            {showProfileModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+                    <div className="bg-slate-900 border border-white/10 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
+                        <div className="text-center space-y-2">
+                            <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 border border-blue-500/30">👤</div>
+                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">Profilini Tamamla</h2>
+                            <p className="text-slate-400 text-sm font-medium">İş alabilmek için profil bilgilerini doldurman zorunludur.</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">AD SOYAD</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3.5 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    placeholder="Mustafa Çoban"
+                                    value={profileFormData.name}
+                                    onChange={e => setProfileFormData({ ...profileFormData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">TELEFON NUMARASI</label>
+                                <input
+                                    type="tel"
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3.5 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    placeholder="05xxxxxxxxx"
+                                    value={profileFormData.driver_phone}
+                                    onChange={e => setProfileFormData({ ...profileFormData, driver_phone: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">ARAÇ PLAKASI</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3.5 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    placeholder="34 ABC 123"
+                                    value={profileFormData.driver_plate}
+                                    onChange={e => setProfileFormData({ ...profileFormData, driver_plate: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleUpdateProfile}
+                                disabled={isSavingProfile}
+                                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-900/20 active:scale-95 transition-all text-sm uppercase tracking-widest mt-4"
+                            >
+                                {isSavingProfile ? 'KAYDEDİLİYOR...' : 'PROFİLİ KAYDET'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isRestricted && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] bg-orange-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 border border-white/20 animate-bounce">
+                    <span>🚫 HESABINIZ KISITLANDI (SADECE İZLEME MODU)</span>
                 </div>
             )}
         </div>

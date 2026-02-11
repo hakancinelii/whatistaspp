@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
         // Users
         const users = await db.all(`
-            SELECT u.id, u.name, u.email, u.role, u.credits, u.package, u.plain_password, u.created_at,
+            SELECT u.id, u.name, u.email, u.role, u.status, u.credits, u.package, u.plain_password, u.created_at,
                    (SELECT MAX(is_connected) FROM whatsapp_sessions WHERE user_id = u.id) as is_connected,
                    (SELECT last_seen >= datetime('now', '-60 seconds') FROM user_heartbeat WHERE user_id = u.id) as is_online,
                    (SELECT COUNT(*) FROM job_interactions WHERE user_id = u.id AND status = 'won') as won_count,
@@ -74,6 +74,15 @@ export async function POST(request: NextRequest) {
         else if (action === 'change_password') {
             const hashedPassword = await bcrypt.hash(newPassword, 10);
             await db.run('UPDATE users SET password = ?, plain_password = ? WHERE id = ?', [hashedPassword, newPassword, userId]);
+        }
+        else if (action === 'restrict_user') {
+            await db.run('UPDATE users SET status = "restricted" WHERE id = ?', [userId]);
+        }
+        else if (action === 'ban_user') {
+            await db.run('UPDATE users SET status = "banned" WHERE id = ?', [userId]);
+        }
+        else if (action === 'unban_user') {
+            await db.run('UPDATE users SET status = "active" WHERE id = ?', [userId]);
         }
 
         return NextResponse.json({ success: true });

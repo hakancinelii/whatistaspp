@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
         // Generate JWT
         const token = jwt.sign(
-            { userId, email, name },
+            { userId, email, name, status: 'active' },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
                 id: userId,
                 name,
                 email,
+                status: 'active'
             },
         }, { status: 201 });
     } catch (error: any) {

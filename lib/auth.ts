@@ -10,6 +10,7 @@ export interface AuthUser {
     role?: 'admin' | 'user';
     credits?: number;
     package?: 'standard' | 'gold' | 'platinum';
+    status?: 'active' | 'restricted' | 'banned';
 }
 
 export async function getUserFromToken(request: NextRequest): Promise<AuthUser | null> {

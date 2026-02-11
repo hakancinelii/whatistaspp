@@ -39,6 +39,7 @@ function initDatabase(): any {
         role TEXT DEFAULT 'user',
         credits INTEGER DEFAULT 0,
         package TEXT DEFAULT 'standard',
+        status TEXT DEFAULT 'active',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS whatsapp_sessions (
@@ -246,6 +247,11 @@ function initDatabase(): any {
   try {
     rawDb.exec("ALTER TABLE users ADD COLUMN package TEXT DEFAULT 'standard';");
     console.log("[DB] Migration: Added package to users");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';");
+    console.log("[DB] Migration: Added status to users");
   } catch (e: any) { }
 
   // Captured Jobs Migration

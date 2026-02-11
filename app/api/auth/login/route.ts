@@ -91,14 +91,29 @@ export async function POST(request: NextRequest) {
 
         try {
             const token = jwt.sign(
-                { userId: user.id, email: user.email, role: user.role, credits: user.credits, package: user.package },
+                {
+                    userId: user.id,
+                    email: user.email,
+                    role: user.role,
+                    credits: user.credits,
+                    package: user.package,
+                    status: user.status || 'active'
+                },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
 
             return NextResponse.json({
                 token,
-                user: { id: user.id, name: user.name, email: user.email, role: user.role, credits: user.credits, package: user.package }
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    credits: user.credits,
+                    package: user.package,
+                    status: user.status || 'active'
+                }
             });
         } catch (jwtError: any) {
             console.error('[LOGIN] JWT Signing failed:', jwtError.message);
