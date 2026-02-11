@@ -43,6 +43,11 @@ export default function DriverDashboard() {
         contact_phone: ''
     });
 
+    // Filtre State'leri
+    // selectedRegions yukarıda tanımlıydı
+    const [selectedToRegions, setSelectedToRegions] = useState<string[]>([]); // TO (Varış)
+    const [regionTab, setRegionTab] = useState<'from' | 'to'>('from'); // UI Tab State
+
     const ISTANBUL_REGIONS = [
         // Avrupa Yakası
         { id: "İHL", label: "İstanbul Havalimanı (İHL)", side: "Avrupa", keywords: ["İHL", "IHL", "IST", "İST", "ISL", "İSL", "İGA", "IGA", "İSTANBUL HAVALİMANI", "YENİ HAVALİMANI"] },
@@ -157,6 +162,7 @@ export default function DriverDashboard() {
             if (res.ok) {
                 const data = await res.json();
                 setSelectedRegions(data.regions || []);
+                setSelectedToRegions(data.to_regions || []);
                 setMinPrice(data.min_price || 0);
                 const mode = data.job_mode || 'all';
                 if (mode === 'all' || mode === 'ready' || mode === 'scheduled') setJobMode(mode);
@@ -170,7 +176,7 @@ export default function DriverDashboard() {
         }
     };
 
-    const saveFilters = async (newRegions?: string[], newJobMode?: string, newActionMode?: string, newMinPrice?: number, newRotaName?: string, newFilterSprinter?: boolean, newFilterSwap?: boolean) => {
+    const saveFilters = async (newRegions?: string[], newJobMode?: string, newActionMode?: string, newMinPrice?: number, newRotaName?: string, newFilterSprinter?: boolean, newFilterSwap?: boolean, newToRegions?: string[]) => {
         setIsSaving(true);
         try {
             const token = localStorage.getItem("token");
@@ -182,6 +188,7 @@ export default function DriverDashboard() {
                 },
                 body: JSON.stringify({
                     regions: newRegions ?? selectedRegions,
+                    to_regions: newToRegions ?? selectedToRegions,
                     min_price: newMinPrice ?? minPrice,
                     job_mode: newJobMode ?? jobMode,
                     filter_sprinter: newFilterSprinter ?? filterSprinter,
@@ -344,29 +351,47 @@ export default function DriverDashboard() {
             // 3. Takas Filtresi
             if (filterSwap && job.is_swap !== 1) return false;
 
-            // 4. Bölge Filtresi (Kalkış Odaklı - From Loc)
+            // 4. Bölge Filtresi (Kalkış ve Varış - Ayrı Ayrı)
+            // FROM (Kalkış) Kontrolü
             if (selectedRegions.length > 0) {
                 const normalizedFrom = normalize(job.from_loc || '');
                 const normalizedRaw = normalize(job.raw_message || '');
 
-                const hasMatch = selectedRegions.some(regId => {
+                const hasFromMatch = selectedRegions.some(regId => {
                     const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
                     if (!reg) return false;
 
                     return reg.keywords.some(key => {
                         const normalizedKey = normalize(key);
-
-                        // Eğer iş takaslıysa veya çoklu ise raw_message içinde ara (Çünkü from_loc 'ÇOKLU' olabilir)
+                        // Eğer iş takaslıysa veya çoklu ise raw_message içinde ara
                         if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') {
                             return normalizedRaw.includes(normalizedKey);
                         }
-
-                        // Standart işse SADECE from_loc (Kalkış) içinde ara
-                        // Kullanıcı isteğine binaen: "Havalimanı seçtim, havalimanından çıkan işleri görmek istiyorum"
                         return normalizedFrom.includes(normalizedKey);
                     });
                 });
-                if (!hasMatch) return false;
+                if (!hasFromMatch) return false;
+            }
+
+            // TO (Varış) Kontrolü
+            if (selectedToRegions.length > 0) {
+                const normalizedTo = normalize(job.to_loc || '');
+                const normalizedRaw = normalize(job.raw_message || '');
+
+                const hasToMatch = selectedToRegions.some(regId => {
+                    const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
+                    if (!reg) return false;
+
+                    return reg.keywords.some(key => {
+                        const normalizedKey = normalize(key);
+                        // Takaslı işler için raw message kontrolü
+                        if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') {
+                            return normalizedRaw.includes(normalizedKey);
+                        }
+                        return normalizedTo.includes(normalizedKey);
+                    });
+                });
+                if (!hasToMatch) return false;
             }
 
             // 5. Havalimanı Filtresi (Buton için)
@@ -382,7 +407,7 @@ export default function DriverDashboard() {
 
             return true;
         });
-    }, [jobs, view, regionSearch, minPrice, jobMode, filterSprinter, filterSwap, selectedRegions, showOnlyAirport, showOnlyVip]);
+    }, [jobs, view, regionSearch, minPrice, jobMode, filterSprinter, filterSwap, selectedRegions, selectedToRegions, showOnlyAirport, showOnlyVip]);
 
     // OTO-ARA Logic (useEffect ile)
     useEffect(() => {
@@ -842,16 +867,39 @@ export default function DriverDashboard() {
 
                             {/* Right Column: Detailed Region Selection */}
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between px-1">
-                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                        🚩 ÇALIŞILACAK BÖLGELER
-                                    </h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700/50">
+                                        <button
+                                            onClick={() => setRegionTab('from')}
+                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'from'
+                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                : 'text-slate-400 hover:text-white'
+                                                }`}
+                                        >
+                                            🛫 NEREDEN {selectedRegions.length > 0 && `(${selectedRegions.length})`}
+                                        </button>
+                                        <button
+                                            onClick={() => setRegionTab('to')}
+                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'to'
+                                                ? 'bg-green-600 text-white shadow-lg'
+                                                : 'text-slate-400 hover:text-white'
+                                                }`}
+                                        >
+                                            🏁 NEREYE {selectedToRegions.length > 0 && `(${selectedToRegions.length})`}
+                                        </button>
+                                    </div>
+
                                     <div className="flex gap-4">
                                         <button
                                             onClick={() => {
                                                 const newRegs = ISTANBUL_REGIONS.map(r => r.id);
-                                                setSelectedRegions(newRegs);
-                                                saveFilters(newRegs);
+                                                if (regionTab === 'from') {
+                                                    setSelectedRegions(newRegs);
+                                                    saveFilters(newRegs);
+                                                } else {
+                                                    setSelectedToRegions(newRegs);
+                                                    saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
+                                                }
                                             }}
                                             className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase underline-offset-4 hover:underline"
                                         >
@@ -859,8 +907,13 @@ export default function DriverDashboard() {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setSelectedRegions([]);
-                                                saveFilters([]);
+                                                if (regionTab === 'from') {
+                                                    setSelectedRegions([]);
+                                                    saveFilters([]);
+                                                } else {
+                                                    setSelectedToRegions([]);
+                                                    saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, []);
+                                                }
                                             }}
                                             className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase underline-offset-4 hover:underline"
                                         >
@@ -876,25 +929,35 @@ export default function DriverDashboard() {
                                             <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
                                                 <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest pl-2">Avrupa Yakası</h4>
                                             </div>
-                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').map(reg => (
-                                                <div
-                                                    key={reg.id}
-                                                    onClick={() => {
-                                                        const newRegs = selectedRegions.includes(reg.id)
-                                                            ? selectedRegions.filter(id => id !== reg.id)
-                                                            : [...selectedRegions, reg.id];
-                                                        setSelectedRegions(newRegs);
-                                                        saveFilters(newRegs);
-                                                    }}
-                                                    className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${selectedRegions.includes(reg.id)
-                                                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
-                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
-                                                        }`}
-                                                >
-                                                    <span className="text-xs font-bold">{reg.label}</span>
-                                                    {selectedRegions.includes(reg.id) && <span className="text-xs">✓</span>}
-                                                </div>
-                                            ))}
+                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').map(reg => {
+                                                const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
+                                                return (
+                                                    <div
+                                                        key={reg.id}
+                                                        onClick={() => {
+                                                            if (regionTab === 'from') {
+                                                                const newRegs = isActive
+                                                                    ? selectedRegions.filter(id => id !== reg.id)
+                                                                    : [...selectedRegions, reg.id];
+                                                                setSelectedRegions(newRegs);
+                                                                saveFilters(newRegs);
+                                                            } else {
+                                                                const newRegs = isActive
+                                                                    ? selectedToRegions.filter(id => id !== reg.id)
+                                                                    : [...selectedToRegions, reg.id];
+                                                                setSelectedToRegions(newRegs);
+                                                            }
+                                                        }}
+                                                        className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
+                                                            ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
+                                                            : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                            }`}
+                                                    >
+                                                        <span className="text-xs font-bold">{reg.label}</span>
+                                                        {isActive && <span className="text-xs">✓</span>}
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
 
                                         {/* Anadolu Yakası Grubu */}
@@ -902,25 +965,35 @@ export default function DriverDashboard() {
                                             <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
                                                 <h4 className="text-[10px] font-black text-green-400 uppercase tracking-widest pl-2">Anadolu Yakası</h4>
                                             </div>
-                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').map(reg => (
-                                                <div
-                                                    key={reg.id}
-                                                    onClick={() => {
-                                                        const newRegs = selectedRegions.includes(reg.id)
-                                                            ? selectedRegions.filter(id => id !== reg.id)
-                                                            : [...selectedRegions, reg.id];
-                                                        setSelectedRegions(newRegs);
-                                                        saveFilters(newRegs);
-                                                    }}
-                                                    className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${selectedRegions.includes(reg.id)
-                                                        ? 'bg-green-600 border-green-500 text-white shadow-lg'
-                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
-                                                        }`}
-                                                >
-                                                    <span className="text-xs font-bold">{reg.label}</span>
-                                                    {selectedRegions.includes(reg.id) && <span className="text-xs">✓</span>}
-                                                </div>
-                                            ))}
+                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').map(reg => {
+                                                const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
+                                                return (
+                                                    <div
+                                                        key={reg.id}
+                                                        onClick={() => {
+                                                            if (regionTab === 'from') {
+                                                                const newRegs = isActive
+                                                                    ? selectedRegions.filter(id => id !== reg.id)
+                                                                    : [...selectedRegions, reg.id];
+                                                                setSelectedRegions(newRegs);
+                                                                saveFilters(newRegs);
+                                                            } else {
+                                                                const newRegs = isActive
+                                                                    ? selectedToRegions.filter(id => id !== reg.id)
+                                                                    : [...selectedToRegions, reg.id];
+                                                                setSelectedToRegions(newRegs);
+                                                            }
+                                                        }}
+                                                        className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
+                                                            ? 'bg-green-600 border-green-500 text-white shadow-lg'
+                                                            : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                            }`}
+                                                    >
+                                                        <span className="text-xs font-bold">{reg.label}</span>
+                                                        {isActive && <span className="text-xs">✓</span>}
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 </div>

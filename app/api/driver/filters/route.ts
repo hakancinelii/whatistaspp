@@ -12,13 +12,13 @@ export async function GET(request: NextRequest) {
 
         const db = await getDatabase();
 
-        // Yeni sütunlar yoksa ekle
-        try {
-            await db.run('ALTER TABLE driver_filters ADD COLUMN filter_sprinter INTEGER DEFAULT 0');
-        } catch (e) { /* column already exists */ }
-        try {
-            await db.run('ALTER TABLE driver_filters ADD COLUMN filter_swap INTEGER DEFAULT 0');
-        } catch (e) { /* column already exists */ }
+        // Yeni sütunlar yoksa ekle (Migration)
+        const columns = ['filter_sprinter INTEGER DEFAULT 0', 'filter_swap INTEGER DEFAULT 0', 'to_regions TEXT DEFAULT "[]"'];
+        for (const col of columns) {
+            try {
+                await db.run(`ALTER TABLE driver_filters ADD COLUMN ${col}`);
+            } catch (e) { /* column already exists */ }
+        }
 
         let filters = await db.get('SELECT * FROM driver_filters WHERE user_id = ?', [user.userId]);
 
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
             // Varsayılan ayarlar
             filters = {
                 regions: JSON.stringify([]),
+                to_regions: JSON.stringify([]),
                 min_price: 0,
                 job_mode: 'all',
                 action_mode: 'manual',
@@ -36,7 +37,10 @@ export async function GET(request: NextRequest) {
         }
 
         if (typeof filters.regions === 'string') {
-            filters.regions = JSON.parse(filters.regions || '[]');
+            try { filters.regions = JSON.parse(filters.regions || '[]'); } catch { filters.regions = []; }
+        }
+        if (typeof filters.to_regions === 'string') {
+            try { filters.to_regions = JSON.parse(filters.to_regions || '[]'); } catch { filters.to_regions = []; }
         }
 
         // Boolean olarak döndür
@@ -55,22 +59,23 @@ export async function POST(request: NextRequest) {
         const user = await getUserFromToken(request);
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { regions, min_price, job_mode, action_mode, rota_name, filter_sprinter, filter_swap } = await request.json();
+        const { regions, to_regions, min_price, job_mode, action_mode, rota_name, filter_sprinter, filter_swap } = await request.json();
         const db = await getDatabase();
 
-        // Yeni sütunlar yoksa ekle
-        try {
-            await db.run('ALTER TABLE driver_filters ADD COLUMN filter_sprinter INTEGER DEFAULT 0');
-        } catch (e) { /* column already exists */ }
-        try {
-            await db.run('ALTER TABLE driver_filters ADD COLUMN filter_swap INTEGER DEFAULT 0');
-        } catch (e) { /* column already exists */ }
+        // Yeni sütunlar yoksa ekle (Migration)
+        const columns = ['filter_sprinter INTEGER DEFAULT 0', 'filter_swap INTEGER DEFAULT 0', 'to_regions TEXT DEFAULT "[]"'];
+        for (const col of columns) {
+            try {
+                await db.run(`ALTER TABLE driver_filters ADD COLUMN ${col}`);
+            } catch (e) { /* column already exists */ }
+        }
 
         await db.run(`
-            INSERT INTO driver_filters (user_id, regions, min_price, job_mode, action_mode, rota_name, filter_sprinter, filter_swap)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO driver_filters (user_id, regions, to_regions, min_price, job_mode, action_mode, rota_name, filter_sprinter, filter_swap)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
                 regions = EXCLUDED.regions,
+                to_regions = EXCLUDED.to_regions,
                 min_price = EXCLUDED.min_price,
                 job_mode = EXCLUDED.job_mode,
                 action_mode = EXCLUDED.action_mode,
@@ -80,6 +85,7 @@ export async function POST(request: NextRequest) {
         `, [
             user.userId,
             JSON.stringify(regions || []),
+            JSON.stringify(to_regions || []),
             min_price || 0,
             job_mode || 'all',
             action_mode || 'manual',
