@@ -12,6 +12,8 @@ interface User {
     plain_password?: string;
     is_connected?: number | boolean;
     is_online?: boolean;
+    won_count?: number;
+    called_count?: number;
     created_at: string;
 }
 
@@ -263,6 +265,7 @@ export default function AdminPage() {
                                 <th className="p-4">Şifre</th>
                                 <th className="p-4">Mevcut Paket</th>
                                 <th className="p-4">Bakiye</th>
+                                <th className="p-4">Performans</th>
                                 <th className="p-4">Durum</th>
                                 <th className="p-4 text-right">İşlemler</th>
                             </tr>
@@ -317,6 +320,18 @@ export default function AdminPage() {
                                     <td className="p-4">
                                         <div className="font-mono text-green-400">{user.credits.toLocaleString()}</div>
                                         <div className="text-[10px] text-gray-500">Kredi</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex gap-4">
+                                            <div>
+                                                <div className="text-xs font-bold text-green-400">{user.won_count || 0}</div>
+                                                <div className="text-[9px] text-slate-500">Kazanılan</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-bold text-blue-400">{user.called_count || 0}</div>
+                                                <div className="text-[9px] text-slate-500">Arama</div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col gap-1">

@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
         const users = await db.all(`
             SELECT u.id, u.name, u.email, u.role, u.credits, u.package, u.plain_password, u.created_at,
                    (SELECT MAX(is_connected) FROM whatsapp_sessions WHERE user_id = u.id) as is_connected,
-                   (SELECT last_seen >= datetime('now', '-60 seconds') FROM user_heartbeat WHERE user_id = u.id) as is_online
+                   (SELECT last_seen >= datetime('now', '-60 seconds') FROM user_heartbeat WHERE user_id = u.id) as is_online,
+                   (SELECT COUNT(*) FROM job_interactions WHERE user_id = u.id AND status = 'won') as won_count,
+                   (SELECT COUNT(*) FROM job_interactions WHERE user_id = u.id AND status = 'called') as called_count
             FROM users u
             ORDER BY u.created_at DESC
         `);
