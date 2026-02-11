@@ -747,10 +747,16 @@ async function parseTransferJob(text: string) {
                             }
                         }
 
+                        // Fiyata ₺ işareti ekle (eğer yoksa)
+                        let aiPrice = data.price || "Belirtilmedi";
+                        if (aiPrice !== "Belirtilmedi" && !aiPrice.includes("₺") && !aiPrice.includes("TL")) {
+                            aiPrice = aiPrice.replace(/(\d+).*/, "$1₺");
+                        }
+
                         return {
                             from_loc: from,
                             to_loc: to,
-                            price: data.price || "Belirtilmedi",
+                            price: aiPrice,
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
                             is_swap: data.is_swap ? 1 : 0,
@@ -767,7 +773,13 @@ async function parseTransferJob(text: string) {
     // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
     const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft)?/i;
     const priceMatch = text.match(priceRegex);
-    const price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
+    let price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
+
+    // Fiyata ₺ işareti ekle (eğer yoksa)
+    if (price !== "Belirtilmedi" && !price.includes("₺") && !price.includes("TL")) {
+        // Sadece rakam varsa sonuna ₺ ekle
+        price = price.replace(/(\d+).*/, "$1₺");
+    }
 
     // Fallback için Zaman Analizi
     let time = "Belirtilmedi";
