@@ -333,10 +333,11 @@ function setupMessageListeners(userId: number, sock: any) {
         try {
             const { getDatabase } = require('./db');
             const db = await getDatabase();
-            const dbUser = await db.get('SELECT package FROM users WHERE id = ?', [userId]);
-            const isDriverPackage = dbUser?.package === 'driver';
+            const dbUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
+            // Adminler de şoför paketine sahipmiş gibi işlem yapabilsin
+            const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
 
-            // Grup mesajıysa ve şoför paketi değilse yoksay
+            // Grup mesajıysa ve şoför paketi veya admin yetkisi yoksa yoksay
             if (isGroup && !isDriverPackage) {
                 return;
             }
