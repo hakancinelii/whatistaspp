@@ -1015,21 +1015,36 @@ export default function DriverDashboard() {
                                     </div>
 
                                     {/* Route Visual */}
-                                    <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl mb-4 border border-white/5">
-                                        <div className="flex-1 min-w-0 text-right">
-                                            <div className="text-sm font-black text-white truncate" title={job.from_loc}>{job.from_loc || '?'}</div>
-                                            <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREDEN</div>
+                                    {job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS' ? (
+                                        <div className="bg-slate-900/50 p-4 rounded-2xl mb-4 border border-purple-500/20 relative overflow-hidden group-hover:border-purple-500/40 transition-colors">
+                                            <div className="absolute top-0 right-0 p-2 opacity-10">
+                                                <span className="text-4xl">🔁</span>
+                                            </div>
+                                            <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                <span>🔁 TAKAS / ÇOKLU İŞ DETAYI</span>
+                                                <div className="h-px bg-purple-500/20 flex-1"></div>
+                                            </div>
+                                            <p className="text-sm font-bold text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                                {job.raw_message}
+                                            </p>
                                         </div>
-                                        <div className="flex flex-col items-center justify-center px-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mb-1" />
-                                            <div className="h-8 w-px bg-gradient-to-b from-slate-600 via-green-500 to-slate-600" />
-                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1" />
+                                    ) : (
+                                        <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl mb-4 border border-white/5">
+                                            <div className="flex-1 min-w-0 text-right">
+                                                <div className="text-sm font-black text-white truncate" title={job.from_loc}>{job.from_loc || '?'}</div>
+                                                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREDEN</div>
+                                            </div>
+                                            <div className="flex flex-col items-center justify-center px-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mb-1" />
+                                                <div className="h-8 w-px bg-gradient-to-b from-slate-600 via-green-500 to-slate-600" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1" />
+                                            </div>
+                                            <div className="flex-1 min-w-0 text-left">
+                                                <div className="text-sm font-black text-white truncate" title={job.to_loc}>{job.to_loc || '?'}</div>
+                                                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREYE</div>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 min-w-0 text-left">
-                                            <div className="text-sm font-black text-white truncate" title={job.to_loc}>{job.to_loc || '?'}</div>
-                                            <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREYE</div>
-                                        </div>
-                                    </div>
+                                    )}
 
                                     {/* Action Buttons */}
                                     <div className="grid grid-cols-2 gap-3">
