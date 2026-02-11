@@ -15,6 +15,7 @@ export default function GroupDiscovery() {
     const [groups, setGroups] = useState<DiscoveredGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [joiningId, setJoiningId] = useState<number | null>(null);
+    const [isJoiningAll, setIsJoiningAll] = useState(false);
     const [instanceId, setInstanceId] = useState<'main' | 'gathering'>('gathering');
     const [instanceStatus, setInstanceStatus] = useState<{ isConnected: boolean; isConnecting: boolean } | null>(null);
 
@@ -71,6 +72,7 @@ export default function GroupDiscovery() {
             const data = await res.json();
             if (res.ok) {
                 alert("✅ Gruba başarıyla katıldınız!");
+                fetchGroups();
             } else {
                 alert("❌ Hata: " + (data.error || "Katılma başarısız oldu. WhatsApp bağlantınızı kontrol edin."));
             }
@@ -136,9 +138,9 @@ export default function GroupDiscovery() {
                             alert(`❌ Seçilen cihaz (${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'}) bağlı değil! Önce WhatsApp bağlantısını kurun.`);
                             return;
                         }
-                        if (!confirm(`${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'} cihazı ile tüm gruplara katılmak istediğinize emin misiniz?`)) return;
+                        if (!confirm(`${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'} cihazı ile tüm gruplara katılmak istediğinize emin misiniz?\n\nNot: Bu işlem arka planda çalışacaktır, lütfen bitene kadar bekleyin.`)) return;
 
-                        setLoading(true);
+                        setIsJoiningAll(true);
                         try {
                             const token = localStorage.getItem("token");
                             const res = await fetch("/api/admin/groups/join-all", {
@@ -152,7 +154,7 @@ export default function GroupDiscovery() {
                             const data = await res.json();
 
                             if (res.ok && data.success) {
-                                alert(`✅ İşlem Tamamlandı!\nBaşarılı: ${data.stats.success}\nBaşarısız: ${data.stats.failed}`);
+                                alert(`✅ İşlem Tamamlandı!\nBaşarılı: ${data.stats.success}\nBaşarısız: ${data.stats.failed}\nZaten Üye: ${data.stats.already_joined}`);
                                 fetchGroups();
                             } else {
                                 alert("❌ Hata: " + (data.error || "Beklenmeyen bir hata oluştu."));
@@ -160,12 +162,20 @@ export default function GroupDiscovery() {
                         } catch (e: any) {
                             alert("🚨 Bağlantı hatası: " + e.message);
                         } finally {
-                            setLoading(false);
+                            setIsJoiningAll(false);
                         }
                     }}
-                    className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02] active:scale-95 text-white font-black px-8 py-4 rounded-2xl shadow-xl shadow-blue-500/20 transition-all text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3"
+                    disabled={isJoiningAll}
+                    className={`w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 active:scale-95 text-white font-black px-8 py-4 rounded-2xl shadow-xl transition-all text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 ${isJoiningAll ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] shadow-blue-500/20'}`}
                 >
-                    🚀 GRUPLARA KATIL
+                    {isJoiningAll ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                            İşlem Yapılıyor...
+                        </>
+                    ) : (
+                        <>🚀 TÜM GRUPLARA KATIL</>
+                    )}
                 </button>
             </div>
 

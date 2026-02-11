@@ -29,7 +29,11 @@ export async function GET(request: NextRequest) {
         try {
             const session = await getSession(user.userId, instanceId);
             if (session?.sock?.groupFetchAllParticipating) {
-                participatingGroups = await session.sock.groupFetchAllParticipating();
+                // WhatsApp bazen çok yavaş cevap verebilir, 5 saniye içinde cevap gelmezse boş dön
+                participatingGroups = await Promise.race([
+                    session.sock.groupFetchAllParticipating(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                ]).catch(() => ({}));
             }
         } catch (e) {
             console.warn(`[Group API] Could not fetch participating groups for ${instanceId}:`, e);
