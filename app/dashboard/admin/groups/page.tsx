@@ -72,11 +72,42 @@ export default function GroupDiscovery() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-white">🔍 Grup Keşfi</h1>
-                <p className="text-slate-400 text-sm mt-1">
-                    Sistemdeki kullanıcıların mesajlarından otomatik olarak yakalanan WhatsApp iş grupları.
-                </p>
+            <div className="flex justify-between items-center bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                <div>
+                    <h1 className="text-2xl font-bold text-white">🔍 Grup Keşfi</h1>
+                    <p className="text-slate-400 text-sm mt-1">
+                        Sistemdeki kullanıcıların mesajlarından otomatik olarak yakalanan WhatsApp iş grupları.
+                    </p>
+                </div>
+                <button
+                    onClick={async () => {
+                        if (!confirm("Tüm gruplara sırayla katılmak istediğinize emin misiniz? Bu işlem biraz zaman alabilir.")) return;
+
+                        setLoading(true); // Loading maskesi yerine buton durumu da kullanılabilir ama sayfa blocklansın istenebilir.
+                        try {
+                            const token = localStorage.getItem("token");
+                            const res = await fetch("/api/admin/groups/join-all", {
+                                method: "POST",
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            const data = await res.json();
+
+                            if (res.ok && data.success) {
+                                alert(`✅ İşlem Tamamlandı!\nBaşarılı: ${data.stats.success}\nBaşarısız: ${data.stats.failed}`);
+                                fetchGroups(); // Listeyi güncelle (gerekirse statü güncellemesi için)
+                            } else {
+                                alert("❌ Hata: " + (data.error || "Beklenmeyen bir hata oluştu."));
+                            }
+                        } catch (e: any) {
+                            alert("🚨 Bağlantı hatası: " + e.message);
+                        } finally {
+                            setLoading(false);
+                        }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-blue-900/20 active:scale-95 transition-all text-xs uppercase tracking-widest flex items-center gap-2"
+                >
+                    🚀 TÜM GRUPLARA KATIL
+                </button>
             </div>
 
             <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
@@ -117,8 +148,8 @@ export default function GroupDiscovery() {
                                             onClick={() => handleJoin(group.id, group.invite_code)}
                                             disabled={joiningId === group.id}
                                             className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${joiningId === group.id
-                                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                                    : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20 active:scale-95'
+                                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                                : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20 active:scale-95'
                                                 }`}
                                         >
                                             {joiningId === group.id ? 'KATILINIYOR...' : 'GRUBA KATIL ✅'}
