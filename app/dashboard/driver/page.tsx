@@ -974,11 +974,13 @@ export default function DriverDashboard() {
                                     {/* ... (Job card header remains same) ... */}
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg ${job.status === 'won' ? 'bg-green-500' :
-                                                job.status === 'ignored' ? 'bg-red-500' :
-                                                    job.status === 'called' ? 'bg-blue-500' :
-                                                        'bg-gradient-to-br from-slate-600 to-slate-700'
-                                                }`}>
+                                            <div
+                                                title={job.status === 'won' ? 'İşi Kazandınız' : job.status === 'ignored' ? 'Yoksayıldı' : job.status === 'called' ? 'Arandı / İlgilenildi' : 'Yeni İş / Bekliyor'}
+                                                className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg cursor-help ${job.status === 'won' ? 'bg-green-500' :
+                                                    job.status === 'ignored' ? 'bg-red-500' :
+                                                        job.status === 'called' ? 'bg-blue-500' :
+                                                            'bg-gradient-to-br from-slate-600 to-slate-700'
+                                                    }`}>
                                                 {job.status === 'won' ? '✓' : job.status === 'ignored' ? '✕' : job.status === 'called' ? '📞' : '⚡'}
                                             </div>
                                             <div>
