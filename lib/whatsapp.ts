@@ -384,10 +384,25 @@ function setupMessageListeners(userId: number, sock: any) {
                     }
 
                     console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
-                    await db.run(
-                        'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
+
+                    // MÜKERRER KONTROLÜ (DUPLICATE CHECK)
+                    // Son 15 dakika içinde aynı lokasyon ve fiyata sahip, aynı gönderen veya farklı gönderen farketmez (aynı iş farklı gruplara düşebilir) iş var mı?
+                    const duplicateCheck = await db.get(
+                        `SELECT id FROM captured_jobs 
+                         WHERE from_loc = ? AND to_loc = ? AND price = ? 
+                         AND created_at >= datetime('now', '-15 minutes')
+                         LIMIT 1`,
+                        [job.from_loc, job.to_loc, job.price]
                     );
+
+                    if (!duplicateCheck) {
+                        await db.run(
+                            'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                            [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
+                        );
+                    } else {
+                        console.log(`[WA] ⚠️ Duplicate job detected from ${senderJid}, skipping...`);
+                    }
                 }
                 if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
             }
