@@ -11,6 +11,7 @@ export default function DriverDashboard() {
     const [minPrice, setMinPrice] = useState<number>(0);
     const [regionSearch, setRegionSearch] = useState("");
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
+    const [soundEnabled, setSoundEnabled] = useState(true);
     const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
     const [showOnlyReady, setShowOnlyReady] = useState(false);
     const [showOnlyAirport, setShowOnlyAirport] = useState(false);
@@ -224,7 +225,7 @@ export default function DriverDashboard() {
     };
 
     const playAlert = () => {
-        if (audioRef.current) {
+        if (soundEnabled && audioRef.current) {
             audioRef.current.play().catch(() => { });
         }
     };
@@ -491,6 +492,12 @@ export default function DriverDashboard() {
                             className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
                         >
                             {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
+                        </button>
+                        <button
+                            onClick={() => setSoundEnabled(!soundEnabled)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${soundEnabled ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                        >
+                            {soundEnabled ? '🔔 SES: AÇIK' : '🔕 SES: KAPALI'}
                         </button>
                         <button
                             onClick={checkWAStatus}

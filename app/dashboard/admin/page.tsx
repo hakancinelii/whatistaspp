@@ -20,6 +20,19 @@ interface Stats {
     activeSessions: number;
 }
 
+interface UserDetail {
+    user: any;
+    waSession: any;
+    stats: {
+        okMessages: number;
+        wonJobs: number;
+        ignoredJobs: number;
+        totalEarnings: number;
+    };
+    recentInteractions: any[];
+    filters: any;
+}
+
 const PACKAGES_LIST = [
     { id: 'standard', label: "Standart Paket", color: "bg-blue-500/20 text-blue-300" },
     { id: 'gold', label: "Gold Paket", color: "bg-yellow-500/20 text-yellow-300" },
@@ -41,6 +54,9 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [selectedPackageUser, setSelectedPackageUser] = useState<User | null>(null);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+    const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -64,6 +80,24 @@ export default function AdminPage() {
             console.error("Fetch failed", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchUserDetail = async (userId: number) => {
+        setDetailLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setDetailUser(data);
+            }
+        } catch (error) {
+            console.error("User detail fetch failed", error);
+        } finally {
+            setDetailLoading(false);
         }
     };
 
@@ -157,6 +191,16 @@ export default function AdminPage() {
         }
     };
 
+    // Filtrelenmiş kullanıcılar
+    const filteredUsers = users.filter(u => {
+        if (statusFilter === 'active') return !!u.is_connected;
+        if (statusFilter === 'inactive') return !u.is_connected;
+        return true;
+    });
+
+    const activeCount = users.filter(u => !!u.is_connected).length;
+    const inactiveCount = users.filter(u => !u.is_connected).length;
+
     if (loading) return <div className="p-8 text-center text-gray-400">Yükleniyor...</div>;
 
     return (
@@ -181,8 +225,30 @@ export default function AdminPage() {
             )}
 
             <div className="bg-slate-800 rounded-xl border border-slate-700">
-                <div className="p-6 border-b border-slate-700">
+                <div className="p-6 border-b border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
                     <h2 className="text-xl font-bold text-white">Tenant (Müşteri) Yönetimi</h2>
+
+                    {/* Aktif / İnaktif Filtre */}
+                    <div className="flex gap-2 p-1 bg-slate-900 rounded-xl border border-white/5">
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${statusFilter === 'all' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            TÜMÜ ({users.length})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('active')}
+                            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${statusFilter === 'active' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            🟢 AKTİF ({activeCount})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('inactive')}
+                            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${statusFilter === 'inactive' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            ⚫ İNAKTİF ({inactiveCount})
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto min-h-[600px]">
@@ -198,18 +264,18 @@ export default function AdminPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700">
-                            {users.map(user => (
-                                <tr key={user.id} className="text-gray-300 hover:bg-slate-700/30 transition">
+                            {filteredUsers.map(user => (
+                                <tr key={user.id} className="text-gray-300 hover:bg-slate-700/30 transition cursor-pointer" onClick={() => fetchUserDetail(user.id)}>
                                     <td className="p-4">
                                         <div className="font-medium text-white">{user.name}</div>
                                         <div className="text-xs text-gray-500">{user.email}</div>
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-4" onClick={e => e.stopPropagation()}>
                                         <div className="text-xs font-mono text-gray-400 bg-slate-900/50 px-2 py-1 rounded inline-block">
                                             {user.plain_password || '********'}
                                         </div>
                                     </td>
-                                    <td className="p-4 relative">
+                                    <td className="p-4 relative" onClick={e => e.stopPropagation()}>
                                         <button
                                             onClick={() => setSelectedPackageUser(selectedPackageUser?.id === user.id ? null : user)}
                                             className={`px-3 py-1 rounded text-xs font-bold transition-all hover:scale-105 ${PACKAGES_LIST.find(p => p.id === user.package)?.color || 'bg-slate-700 text-gray-300'
@@ -249,7 +315,7 @@ export default function AdminPage() {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="p-4 text-right relative">
+                                    <td className="p-4 text-right relative" onClick={e => e.stopPropagation()}>
                                         <div className="flex justify-end gap-2">
                                             <button
                                                 onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
@@ -297,6 +363,145 @@ export default function AdminPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Kullanıcı Detay Modalı */}
+            {(detailUser || detailLoading) && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setDetailUser(null); setDetailLoading(false); }}>
+                    <div className="bg-slate-800 rounded-3xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+                        {detailLoading ? (
+                            <div className="p-12 text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
+                                <div className="text-slate-400 font-bold">Yükleniyor...</div>
+                            </div>
+                        ) : detailUser && (
+                            <>
+                                {/* Header */}
+                                <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-black text-xl">
+                                            {detailUser.user.name?.charAt(0)?.toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-black text-white">{detailUser.user.name}</h3>
+                                            <p className="text-xs text-slate-400">{detailUser.user.email}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setDetailUser(null)} className="text-slate-400 hover:text-white text-2xl">✕</button>
+                                </div>
+
+                                {/* İstatistik Kartları */}
+                                <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 text-center">
+                                        <div className="text-2xl font-black text-blue-400">{detailUser.stats.okMessages}</div>
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">OK Mesajı</div>
+                                    </div>
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 text-center">
+                                        <div className="text-2xl font-black text-green-400">{detailUser.stats.wonJobs}</div>
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Kazanılan İş</div>
+                                    </div>
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 text-center">
+                                        <div className="text-2xl font-black text-red-400">{detailUser.stats.ignoredJobs}</div>
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Yoksayılan</div>
+                                    </div>
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 text-center">
+                                        <div className="text-2xl font-black text-emerald-400">{detailUser.stats.totalEarnings.toLocaleString()} ₺</div>
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Toplam Kazanç</div>
+                                    </div>
+                                </div>
+
+                                {/* Bağlantı & Filtre Bilgisi */}
+                                <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">📡 WhatsApp Durumu</div>
+                                        {detailUser.waSession ? (
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${detailUser.waSession.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                                                <span className={`text-xs font-bold ${detailUser.waSession.is_connected ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {detailUser.waSession.is_connected ? 'BAĞLI' : 'BAĞLI DEĞİL'}
+                                                </span>
+                                                {detailUser.waSession.updated_at && (
+                                                    <span className="text-[10px] text-slate-600 ml-2">
+                                                        Son: {new Date(detailUser.waSession.updated_at).toLocaleString('tr-TR')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-500">Oturum bulunamadı</span>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">🎯 Aktif Filtreler</div>
+                                        {detailUser.filters ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-green-400 border border-white/5">
+                                                    💰 {detailUser.filters.min_price || 0}+ ₺
+                                                </span>
+                                                <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 border border-white/5">
+                                                    📋 {detailUser.filters.job_mode || 'all'}
+                                                </span>
+                                                <span className="bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 border border-white/5">
+                                                    {detailUser.filters.action_mode === 'auto' ? '⚡ OTO' : '👤 MANUEL'}
+                                                </span>
+                                                {detailUser.filters.regions?.length > 0 && (
+                                                    <span className="bg-blue-600/20 px-2 py-1 rounded-lg text-[10px] font-bold text-blue-400 border border-blue-500/20">
+                                                        🚩 {detailUser.filters.regions.length} Bölge
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-500">Filtre ayarlanmamış</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Son Etkileşimler */}
+                                <div className="px-6 pb-6">
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">📜 Son İş Etkileşimleri</div>
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                        {detailUser.recentInteractions.length > 0 ? detailUser.recentInteractions.map((item: any, i: number) => (
+                                            <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${item.status === 'called' ? 'bg-blue-500/5 border-blue-500/20' :
+                                                item.status === 'won' ? 'bg-green-500/5 border-green-500/20' :
+                                                    'bg-red-500/5 border-red-500/20'
+                                                }`}>
+                                                <div className="text-xl">
+                                                    {item.status === 'called' ? '📞' : item.status === 'won' ? '✅' : '❌'}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-black text-white truncate">
+                                                            {item.from_loc || '?'} → {item.to_loc || '?'}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-green-400">
+                                                            {item.price || '-'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] text-slate-500">
+                                                            {item.phone || '-'}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-600">
+                                                            {item.interaction_at ? new Date(item.interaction_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${item.status === 'called' ? 'bg-blue-500/20 text-blue-400' :
+                                                    item.status === 'won' ? 'bg-green-500/20 text-green-400' :
+                                                        'bg-red-500/20 text-red-400'
+                                                    }`}>
+                                                    {item.status === 'called' ? 'ARADI' : item.status === 'won' ? 'KAZANDI' : 'GEÇTİ'}
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="text-center py-8 text-slate-500 text-sm">Henüz etkileşim kaydı yok</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
