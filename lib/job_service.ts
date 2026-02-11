@@ -7,10 +7,38 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
 
     // 1. Get User Profile
     const userProfile = await db.get(
-        'SELECT id, name, driver_phone, driver_plate FROM users WHERE id = ?',
+        'SELECT id, name, driver_phone, driver_plate, role FROM users WHERE id = ?',
         [userId]
     );
-    if (!userProfile) throw new Error('User not found');
+    if (!userProfile) throw new Error('Kullanıcı bulunamadı.');
+
+    // ⛔ GÜVENLİK: Profil Bilgisi Kontrolü (Admin hariç)
+    if (userProfile.role !== 'admin') {
+        const missingFields = [];
+        if (!userProfile.name || userProfile.name.trim().length < 3) missingFields.push("Ad Soyad");
+        if (!userProfile.driver_phone || userProfile.driver_phone.trim().length < 10) missingFields.push("Telefon");
+        if (!userProfile.driver_plate || userProfile.driver_plate.trim().length < 5) missingFields.push("Plaka");
+
+        if (missingFields.length > 0) {
+            throw new Error(`⚠️ Profil bilgileriniz eksik: ${missingFields.join(', ')}. Lütfen önce profilinizi doldurun.`);
+        }
+    }
+
+    // ⛔ GÜVENLİK: Hız Sınırı (Rate Limiting)
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const recentInteractions = await db.all(
+        'SELECT created_at FROM job_interactions WHERE user_id = ? AND status = "won" AND created_at >= ?',
+        [userId, tenMinAgo]
+    );
+
+    if (recentInteractions.length >= 3) {
+        throw new Error('⚠️ Çok hızlı iş alıyorsunuz! Lütfen biraz bekleyin (10 dakikada en fazla 3 iş alabilirsiniz).');
+    }
+
+    const veryRecent = recentInteractions.some(i => new Date(i.created_at + (i.created_at.includes('Z') ? '' : 'Z')).getTime() > Date.now() - 45 * 1000);
+    if (veryRecent) {
+        throw new Error('⚠️ İki iş arasında en az 45 saniye beklemelisiniz.');
+    }
 
     // 2. Get Admin Settings (Proxy Mode)
     const adminUser = await db.get('SELECT id FROM users WHERE role = ?', ['admin']);
@@ -26,6 +54,12 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         );
     }
     if (!job) throw new Error('İş kaydı bulunamadı');
+
+    // ⛔ GÜVENLİK: Bu iş zaten birisi tarafından kazanılarak 'won' yapıldı mı?
+    const alreadyTaken = await db.get('SELECT id FROM job_interactions WHERE job_id = ? AND status = "won"', [job.id]);
+    if (alreadyTaken) {
+        throw new Error('⚠️ Bu iş az önce başka birisi tarafından alındı.');
+    }
 
     // 4. Determine Targets
     const targetGroupJid = job.group_jid || clientGroupJid;
