@@ -344,21 +344,29 @@ export default function DriverDashboard() {
             // 3. Takas Filtresi
             if (filterSwap && job.is_swap !== 1) return false;
 
-            // 4. Bölge Filtresi (Kalkış & Varış Kontrolü)
+            // 4. Bölge Filtresi (Kalkış Odaklı - From Loc)
             if (selectedRegions.length > 0) {
-                const hasRegionMatch = selectedRegions.some(regId => {
+                const normalizedFrom = normalize(job.from_loc || '');
+                const normalizedRaw = normalize(job.raw_message || '');
+
+                const hasMatch = selectedRegions.some(regId => {
                     const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
                     if (!reg) return false;
 
-                    const isAirportReg = reg.id === 'İHL' || reg.id === 'SAW';
                     return reg.keywords.some(key => {
                         const normalizedKey = normalize(key);
-                        // jobContent içinde ara (from, to, raw_message hepsi var)
-                        // Daha hassas kontrol için ayrı ayrı bakılabilir ama performans için bu yeterli
-                        return jobContent.includes(normalizedKey);
+
+                        // Eğer iş takaslıysa veya çoklu ise raw_message içinde ara (Çünkü from_loc 'ÇOKLU' olabilir)
+                        if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') {
+                            return normalizedRaw.includes(normalizedKey);
+                        }
+
+                        // Standart işse SADECE from_loc (Kalkış) içinde ara
+                        // Kullanıcı isteğine binaen: "Havalimanı seçtim, havalimanından çıkan işleri görmek istiyorum"
+                        return normalizedFrom.includes(normalizedKey);
                     });
                 });
-                if (!hasRegionMatch) return false;
+                if (!hasMatch) return false;
             }
 
             // 5. Havalimanı Filtresi (Buton için)
