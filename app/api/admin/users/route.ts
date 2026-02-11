@@ -14,10 +14,18 @@ export async function GET(request: NextRequest) {
 
         const db = await getDatabase();
 
-        // Stats
         const totalUsers = await db.get('SELECT COUNT(*) as count FROM users');
         const onlineUsers = await db.get(`SELECT COUNT(*) as count FROM user_heartbeat WHERE last_seen >= datetime('now', '-60 seconds')`);
         const activeSessions = await db.get('SELECT COUNT(*) as count FROM whatsapp_sessions WHERE is_connected = 1');
+
+        // Toplam Grup Sayısı (Discovery tablosundan)
+        let totalGroups = 0;
+        try {
+            const groupCount = await db.get('SELECT COUNT(*) as count FROM group_discovery');
+            totalGroups = groupCount?.count || 0;
+        } catch (e) {
+            console.warn("[Admin API] group_discovery table might not exist yet");
+        }
 
         // Users
         const users = await db.all(`
@@ -35,7 +43,8 @@ export async function GET(request: NextRequest) {
             stats: {
                 totalUsers: totalUsers?.count || 0,
                 onlineUsers: onlineUsers?.count || 0,
-                activeSessions: activeSessions?.count || 0
+                activeSessions: activeSessions?.count || 0,
+                totalGroups: totalGroups
             }
         });
     } catch (error: any) {
