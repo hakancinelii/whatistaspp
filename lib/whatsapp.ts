@@ -9,11 +9,11 @@ import { tryGemini } from './ai';
 
 // Use a global variable to persist sessions across HMR reloads in dev mode
 const globalForWhatsApp = global as unknown as {
-    whatsappSessions: Map<number, WhatsAppSession> | undefined;
+    whatsappSessions: Map<string, WhatsAppSession> | undefined;
     activeSendings: Map<number, any> | undefined;
 };
 
-const sessions = globalForWhatsApp.whatsappSessions ?? new Map<number, WhatsAppSession>();
+const sessions = globalForWhatsApp.whatsappSessions ?? new Map<string, WhatsAppSession>();
 export const activeSendings = globalForWhatsApp.activeSendings ?? new Map<number, any>();
 
 if (process.env.NODE_ENV !== 'production') {
@@ -30,9 +30,10 @@ export interface WhatsAppSession {
     lastAttempt?: number;
 }
 
-export async function getSession(userId: number): Promise<WhatsAppSession> {
-    if (!sessions.has(userId)) {
-        sessions.set(userId, {
+export async function getSession(userId: number, instanceId: string = 'main'): Promise<WhatsAppSession> {
+    const sessionKey = `${userId}_${instanceId}`;
+    if (!sessions.has(sessionKey)) {
+        sessions.set(sessionKey, {
             userId,
             sock: null,
             qrCode: null,
@@ -41,41 +42,43 @@ export async function getSession(userId: number): Promise<WhatsAppSession> {
         });
 
         // Auth state folder inside data directory for persistence
-        const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${userId}`);
-        if (!sessions.get(userId)?.isConnected && !sessions.get(userId)?.isConnecting && fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0) {
-            console.log(`[WA] Found existing session for user ${userId}. Auto-connecting...`);
+        const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${sessionKey}`);
+        const sessionInMap = sessions.get(sessionKey);
+        if (sessionInMap && !sessionInMap.isConnected && !sessionInMap.isConnecting && fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0) {
+            console.log(`[WA] Found existing session for ${sessionKey}. Auto-connecting...`);
             setTimeout(() => {
-                import('./whatsapp').then(m => m.connectWhatsApp(userId)).catch(e => console.error('[WA] Auto-connect failed:', e));
+                import('./whatsapp').then(m => m.connectWhatsApp(userId, instanceId)).catch(e => console.error('[WA] Auto-connect failed:', e));
             }, 100);
         }
     }
-    return sessions.get(userId)!;
+    return sessions.get(sessionKey)!;
 }
 
-export async function connectWhatsApp(userId: number, force = false): Promise<void> {
-    const session = await getSession(userId);
+export async function connectWhatsApp(userId: number, instanceId: string = 'main', force = false): Promise<void> {
+    const sessionKey = `${userId}_${instanceId}`;
+    const session = await getSession(userId, instanceId);
 
     // If already connected, we refresh listeners to ensure HMR code updates are active
     if (!force && session.isConnected && session.sock) {
-        console.log(`[WA] User ${userId} already connected. Refreshing listeners for HMR...`);
-        setupMessageListeners(userId, session.sock);
+        console.log(`[WA] Session ${sessionKey} already connected. Refreshing listeners...`);
+        setupMessageListeners(userId, session.sock, instanceId);
         return;
     }
 
     // Prevent spamming connection attempts (unless forced)
     const now = Date.now();
     if (!force && session.isConnecting && session.lastAttempt && (now - session.lastAttempt < 15000)) {
-        console.log(`[WA] Connection attempt already in progress for user ${userId}.`);
+        console.log(`[WA] Connection attempt already in progress for ${sessionKey}.`);
         return;
     }
 
-    console.log(`[WA] 🚀 User ${userId}: Initiating connection (force: ${force})...`);
+    console.log(`[WA] 🚀 Session ${sessionKey}: Initiating connection...`);
     session.isConnecting = true;
     session.lastAttempt = now;
     session.qrCode = null;
 
     try {
-        const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${userId}`);
+        const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${sessionKey}`);
         if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
 
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
@@ -124,14 +127,14 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
 
                 // QR bilgisini DB'ye kaydet
                 await db.run(
-                    'INSERT INTO whatsapp_sessions (user_id, session_id, qr_code, is_connected) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET qr_code = ?, is_connected = 0',
-                    [userId, `session_${userId}`, session.qrCode, 0, session.qrCode]
+                    'INSERT INTO whatsapp_sessions (user_id, session_id, qr_code, is_connected) VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET qr_code = ?, is_connected = 0',
+                    [userId, sessionKey, session.qrCode, 0, session.qrCode]
                 ).catch(() => { });
             }
 
             if (connection === 'close') {
                 const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-                console.log(`[WA] ❌ Connection closed for user ${userId}. Reason: ${reason}`);
+                console.log(`[WA] ❌ Connection closed for ${sessionKey}. Reason: ${reason}`);
 
                 session.isConnected = false;
                 session.isConnecting = false;
@@ -139,26 +142,26 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
 
                 // DB Güncelle: Bağlantı koptu
                 await db.run(
-                    'INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET is_connected = 0, qr_code = NULL',
-                    [userId, `session_${userId}`, 0, null]
+                    'INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code) VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET is_connected = 0, qr_code = NULL',
+                    [userId, sessionKey, 0, null]
                 ).catch(() => { });
 
                 if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
-                    console.log(`[WA] 🏹 Session invalidated for user ${userId}. Clearing auth...`);
+                    console.log(`[WA] 🏹 Session invalidated for ${sessionKey}. Clearing auth...`);
                     session.sock = null;
                     if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
-                    sessions.delete(userId);
+                    sessions.delete(sessionKey);
                 }
             } else if (connection === 'open') {
-                console.log(`[WA] ✅ User ${userId} connected successfully!`);
+                console.log(`[WA] ✅ Session ${sessionKey} connected successfully!`);
                 session.isConnected = true;
                 session.isConnecting = false;
                 session.qrCode = null;
 
                 // DB Güncelle: Bağlantı başarılı
                 await db.run(
-                    'INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code, last_connected) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET is_connected = 1, qr_code = NULL, last_connected = CURRENT_TIMESTAMP',
-                    [userId, `session_${userId}`, 1, null]
+                    'INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code, last_connected) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(session_id) DO UPDATE SET is_connected = 1, qr_code = NULL, last_connected = CURRENT_TIMESTAMP',
+                    [userId, sessionKey, 1, null]
                 ).catch(() => { });
             }
         });
@@ -285,17 +288,18 @@ export async function connectWhatsApp(userId: number, force = false): Promise<vo
             }
         });
 
-        setupMessageListeners(userId, sock);
+        setupMessageListeners(userId, sock, instanceId);
 
     } catch (error) {
-        console.error(`[WA] 🚨 Fatal error for user ${userId}:`, error);
+        console.error(`[WA] 🚨 Fatal error for ${sessionKey}:`, error);
         session.isConnecting = false;
         session.qrCode = null;
     }
 }
 
-function setupMessageListeners(userId: number, sock: any) {
-    console.log(`[WA] 📡 Setting up message listeners for user ${userId}...`);
+function setupMessageListeners(userId: number, sock: any, instanceId: string = 'main') {
+    const sessionKey = `${userId}_${instanceId}`;
+    console.log(`[WA] 📡 Setting up message listeners for ${sessionKey}...`);
     sock.ev.removeAllListeners('messages.upsert');
 
     sock.ev.on('messages.upsert', async (m: any) => {
@@ -345,7 +349,7 @@ function setupMessageListeners(userId: number, sock: any) {
                 return;
             }
 
-            console.log(`[WA] 📥 Message detected: ${from} (Group: ${isGroup}, fromMe: ${isFromMe})`);
+            console.log(`[WA] 📥 Message [${instanceId}] detected: ${from} (Group: ${isGroup}, fromMe: ${isFromMe})`);
 
             let text = msg.message.conversation ||
                 msg.message.extendedTextMessage?.text ||
@@ -544,9 +548,10 @@ async function syncContactProfile(userId: number, sock: any, phone: string) {
     }
 }
 
-export async function disconnectWhatsApp(userId: number): Promise<void> {
-    console.log(`[WA] 🧹 Explicitly disconnecting user ${userId}...`);
-    const session = await getSession(userId);
+export async function disconnectWhatsApp(userId: number, instanceId: string = 'main'): Promise<void> {
+    const sessionKey = `${userId}_${instanceId}`;
+    console.log(`[WA] 🧹 Explicitly disconnecting ${sessionKey}...`);
+    const session = await getSession(userId, instanceId);
 
     if (session.sock) {
         try {
@@ -560,15 +565,16 @@ export async function disconnectWhatsApp(userId: number): Promise<void> {
     session.qrCode = null;
     session.sock = null;
 
-    const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${userId}`);
+    const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${sessionKey}`);
     if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
 
-    sessions.delete(userId);
-    console.log(`[WA] User ${userId} cleared.`);
+    sessions.delete(sessionKey);
+    console.log(`[WA] ${sessionKey} cleared.`);
 }
 
-export async function sendMessage(userId: number, to: string, message: string, options?: { mediaUrl?: string, mediaType?: string, mediaMimeType?: string, duration?: number }): Promise<boolean> {
-    const session = await getSession(userId);
+export async function sendMessage(userId: number, to: string, message: string, options?: { mediaUrl?: string, mediaType?: string, mediaMimeType?: string, duration?: number, instanceId?: string }): Promise<boolean> {
+    const instanceId = options?.instanceId || 'main';
+    const session = await getSession(userId, instanceId);
     if (!session.isConnected || !session.sock) return false;
 
     try {

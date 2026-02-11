@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const session = await getSession(user.userId);
+        const { searchParams } = new URL(request.url);
+        const instanceId = searchParams.get('instanceId') || 'main';
+
+        const session = await getSession(user.userId, instanceId);
 
         // Ensure listeners and scheduler are active
         const { initScheduler } = require('@/lib/whatsapp');
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
         // If not connected and not connecting and no QR, try to connect (auto-reconnect logic)
         if (!session.isConnected && !session.isConnecting && !session.qrCode) {
             const { connectWhatsApp } = require('@/lib/whatsapp');
-            connectWhatsApp(user.userId).catch(console.error);
+            connectWhatsApp(user.userId, instanceId).catch(console.error);
         }
 
         return NextResponse.json({

@@ -10,8 +10,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const { searchParams } = new URL(request.url);
+        const instanceId = searchParams.get('instanceId') || 'main';
+
         // Start connection in background (force fresh start)
-        connectWhatsApp(user.userId, true);
+        connectWhatsApp(user.userId, instanceId, true);
 
         return NextResponse.json({ success: true, message: 'Connection started' });
     } catch (error: any) {

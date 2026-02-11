@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await disconnectWhatsApp(user.userId);
+        const { searchParams } = new URL(request.url);
+        const instanceId = searchParams.get('instanceId') || 'main';
+
+        await disconnectWhatsApp(user.userId, instanceId);
 
         return NextResponse.json({ success: true, message: 'Disconnected successfully' });
     } catch (error: any) {
