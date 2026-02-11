@@ -131,15 +131,27 @@ export async function POST(request: NextRequest) {
 
                 // EĞER PROXY KULLANILIYORSA ADMIN'E BİLGİ VER
                 if (isUsingProxy && adminUser) {
-                    const adminJid = `${adminUser.email.includes('@') ? adminUser.id : adminUser.email}@s.whatsapp.net`; // Admin kendi kendine mesaj atsın
-                    // Not: adminUser nesnesinde email admin@... ise bunu telefon olarak kullanamayız. 
-                    // Ancak genelde admin kendi WhatsApp'ına bağlıdır. JID'sini kendi session'ından alabiliriz.
                     const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
-
                     const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden bir işe mesaj gönderdi.\n\n👤 *Müşteri:* ${customerPhone}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
 
                     await session.sock.sendMessage(myJid, { text: adminNotify });
                     console.log(`[API Take Job] Admin notified about proxy action.`);
+
+                    // ŞOFÖRE DE BİLGİ VER (Admin üzerinden)
+                    if (userProfile?.driver_phone) {
+                        try {
+                            let drPhone = userProfile.driver_phone.replace(/\D/g, '');
+                            if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
+                            else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
+                            const drJid = `${drPhone}@s.whatsapp.net`;
+
+                            const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için mesaj müşteri (${customerPhone}) ve gruba *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
+                            await session.sock.sendMessage(drJid, { text: driverNotify });
+                            console.log(`[API Take Job] Driver notified via WhatsApp about proxy action.`);
+                        } catch (e) {
+                            console.error("[API Take Job] Error notifying driver via proxy WA:", e);
+                        }
+                    }
                 }
 
             } catch (dmError: any) {
@@ -156,6 +168,18 @@ export async function POST(request: NextRequest) {
                     const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
                     const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden grup mesaj sahibine ulaştı.\n\n👤 *Müşteri JID:* ${jid}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
                     await session.sock.sendMessage(myJid, { text: adminNotify });
+
+                    // Şoföre bilgi ver
+                    if (userProfile?.driver_phone) {
+                        try {
+                            let drPhone = userProfile.driver_phone.replace(/\D/g, '');
+                            if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
+                            else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
+                            const drJid = `${drPhone}@s.whatsapp.net`;
+                            const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için *Grup Sahibine* mesaj *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
+                            await session.sock.sendMessage(drJid, { text: driverNotify });
+                        } catch (e) { }
+                    }
                 }
             } catch (backupError: any) {
                 console.error('[API Take Job] Backup DM Error:', backupError.message);
