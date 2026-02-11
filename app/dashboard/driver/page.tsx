@@ -934,7 +934,7 @@ export default function DriverDashboard() {
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 <input
                     type="text"
-                    placeholder="Bölge veya kelime ara..."
+                    placeholder="Varış yeri veya kelime ara..."
                     className="bg-slate-800 border-none text-white text-xs font-bold rounded-xl px-4 py-3 min-w-[200px] flex-1 focus:ring-1 focus:ring-blue-500 placeholder-slate-500"
                     value={regionSearch}
                     onChange={(e) => setRegionSearch(e.target.value)}
