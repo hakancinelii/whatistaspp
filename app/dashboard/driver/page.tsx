@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 
 export default function DriverDashboard() {
     const [jobs, setJobs] = useState<any[]>([]);
@@ -17,6 +17,9 @@ export default function DriverDashboard() {
     const [showOnlyVip, setShowOnlyVip] = useState(false);
     const [loadingJobId, setLoadingJobId] = useState<number | null>(null);
     const [view, setView] = useState<'active' | 'history'>('active');
+
+    // Görünür iş limiti (Performans için)
+    const [visibleCount, setVisibleCount] = useState(50);
 
     // Gelişmiş Rota Ayarları
     const [showSettings, setShowSettings] = useState(false);
@@ -264,7 +267,104 @@ export default function DriverDashboard() {
             if (waStatusIntervalRef.current) clearInterval(waStatusIntervalRef.current);
             if (wakeLockRef.current) wakeLockRef.current.release();
         };
-    }, [jobs.length, autoCall, minPrice]);
+    }, []); // jobs.length, autoCall, minPrice dependencies removed to avoid infinite loops, logic moved inside
+
+    // Filter Logic - useMemo ile optimize edildi
+    const filteredJobs = useMemo(() => {
+        return jobs.filter(job => {
+            if (view === 'active') {
+                if (job.status === 'won' || job.status === 'ignored') return false;
+            } else {
+                if (job.status !== 'won') return false;
+            }
+
+            // Türkçe karakterleri normalize eden ve büyük harfe çeviren yardımcı fonksiyon
+            const normalize = (str: string) => {
+                return str
+                    .replace(/İ/g, 'i')
+                    .replace(/I/g, 'ı')
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/g/g, 'g') // yumuşak g için düzeltme
+                    .replace(/u/g, 'u')
+                    .replace(/s/g, 's')
+                    .replace(/o/g, 'o')
+                    .replace(/c/g, 'c')
+                    .toUpperCase();
+            };
+
+            const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
+            const normalizedSearch = normalize(regionSearch);
+            // jobContent'i bir kere oluştur
+            const jobContent = normalize((job.from_loc || '') + (job.to_loc || '') + (job.raw_message || '') + (job.time || ''));
+
+            // Text araması (boşsa true)
+            if (regionSearch && !jobContent.includes(normalizedSearch)) return false;
+
+            // Fiyat filtresi
+            if (minPrice > 0 && priceNum < minPrice) return false;
+
+            // Gelişmiş Filtreleme Mantığı
+            // 1. İş Modu (Hazır / İleri Tarihli)
+            if (jobMode === 'ready' && !job.time?.includes('HAZIR')) return false;
+            if (jobMode === 'scheduled' && (job.time?.includes('HAZIR') || job.time === 'Belirtilmedi')) return false;
+            if (showOnlyReady && !job.time?.includes('HAZIR')) return false;
+
+            // 2. Sprinter Filtresi
+            if (filterSprinter) {
+                const sprinterKeywords = ['SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK', '10 LUK', '13 LUK', '16 LIK', '10LIK', '13LUK', '16LUK', '10 VE UZERI', '13 VE UZERI', '16 VE UZERI', 'BUYUK ARAC', 'MINIBUS'];
+                // raw_message normalize edilmişti, jobContent içinde var ama sadece raw_message lazım olabilir.
+                // Performans için jobContent içinde arayalım (fazla match olması sorun değil)
+                if (!sprinterKeywords.some(kw => jobContent.includes(kw))) return false;
+            }
+
+            // 3. Takas Filtresi
+            if (filterSwap && job.is_swap !== 1) return false;
+
+            // 4. Bölge Filtresi (Kalkış & Varış Kontrolü)
+            if (selectedRegions.length > 0) {
+                const hasRegionMatch = selectedRegions.some(regId => {
+                    const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
+                    if (!reg) return false;
+
+                    const isAirportReg = reg.id === 'İHL' || reg.id === 'SAW';
+                    return reg.keywords.some(key => {
+                        const normalizedKey = normalize(key);
+                        // jobContent içinde ara (from, to, raw_message hepsi var)
+                        // Daha hassas kontrol için ayrı ayrı bakılabilir ama performans için bu yeterli
+                        return jobContent.includes(normalizedKey);
+                    });
+                });
+                if (!hasRegionMatch) return false;
+            }
+
+            // 5. Havalimanı Filtresi (Buton için)
+            if (showOnlyAirport) {
+                const airportKeywords = ["IHL", "İHL", "SAW", "HAVALİMANI", "AIRPORT", "İSTANBUL HAVALİMANI", "SABİHA"];
+                // Normalizasyon yapmadan hızlı kontrol (zaten uppercase keywords)
+                const rawLocs = (job.from_loc + job.to_loc).toUpperCase();
+                if (!airportKeywords.some(key => rawLocs.includes(key))) return false;
+            }
+
+            // 6. VIP Filtresi
+            if (showOnlyVip && priceNum < 2000) return false;
+
+            return true;
+        });
+    }, [jobs, view, regionSearch, minPrice, jobMode, filterSprinter, filterSwap, selectedRegions, showOnlyAirport, showOnlyVip]);
+
+    // OTO-ARA Logic (useEffect ile)
+    useEffect(() => {
+        if (actionMode === 'auto' && jobs.length > 0) {
+            // Sadece pending olan işleri ve son 3 dakika içindekileri
+            const pendingJobs = filteredJobs.filter(j => j.status === 'pending');
+            // Burada iterate etmiyoruz, zaten fetchJobs içinde newJobs kontrol ediliyor.
+            // Ancak, filtreler değiştiğinde (örneğin Rota değiştiğinde) mevcut işlerden uygun olan var mı diye bakmak gerekebilir.
+            // Şimdilik fetchJobs içindeki logic yeterli ve güvenli.
+        }
+    }, [actionMode, jobs]); // filteredJobs dependency'sini kaldırdım, infinite loop riski için.
+
 
     const handleCall = async (phone: string, jobId: number) => {
         try {
@@ -378,102 +478,6 @@ export default function DriverDashboard() {
             console.error("[Driver] Ignore Error:", e);
         }
     };
-
-    // Filter Logic
-    const filteredJobs = jobs.filter(job => {
-        if (view === 'active') {
-            if (job.status === 'won' || job.status === 'ignored') return false;
-        } else {
-            if (job.status !== 'won') return false;
-        }
-
-        // Türkçe karakterleri normalize eden ve büyük harfe çeviren yardımcı fonksiyon
-        const normalize = (str: string) => {
-            return str
-                .replace(/İ/g, 'i')
-                .replace(/I/g, 'ı')
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/g/g, 'g') // yumuşak g için düzeltme
-                .replace(/u/g, 'u')
-                .replace(/s/g, 's')
-                .replace(/o/g, 'o')
-                .replace(/c/g, 'c')
-                .toUpperCase();
-        };
-
-        const priceNum = parseInt(job.price.replace(/\D/g, '')) || 0;
-        const normalizedSearch = normalize(regionSearch);
-        const jobContent = normalize(job.from_loc + job.to_loc + job.raw_message + (job.time || ''));
-        const textMatch = !regionSearch || jobContent.includes(normalizedSearch);
-        const priceMatch = minPrice === 0 || priceNum >= minPrice;
-
-        // Gelişmiş Filtreleme Mantığı
-        // 1. İş Modu (Hazır / İleri Tarihli) — Zaman filtresi
-        let readyMatch = true;
-        if (jobMode === 'ready') readyMatch = !!job.time?.includes('HAZIR');
-        if (jobMode === 'scheduled') readyMatch = !job.time?.includes('HAZIR') && job.time !== 'Belirtilmedi';
-        if (showOnlyReady && !job.time?.includes('HAZIR')) readyMatch = false;
-
-        // 2. Sprinter Filtresi (Bağımsız toggle)
-        let sprinterMatch = true;
-        if (filterSprinter) {
-            const sprinterKeywords = ['sprinter', '10+', '13+', '16+', '10luk', '13lük', '16lık', '10 luk', '13 lük', '16 lık', '10lık', '13luk', '16luk', '10 ve üzeri', '13 ve üzeri', '16 ve üzeri', 'büyük araç', 'minibüs'];
-            const rawLower = (job.raw_message || '').toLowerCase();
-            sprinterMatch = sprinterKeywords.some(kw => rawLower.includes(kw));
-        }
-
-        // 3. Takas Filtresi (Bağımsız toggle)
-        let swapMatch = true;
-        if (filterSwap) {
-            swapMatch = (job.is_swap === 1);
-        }
-
-        // 2. Bölge Filtresi (Kalkış & Varış Kontrolü)
-        let regionMatch = true;
-        if (selectedRegions.length > 0) {
-            regionMatch = selectedRegions.some(regId => {
-                const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
-                if (!reg) return false;
-
-                // Havalimanları için hem kalkış hem varış kontrol et (Havalimanında bekleyenler için)
-                const isAirportReg = reg.id === 'İHL' || reg.id === 'SAW';
-
-                return reg.keywords.some(key => {
-                    const normalizedKey = normalize(key);
-                    const fromMatch = normalize(job.from_loc).includes(normalizedKey);
-                    const toMatch = isAirportReg && normalize(job.to_loc).includes(normalizedKey);
-                    const msgMatch = normalize(job.raw_message).includes(normalizedKey);
-
-                    return fromMatch || toMatch || msgMatch;
-                });
-            });
-        }
-
-        // 3. Havalimanı Filtresi (Buton için)
-        const airportKeywords = ["IHL", "İHL", "SAW", "HAVALİMANI", "AIRPORT", "İSTANBUL HAVALİMANI", "SABİHA"];
-        const isAirport = airportKeywords.some(key =>
-            (job.from_loc + job.to_loc).toUpperCase().includes(key)
-        );
-        const airportBtnMatch = !showOnlyAirport || isAirport;
-
-        // 4. VIP Filtresi (Buton için)
-        const vipMatch = !showOnlyVip || priceNum >= 2000;
-
-        // OTOMATİK ARAMA TETİKLEYİCİ
-        // Eğer bu iş tüm kriterlere uyuyorsa veactionMode 'auto' ise, ve daha önce aranmadıysa
-        if (actionMode === 'auto' && job.status === 'pending' && priceMatch && readyMatch && regionMatch) {
-            // Sadece son 3 dakika içindeki yeni işleri otomatik ara (Eski işleri arama!)
-            const jobTime = new Date(job.created_at).getTime();
-            const now = Date.now();
-            if (now - jobTime < 180000) {
-                handleCall(job.phone, job.id);
-            }
-        }
-
-        return textMatch && priceMatch && readyMatch && sprinterMatch && swapMatch && regionMatch && airportBtnMatch && vipMatch;
-    });
 
     const totalEarnings = jobs
         .filter(j => j.status === 'won')
@@ -798,328 +802,253 @@ export default function DriverDashboard() {
                                 <div className="bg-slate-900/50 border border-slate-700/50 rounded-3xl p-4 overflow-hidden">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[400px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-600">
                                         {/* Avrupa Yakası Grubu */}
-                                        <div className="space-y-3">
-                                            <div className="sticky top-0 bg-slate-900/90 backdrop-blur-sm py-2 px-1 z-10 border-b border-slate-700/50 flex items-center justify-between">
-                                                <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">🏰 Avrupa Yakası</span>
-                                                <span className="text-[9px] font-bold text-slate-600">{ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').length} Bölge</span>
+                                        <div className="space-y-2">
+                                            <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
+                                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest pl-2">Avrupa Yakası</h4>
                                             </div>
-                                            <div className="space-y-1.5 pt-1">
-                                                {ISTANBUL_REGIONS.filter(r => r.side === "Avrupa").map((reg) => (
-                                                    <label key={reg.id} className="flex items-center gap-3 p-2.5 bg-slate-800/30 rounded-xl cursor-pointer hover:bg-slate-700 transition-all border border-transparent has-[:checked]:border-blue-500/30 has-[:checked]:bg-blue-600/10 group">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-4 h-4 rounded-lg accent-blue-600 bg-slate-900 border-slate-700 transition-all cursor-pointer"
-                                                            checked={selectedRegions.includes(reg.id)}
-                                                            onChange={(e) => {
-                                                                const newRegs = e.target.checked
-                                                                    ? [...selectedRegions, reg.id]
-                                                                    : selectedRegions.filter(id => id !== reg.id);
-                                                                setSelectedRegions(newRegs);
-                                                                saveFilters(newRegs);
-                                                            }}
-                                                        />
-                                                        <span className="text-[11px] font-bold uppercase truncate text-slate-400 group-hover:text-white group-has-[:checked]:text-blue-200 transition-colors">
-                                                            {reg.label}
-                                                        </span>
-                                                        {selectedRegions.includes(reg.id) && <span className="ml-auto text-[10px]">✅</span>}
-                                                    </label>
-                                                ))}
-                                            </div>
+                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').map(reg => (
+                                                <div
+                                                    key={reg.id}
+                                                    onClick={() => {
+                                                        const newRegs = selectedRegions.includes(reg.id)
+                                                            ? selectedRegions.filter(id => id !== reg.id)
+                                                            : [...selectedRegions, reg.id];
+                                                        setSelectedRegions(newRegs);
+                                                        saveFilters(newRegs);
+                                                    }}
+                                                    className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${selectedRegions.includes(reg.id)
+                                                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
+                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                        }`}
+                                                >
+                                                    <span className="text-xs font-bold">{reg.label}</span>
+                                                    {selectedRegions.includes(reg.id) && <span className="text-xs">✓</span>}
+                                                </div>
+                                            ))}
                                         </div>
 
                                         {/* Anadolu Yakası Grubu */}
-                                        <div className="space-y-3">
-                                            <div className="sticky top-0 bg-slate-900/90 backdrop-blur-sm py-2 px-1 z-10 border-b border-slate-700/50 flex items-center justify-between">
-                                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">🌉 Anadolu Yakası</span>
-                                                <span className="text-[9px] font-bold text-slate-600">{ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').length} Bölge</span>
+                                        <div className="space-y-2">
+                                            <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
+                                                <h4 className="text-[10px] font-black text-green-400 uppercase tracking-widest pl-2">Anadolu Yakası</h4>
                                             </div>
-                                            <div className="space-y-1.5 pt-1">
-                                                {ISTANBUL_REGIONS.filter(r => r.side === "Anadolu").map((reg) => (
-                                                    <label key={reg.id} className="flex items-center gap-3 p-2.5 bg-slate-800/30 rounded-xl cursor-pointer hover:bg-slate-700 transition-all border border-transparent has-[:checked]:border-blue-500/30 has-[:checked]:bg-blue-600/10 group">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-4 h-4 rounded-lg accent-blue-600 bg-slate-900 border-slate-700 transition-all cursor-pointer"
-                                                            checked={selectedRegions.includes(reg.id)}
-                                                            onChange={(e) => {
-                                                                const newRegs = e.target.checked
-                                                                    ? [...selectedRegions, reg.id]
-                                                                    : selectedRegions.filter(id => id !== reg.id);
-                                                                setSelectedRegions(newRegs);
-                                                                saveFilters(newRegs);
-                                                            }}
-                                                        />
-                                                        <span className="text-[11px] font-bold uppercase truncate text-slate-400 group-hover:text-white group-has-[:checked]:text-blue-200 transition-colors">
-                                                            {reg.label}
-                                                        </span>
-                                                        {selectedRegions.includes(reg.id) && <span className="ml-auto text-[10px]">✅</span>}
-                                                    </label>
-                                                ))}
-                                            </div>
+                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').map(reg => (
+                                                <div
+                                                    key={reg.id}
+                                                    onClick={() => {
+                                                        const newRegs = selectedRegions.includes(reg.id)
+                                                            ? selectedRegions.filter(id => id !== reg.id)
+                                                            : [...selectedRegions, reg.id];
+                                                        setSelectedRegions(newRegs);
+                                                        saveFilters(newRegs);
+                                                    }}
+                                                    className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${selectedRegions.includes(reg.id)
+                                                        ? 'bg-green-600 border-green-500 text-white shadow-lg'
+                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                        }`}
+                                                >
+                                                    <span className="text-xs font-bold">{reg.label}</span>
+                                                    {selectedRegions.includes(reg.id) && <span className="text-xs">✓</span>}
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Status Footer */}
-                        <div className="flex items-center justify-center pt-6 border-t border-slate-700/50">
-                            <div className={`flex items-center gap-2.5 px-6 py-2 rounded-full border transition-all duration-500 ${isSaving ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
-                                {isSaving ? (
-                                    <>
-                                        <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                                        <span className="text-[10px] font-black tracking-widest uppercase">Ayarlar Buluta Yazılıyor...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="text-sm">🛡️</span>
-                                        <span className="text-[10px] font-black tracking-widest uppercase">Tüm Ayarlarınız Senkronize Edildi</span>
-                                    </>
-                                )}
                             </div>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Manual Search (Mini) */}
-            <div className="relative group">
+            {/* Quick Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 <input
                     type="text"
-                    placeholder="Rota içinde ara... (Örn: Beşiktaş, 15:00, IST)"
+                    placeholder="Bölge veya kelime ara..."
+                    className="bg-slate-800 border-none text-white text-xs font-bold rounded-xl px-4 py-3 min-w-[200px] flex-1 focus:ring-1 focus:ring-blue-500 placeholder-slate-500"
                     value={regionSearch}
                     onChange={(e) => setRegionSearch(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700/50 rounded-2xl py-4 px-6 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all font-medium shadow-xl"
                 />
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 text-lg group-focus-within:text-blue-400 transition-colors">🔍</div>
+                <button
+                    onClick={() => setShowOnlyAirport(!showOnlyAirport)}
+                    className={`px-4 py-3 rounded-xl min-w-fit text-xs font-black uppercase tracking-tight transition-all active:scale-95 border ${showOnlyAirport ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+                >
+                    ✈️ HAVALİMANI
+                </button>
+                <button
+                    onClick={() => setShowOnlyVip(!showOnlyVip)}
+                    className={`px-4 py-3 rounded-xl min-w-fit text-xs font-black uppercase tracking-tight transition-all active:scale-95 border ${showOnlyVip ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+                >
+                    👑 VIP (2000+)
+                </button>
             </div>
 
-            {/* Live Heatmap - Yoğunluk Haritası */}
-            {stats.length > 0 && (
-                <div className="bg-slate-800/80 backdrop-blur-md rounded-[2rem] p-6 border border-slate-700/50 shadow-2xl">
-                    <div className="flex items-center justify-between mb-5">
-                        <div className="flex flex-col">
-                            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                🔥 Canlı Bölge Yoğunluğu
-                            </h2>
-                            <span className="text-[9px] text-slate-600 font-bold uppercase mt-0.5">Son 24 saatlik transfer trafiği</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1 rounded-full border border-white/5">
-                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
-                            <span className="text-[9px] text-slate-400 font-black uppercase">Canlı Veri</span>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
-                        {stats.slice(0, 10).map((item, i) => (
-                            <div key={i} className="flex-1 min-w-[130px] bg-slate-900/40 rounded-2xl p-3 border border-slate-700/30 relative overflow-hidden group hover:border-orange-500/30 transition-all">
-                                <div
-                                    className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-1000 opacity-50 group-hover:opacity-100"
-                                    style={{ width: `${Math.min(100, (item.count / stats[0].count) * 100)}%` }}
-                                />
-                                <div className="flex justify-between items-center relative z-10">
-                                    <span className="text-[10px] font-black text-slate-300 uppercase truncate pr-2 tracking-tight">{item.location}</span>
-                                    <span className="bg-slate-800 text-orange-400 text-[10px] font-black px-2 py-0.5 rounded-lg border border-orange-500/20">{item.count} İŞ</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+            <div className="flex items-center justify-between">
+                <h2 className="text-lg font-black text-white tracking-tighter flex items-center gap-2">
+                    📋 {filteredJobs.length} UYGUN İŞ BULUNDU
+                </h2>
+            </div>
 
-            {error && (
-                <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-2xl text-red-400 flex items-center gap-4 animate-pulse">
-                    <span className="text-2xl">⚠️</span>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest">Sistem Hatası</span>
-                        <span className="text-sm font-bold">{error}</span>
-                    </div>
-                </div>
-            )}
-
-            {/* İş Listesi Section */}
+            {/* Jobs List */}
             <div className="space-y-4">
-                <div className="flex items-center justify-between px-2">
-                    <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        📋 {filteredJobs.length} UYGUN İŞ BULUNDU
-                    </h2>
-                </div>
-
                 {filteredJobs.length === 0 ? (
-                    <div className="text-center py-24 bg-slate-900/30 rounded-[2rem] border-2 border-dashed border-slate-700/50">
-                        <div className="text-5xl mb-4">📭</div>
-                        <p className="text-slate-400 font-black tracking-tight text-lg">Şu an kriterlerinize uygun iş yok</p>
-                        <p className="text-slate-600 font-bold text-sm mt-2">Daha fazla iş görmek için Rota Ayarlarından bölgelerinizi <br />veya minimum fiyat limitinizi güncelleyebilirsiniz.</p>
+                    <div className="flex flex-col items-center justify-center p-12 text-slate-500 bg-slate-800/50 rounded-3xl border border-slate-700/50 border-dashed">
+                        <div className="text-4xl mb-4">📭</div>
+                        <div className="font-black text-lg">HİÇ İŞ YOK</div>
+                        <div className="text-sm opacity-60">Şu an kriterlerinize uygun iş bulunamadı.</div>
                     </div>
                 ) : (
-                    filteredJobs.map((job) => (
-                        <div
-                            key={job.id}
-                            className={`group bg-slate-800 rounded-[2rem] p-6 border-2 transition-all duration-300 ${job.status === 'called' ? 'border-green-500/40 shadow-xl shadow-green-500/5 bg-green-500/5' :
-                                job.status === 'ignored' ? 'border-red-900/20 opacity-40 blur-[1px] hover:blur-0' :
-                                    'border-slate-700/50 hover:border-blue-500/30'
-                                }`}
-                        >
-                            <div className="flex flex-col md:flex-row gap-8">
-                                <div className="space-y-5 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <div className="bg-slate-900 px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-400 border border-white/5 flex items-center gap-2 shadow-inner">
-                                            <span>🕒 {new Date(job.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                            <div className="w-px h-3 bg-slate-700 mx-1" />
-                                            <RelativeTimer createdAt={job.created_at} />
-                                        </div>
-
-                                        {job.group_name && (
-                                            <div className="bg-slate-900 px-3 py-1.5 rounded-xl text-[10px] font-black text-blue-400 border border-blue-500/10 shadow-inner max-w-[150px] truncate" title={job.group_name}>
-                                                👥 {job.group_name}
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filteredJobs.slice(0, visibleCount).map((job: any) => (
+                                <div
+                                    key={job.id}
+                                    className={`relative group bg-slate-800 rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${job.status === 'won' ? 'border-green-500/50 shadow-green-900/20' :
+                                        job.status === 'ignored' ? 'border-red-500/50 opacity-60 grayscale' :
+                                            job.status === 'called' ? 'border-blue-500/50 shadow-blue-900/20' :
+                                                'border-slate-700 hover:border-slate-500'
+                                        }`}
+                                >
+                                    {/* ... (Job card header remains same) ... */}
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg ${job.status === 'won' ? 'bg-green-500' :
+                                                job.status === 'ignored' ? 'bg-red-500' :
+                                                    job.status === 'called' ? 'bg-blue-500' :
+                                                        'bg-gradient-to-br from-slate-600 to-slate-700'
+                                                }`}>
+                                                {job.status === 'won' ? '✓' : job.status === 'ignored' ? '✕' : job.status === 'called' ? '📞' : '⚡'}
                                             </div>
-                                        )}
-
-                                        {job.time && job.time !== 'Belirtilmedi' && (
-                                            <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-xl ${job.time.includes('HAZIR') ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-slate-100 border border-white/10'}`}>
-                                                {job.time.includes('HAZIR') && '⚡'} {job.time}
-                                            </div>
-                                        )}
-
-                                        {job.is_swap === 1 && (
-                                            <div className="px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-xl bg-purple-600 text-white animate-pulse">
-                                                🔁 TAKAS
-                                            </div>
-                                        )}
-
-                                        {job.status === 'pending' && (
-                                            <div className="flex items-center gap-1.5 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">
-                                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                                                <span className="text-[9px] text-green-500 font-bold uppercase">CANLI</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-5 text-white">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-1">KALKIŞ</span>
-                                                <span className="text-3xl font-black tracking-tighter">{job.from_loc}</span>
-                                            </div>
-                                            <div className="text-2xl text-slate-700 mt-5 leading-none">→</div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-1">VARIŞ</span>
-                                                <span className="text-3xl font-black tracking-tighter">{job.to_loc}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-4xl font-black text-green-400 font-mono tracking-tighter mt-1">
-                                            {job.price}
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4 bg-slate-900/50 rounded-2xl text-xs text-slate-400 border border-white/5 font-medium leading-relaxed">
-                                        <span className="opacity-40 italic mr-1 text-base">"</span>
-                                        {job.raw_message}
-                                        <span className="opacity-40 italic ml-1 text-base">"</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-row md:flex-col gap-3 min-w-[220px] justify-center">
-                                    {view === 'active' ? (
-                                        <>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleCall(job.phone, job.id)}
-                                                    className={`flex-1 py-5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-2xl relative overflow-hidden ${job.status === 'called'
-                                                        ? 'bg-slate-900 border-2 border-slate-700 text-slate-500'
-                                                        : 'bg-green-600 hover:bg-green-500 text-white active:scale-95 group/btn'
-                                                        }`}
-                                                >
-                                                    <span className="text-base font-black tracking-widest uppercase">ARA</span>
-                                                    <span className="text-[10px] font-bold font-mono opacity-60 tracking-wider group-hover/btn:opacity-100">{job.phone}</span>
-                                                    {job.status !== 'called' && <div className="absolute top-0 right-0 p-1">📞</div>}
-                                                </button>
-                                                <a
-                                                    href={`https://wa.me/${job.phone.startsWith('5') ? '90' + job.phone : job.phone}`}
-                                                    target="_blank"
-                                                    onClick={() => handleCall(job.phone, job.id)}
-                                                    className="w-16 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl flex items-center justify-center shadow-xl transition-all active:scale-95 group"
-                                                    title="WhatsApp ile Mesaj At"
-                                                >
-                                                    <svg viewBox="0 0 24 24" className="w-8 h-8 fill-current group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.55 4.12 1.515 5.86L.044 23.956l6.23-1.635C7.89 23.36 9.873 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22.03c-1.92 0-3.722-.515-5.285-1.413l-.38-.218-3.89 1.02.585-3.793-.243-.385a10.03 10.03 0 01-1.54-5.24c0-5.534 4.5-10.034 10.033-10.034 2.68 0 5.2 1.045 7.093 2.938A9.98 9.98 0 0122.033 12c0 5.534-4.5 10.03-10.033 10.03zm5.626-7.85c-.308-.154-1.822-.9-2.104-1.003-.284-.103-.49-.154-.696.154-.206.308-.798 1.003-.977 1.208-.18.206-.36.23-.668.077-.31-.154-1.303-.48-2.484-1.533-.918-.82-1.537-1.83-1.716-2.14-.18-.307-.02-.473.136-.627.14-.14.308-.36.463-.54.154-.178.205-.307.31-.512.102-.205.051-.384-.027-.538-.077-.154-.694-1.67-.95-2.285-.25-.6-.505-.518-.696-.528-.18-.01-.385-.01-.59-.01-.205 0-.54.077-.822.385-.282.308-1.078 1.054-1.078 2.568s1.104 2.978 1.258 3.184c.154.205 2.172 3.32 5.263 4.656.735.317 1.31.507 1.758.648.738.235 1.41.202 1.94.123.59-.088 1.822-.744 2.078-1.463.257-.718.257-1.336.18-1.464-.076-.128-.282-.205-.59-.359z" />
-                                                    </svg>
-                                                </a>
-                                            </div>
-
-                                            {job.status === 'called' ? (
-                                                <button
-                                                    onClick={() => handleWonJob(job.id)}
-                                                    className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-600/30 animate-pulse border border-white/20 active:scale-95 flex items-center justify-center gap-2"
-                                                >
-                                                    ✅ İŞİ ALDIM
-                                                </button>
-                                            ) : (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
-                                                        disabled={!!loadingJobId}
-                                                        className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg ${loadingJobId === job.id ? 'bg-orange-600 animate-pulse cursor-wait' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'}`}
-                                                    >
-                                                        {loadingJobId === job.id ? '...' : 'OK MESAJI AT 📩'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleIgnore(job.id)}
-                                                        className="py-4 px-4 rounded-2xl bg-slate-900 text-slate-500 text-[10px] font-black uppercase hover:bg-red-500/10 hover:text-red-400 transition-all border border-white/5"
-                                                    >
-                                                        SİL
-                                                    </button>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{job.time || 'BELİRTİLMEDİ'}</span>
+                                                    {job.created_at && (
+                                                        <span className="text-[9px] font-bold text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded">
+                                                            {(() => {
+                                                                try {
+                                                                    const date = new Date(job.created_at);
+                                                                    // Geçerli tarih kontrolü
+                                                                    if (isNaN(date.getTime())) return '';
+                                                                    const hours = date.getHours().toString().padStart(2, '0');
+                                                                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                                                                    return `${hours}:${minutes}`;
+                                                                } catch (e) { return ''; }
+                                                            })()}
+                                                        </span>
+                                                    )}
                                                 </div>
+                                                <div className="font-bold text-slate-300 text-xs mt-0.5 max-w-[200px] truncate">
+                                                    {job.raw_message?.slice(0, 50)}...
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <div className="text-xl font-black text-white tracking-tight">{job.price}</div>
+                                            {job.is_swap === 1 && (
+                                                <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase mt-1">
+                                                    🔁 TAKASLI
+                                                </span>
                                             )}
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col gap-2 h-full justify-center">
-                                            <div className="bg-slate-900/50 p-4 rounded-2xl text-center border border-white/5">
-                                                <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Tarih</div>
-                                                <div className="text-xs text-white font-black">
-                                                    {new Date(job.completed_at || job.created_at).toLocaleDateString('tr-TR')}
-                                                </div>
-                                            </div>
-                                            <div className="bg-green-500/10 p-4 rounded-2xl text-center border border-green-500/20">
-                                                <div className="text-[10px] text-green-500 font-bold uppercase mb-1">Kazanç</div>
-                                                <div className="text-xl text-green-400 font-black font-mono">{job.price}</div>
-                                            </div>
                                         </div>
+                                    </div>
+
+                                    {/* Route Visual */}
+                                    <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl mb-4 border border-white/5">
+                                        <div className="flex-1 min-w-0 text-right">
+                                            <div className="text-sm font-black text-white truncate" title={job.from_loc}>{job.from_loc || '?'}</div>
+                                            <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREDEN</div>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center px-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mb-1" />
+                                            <div className="h-8 w-px bg-gradient-to-b from-slate-600 via-green-500 to-slate-600" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1" />
+                                        </div>
+                                        <div className="flex-1 min-w-0 text-left">
+                                            <div className="text-sm font-black text-white truncate" title={job.to_loc}>{job.to_loc || '?'}</div>
+                                            <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREYE</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {job.status === 'won' ? (
+                                            <div className="col-span-2 bg-green-500/10 border border-green-500/20 rounded-2xl p-3 text-center">
+                                                <div className="text-green-400 font-black text-sm uppercase">BU İŞ SENİN! 🎉</div>
+                                                <div className="text-[10px] text-green-500 font-bold mt-1 opacity-80">Müşteri ile iletişime geçildi.</div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => handleIgnore(job.id)}
+                                                    className="bg-slate-700/50 hover:bg-slate-700 text-slate-400 font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-transparent hover:border-slate-600"
+                                                >
+                                                    Yoksay
+                                                </button>
+
+                                                {(job.status === 'called' || job.phone) ? (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            onClick={() => handleCall(job.phone, job.id)}
+                                                            className="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 flex flex-col items-center justify-center gap-1"
+                                                        >
+                                                            <span>ARA</span>
+                                                            <span className="text-[9px] opacity-70 font-medium normal-case">{job.phone}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleTakeJob(job.id, job.group_id, job.phone)}
+                                                            disabled={loadingJobId === job.id}
+                                                            className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/20"
+                                                        >
+                                                            {loadingJobId === job.id ? (
+                                                                <span className="animate-pulse">...</span>
+                                                            ) : (
+                                                                "İŞİ AL"
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleTakeJob(job.id, job.group_id, job.phone)}
+                                                        disabled={loadingJobId === job.id}
+                                                        className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/20"
+                                                    >
+                                                        {loadingJobId === job.id ? (
+                                                            <span className="animate-pulse">...</span>
+                                                        ) : (
+                                                            "İŞİ AL"
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Quick Ignore for already called jobs (if needed) */}
+                                    {job.status === 'called' && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleIgnore(job.id); }}
+                                            className="absolute top-2 right-2 p-2 text-slate-600 hover:text-red-400 transition-colors"
+                                            title="Listeden Kaldır"
+                                        >
+                                            ✕
+                                        </button>
                                     )}
                                 </div>
-                            </div>
+                            ))}
                         </div>
-                    ))
+
+                        {/* Load More Button */}
+                        {visibleCount < filteredJobs.length && (
+                            <button
+                                onClick={() => setVisibleCount(prev => prev + 50)}
+                                className="w-full py-4 mt-6 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold rounded-2xl transition-all border border-slate-700 hover:border-slate-600"
+                            >
+                                DAHA FAZLA GÖSTER ({filteredJobs.length - visibleCount} İŞ DAHA)
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
         </div>
-    );
-}
-
-function RelativeTimer({ createdAt }: { createdAt: string }) {
-    const [elapsed, setElapsed] = useState("");
-
-    useEffect(() => {
-        const update = () => {
-            const now = new Date();
-            const created = new Date(createdAt);
-            const diffSeconds = Math.floor((now.getTime() - created.getTime()) / 1000);
-
-            if (diffSeconds < 60) {
-                setElapsed(`${diffSeconds}sn`);
-            } else if (diffSeconds < 3600) {
-                setElapsed(`${Math.floor(diffSeconds / 60)}dk`);
-            } else {
-                setElapsed(`${Math.floor(diffSeconds / 3600)}sa`);
-            }
-        };
-
-        update();
-        const interval = setInterval(update, 1000);
-        return () => clearInterval(interval);
-    }, [createdAt]);
-
-    return (
-        <span className="bg-white/10 px-1.5 py-0.5 rounded text-white/80 border border-white/5 shadow-inner">
-            {elapsed}
-        </span>
     );
 }
