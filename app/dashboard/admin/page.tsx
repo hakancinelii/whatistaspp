@@ -496,18 +496,22 @@ export default function AdminPage() {
                     ) : analyticsData ? (
                         <>
                             {/* Analytics Summary Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-slate-800/40 p-8 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm">
-                                    <span className="text-slate-500 font-black text-[10px] uppercase tracking-widest">İş Yakalama Popülasyonu</span>
-                                    <div className="text-4xl font-black text-white">{analyticsData.summary.total_jobs.toLocaleString()}</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="bg-slate-800/40 p-6 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm">
+                                    <span className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Tüm Zamanlar İş</span>
+                                    <div className="text-3xl font-black text-white">{analyticsData.summary.total_jobs.toLocaleString()}</div>
                                 </div>
-                                <div className="bg-slate-800/40 p-8 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm">
+                                <div className="bg-slate-800/40 p-6 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm shadow-xl shadow-blue-500/5">
+                                    <span className="text-blue-500 font-black text-[10px] uppercase tracking-widest">Son 24 Saat İş Akışı</span>
+                                    <div className="text-3xl font-black text-blue-400">{analyticsData.summary.jobs_24h.toLocaleString()}</div>
+                                </div>
+                                <div className="bg-slate-800/40 p-6 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm">
                                     <span className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Başarılı İş Kazanımı</span>
-                                    <div className="text-4xl font-black text-green-400">{analyticsData.summary.total_wins.toLocaleString()}</div>
+                                    <div className="text-3xl font-black text-green-400">{analyticsData.summary.total_wins.toLocaleString()}</div>
                                 </div>
-                                <div className="bg-slate-800/40 p-8 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm">
+                                <div className="bg-slate-800/40 p-6 rounded-[2rem] border border-white/5 space-y-2 backdrop-blur-sm">
                                     <span className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Toplam Aktif Driver</span>
-                                    <div className="text-4xl font-black text-blue-400">{analyticsData.summary.total_drivers.toLocaleString()}</div>
+                                    <div className="text-3xl font-black text-purple-400">{analyticsData.summary.total_drivers.toLocaleString()}</div>
                                 </div>
                             </div>
 

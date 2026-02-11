@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         const summary = await db.get(`
             SELECT 
                 (SELECT COUNT(*) FROM captured_jobs) as total_jobs,
+                (SELECT COUNT(*) FROM captured_jobs WHERE created_at >= datetime('now', '-1 day')) as jobs_24h,
                 (SELECT COUNT(*) FROM users WHERE role = 'user') as total_drivers,
                 (SELECT COUNT(*) FROM job_interactions WHERE status = 'won') as total_wins
             FROM users LIMIT 1
