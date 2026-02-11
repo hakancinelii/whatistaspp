@@ -142,22 +142,28 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 2. Gruba mesaj gönder
+        // 2. Gruba mesaj gönder (Eğer MANUEL değilse)
+        // Eğer iş manuel eklendiyse grup yoktur, sadece kişiye mesaj gitmesi yeterlidir.
         let sent = false;
         let lastError = null;
 
-        for (let attempt = 1; attempt <= 2; attempt++) {
-            try {
-                console.log(`[API Take Job] Group Notify (Attempt ${attempt}) to ${targetGroupJid}...`);
-                if (attempt > 1) await new Promise(resolve => setTimeout(resolve, 1000));
+        if (targetGroupJid === 'MANUEL') {
+            console.log('[API Take Job] Manual job detected, skipping group notification.');
+            sent = true;
+        } else {
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    console.log(`[API Take Job] Group Notify (Attempt ${attempt}) to ${targetGroupJid}...`);
+                    if (attempt > 1) await new Promise(resolve => setTimeout(resolve, 1000));
 
-                await session.sock.sendMessage(targetGroupJid, { text: groupMessage });
-                sent = true;
-                break;
-            } catch (sendError: any) {
-                lastError = sendError;
-                console.error(`[API Take Job] Group Error:`, sendError.message);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                    await session.sock.sendMessage(targetGroupJid, { text: groupMessage });
+                    sent = true;
+                    break;
+                } catch (sendError: any) {
+                    lastError = sendError;
+                    console.error(`[API Take Job] Group Error:`, sendError.message);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
             }
         }
 

@@ -120,14 +120,14 @@ export default function DriverDashboard() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Kullanıcı bilgilerini de çekelim (telefon için)
-            // Bu endpoint user bilgisini de dönüyor olabilir mi? Hayır.
-            // Ayrı bir user info endpoint'i çağıralım veya en azından telefon numarasını localstorage'dan alalım.
-            // Basitçe:
-            const meRes = await fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } });
+            // Endpoint /api/profile olarak düzeltildi
+            const meRes = await fetch("/api/profile", { headers: { Authorization: `Bearer ${token}` } });
             if (meRes.ok) {
                 const me = await meRes.json();
-                if (me.phone || me.driver_phone) {
-                    setNewJobData(prev => ({ ...prev, contact_phone: me.driver_phone || me.phone || '' }));
+                // API profile ne dönüyor kontrol etmeliyiz ama genellikle user objesi döner
+                // driver_phone veya phone alanını alalım
+                if (me.phone || me.driver_phone || me.user?.driver_phone) {
+                    setNewJobData(prev => ({ ...prev, contact_phone: me.driver_phone || me.user?.driver_phone || me.phone || '' }));
                 }
             }
 
