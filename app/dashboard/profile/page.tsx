@@ -154,10 +154,15 @@ export default function DriverProfilePage() {
             <div className="mt-6 bg-slate-800 rounded-xl border border-slate-700 p-6">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">📩 Mesaj Önizleme</h3>
                 <div className="bg-slate-900/50 p-4 rounded-lg border border-white/5">
-                    <div className="text-xs text-slate-400 mb-2">Müşteriye gönderilecek mesaj:</div>
-                    <div className="text-sm text-white font-mono bg-slate-900 p-3 rounded">
+                    <div className="text-xs text-slate-400 mb-2">Müşteriye gönderilecek mesaj (örnek):</div>
+                    <div className="text-sm text-white font-mono bg-slate-900 p-3 rounded whitespace-pre-line">
                         ✅ Araç hazır!<br />
                         <br />
+                        📍 Sabiha Gökçen → Taksim<br />
+                        💰 1200₺<br />
+                        🕐 HAZIR<br />
+                        <br />
+                        ━━━━━━━━━━━━━━━━<br />
                         Şoför: {profile.name || 'Belirtilmedi'}<br />
                         📞 {profile.driver_phone || 'Belirtilmedi'}<br />
                         {profile.driver_plate && `🚗 Plaka: ${profile.driver_plate}`}

@@ -86,9 +86,14 @@ export default function AdminSettingsPage() {
 
                         <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                             <div className="text-xs text-blue-300 font-bold mb-1">💡 Mesaj Formatı (Proxy Modunda)</div>
-                            <div className="text-[11px] text-slate-400 font-mono bg-slate-900/50 p-2 rounded">
+                            <div className="text-[11px] text-slate-400 font-mono bg-slate-900/50 p-2 rounded whitespace-pre-line">
                                 ✅ Araç hazır!<br />
                                 <br />
+                                📍 Sabiha Gökçen → Taksim<br />
+                                💰 1200₺<br />
+                                🕐 HAZIR<br />
+                                <br />
+                                ━━━━━━━━━━━━━━━━<br />
                                 Şoför: Mehmet Yılmaz<br />
                                 📞 0532 123 45 67<br />
                                 🚗 Plaka: 34 ABC 123

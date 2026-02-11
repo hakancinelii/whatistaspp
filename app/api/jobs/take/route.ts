@@ -110,9 +110,12 @@ export async function POST(request: NextRequest) {
         let groupMessage = 'Araç hazır, işi alıyorum. 👍';
 
         if (isUsingProxy) {
-            // Proxy kullanılıyorsa şoför bilgilerini ekle
-            customerMessage = `✅ Araç hazır!\n\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
-            groupMessage = `✅ Araç hazır, işi alıyorum!\n\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
+            // İş detaylarını hazırla
+            const jobDetails = `📍 ${job.from_loc || '?'} → ${job.to_loc || '?'}${job.price ? `\n💰 ${job.price}` : ''}${job.time ? `\n🕐 ${job.time}` : ''}`;
+
+            // Proxy kullanılıyorsa şoför bilgilerini ve iş detaylarını ekle
+            customerMessage = `✅ Araç hazır!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
+            groupMessage = `✅ Araç hazır, işi alıyorum!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${userProfile?.name || 'Belirtilmedi'}\n📞 ${userProfile?.driver_phone || 'Belirtilmedi'}${userProfile?.driver_plate ? `\n🚗 Plaka: ${userProfile.driver_plate}` : ''}`;
         }
 
         // 1. Mesaj içindeki numaraya mesaj gönder
