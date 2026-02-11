@@ -23,6 +23,7 @@ export default function DriverDashboard() {
 
     // Gelişmiş Rota Ayarları
     const [showSettings, setShowSettings] = useState(false);
+    const [showTopPanel, setShowTopPanel] = useState(false);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
     const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled'>('all');
     const [filterSprinter, setFilterSprinter] = useState(false);
@@ -660,430 +661,457 @@ export default function DriverDashboard() {
     );
 
     return (
-        <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <div className="max-w-4xl mx-auto p-4 space-y-4">
             {/* Hidden audio for alerts */}
             <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" />
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl">
-                <div className="space-y-2">
-                    <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
-                        🚕 SOSYAL TRANSFER
-                    </h1>
-                    <div className="flex items-center gap-2">
+            {/* Compact Top Bar - Always Visible */}
+            <div className="bg-slate-800 rounded-2xl border border-slate-700 shadow-xl">
+                <div className="flex items-center justify-between p-3 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xl flex-shrink-0">🚕</span>
+                        <div className="min-w-0">
+                            <div className="text-sm font-black text-white truncate">SOSYAL TRANSFER</div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${waStatus.isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+                                <span className={`text-[9px] font-bold ${waStatus.isConnected ? 'text-green-400' : 'text-red-400'}`}>
+                                    {waStatus.isConnected ? 'BAĞLI' : 'KOPUK'}
+                                </span>
+                                <span className="text-[9px] text-slate-500">•</span>
+                                <span className="text-[9px] font-bold text-slate-400">{filteredJobs.length} İŞ</span>
+                                <span className="text-[9px] text-slate-500">•</span>
+                                <span className={`text-[9px] font-bold ${autoCall ? 'text-green-400' : 'text-slate-500'}`}>{autoCall ? '⚡OTO' : '👤MAN'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                            onClick={toggleWakeLock}
-                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                            onClick={() => setIsAddingJob(true)}
+                            className="bg-green-600 hover:bg-green-500 text-white font-black px-3 py-2 rounded-xl shadow-lg active:scale-95 transition-all text-[10px] uppercase tracking-wider"
                         >
-                            {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
+                            ➕ EKLE
                         </button>
                         <button
-                            onClick={() => setSoundEnabled(!soundEnabled)}
-                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${soundEnabled ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                            onClick={() => setShowTopPanel(!showTopPanel)}
+                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95 border ${showTopPanel ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'}`}
                         >
-                            {soundEnabled ? '🔔 SES: AÇIK' : '🔕 SES: KAPALI'}
-                        </button>
-                        <button
-                            onClick={checkWAStatus}
-                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border flex items-center gap-1.5 transition-all active:scale-95 ${waStatus.isConnected ? 'bg-green-500/20 text-green-400 border-green-500/40' : waStatus.isConnecting ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30'}`}
-                        >
-                            <div className={`w-1.5 h-1.5 rounded-full ${waStatus.isConnected ? 'bg-green-400' : waStatus.isConnecting ? 'bg-yellow-400' : 'bg-red-400'}`} />
-                            {waStatus.isConnected ? 'WHATSAPP: BAĞLI' : waStatus.isConnecting ? 'WHATSAPP: BAĞLANIYOR...' : 'WHATSAPP: BAĞLI DEĞİL (BAĞLAN)'}
+                            {showTopPanel ? '▲ KAPAT' : '⚙️ PANEL'}
                         </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">
-                    <button
-                        onClick={() => setIsAddingJob(true)}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black px-4 py-2 rounded-xl shadow-lg shadow-green-900/20 active:scale-95 transition-all text-xs uppercase tracking-widest flex items-center gap-2"
-                    >
-                        ➕ İŞ EKLE
-                    </button>
+                {/* Expandable Full Panel */}
+                {showTopPanel && (
+                    <div className="border-t border-slate-700 p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                onClick={toggleWakeLock}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                            >
+                                {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
+                            </button>
+                            <button
+                                onClick={() => setSoundEnabled(!soundEnabled)}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${soundEnabled ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                            >
+                                {soundEnabled ? '🔔 SES: AÇIK' : '🔕 SES: KAPALI'}
+                            </button>
+                            <button
+                                onClick={checkWAStatus}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border flex items-center gap-1.5 transition-all active:scale-95 ${waStatus.isConnected ? 'bg-green-500/20 text-green-400 border-green-500/40' : waStatus.isConnecting ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30'}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${waStatus.isConnected ? 'bg-green-400' : waStatus.isConnecting ? 'bg-yellow-400' : 'bg-red-400'}`} />
+                                {waStatus.isConnected ? 'WHATSAPP: BAĞLI' : waStatus.isConnecting ? 'WHATSAPP: BAĞLANIYOR...' : 'WHATSAPP: BAĞLI DEĞİL (BAĞLAN)'}
+                            </button>
+                        </div>
 
-                    <div className="w-px h-8 bg-slate-700/50 hidden sm:block"></div>
-
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OTOMATİK ARA</span>
-                        <span className={`text-xs font-bold ${autoCall ? 'text-green-400' : 'text-slate-400'}`}>
-                            {autoCall ? 'AKTİF' : 'KAPALI'}
-                        </span>
+                        <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OTOMATİK ARA</span>
+                                <span className={`text-xs font-bold ${autoCall ? 'text-green-400' : 'text-slate-400'}`}>
+                                    {autoCall ? 'AKTİF' : 'KAPALI'}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const newMode = autoCall ? 'manual' : 'auto';
+                                    setActionMode(newMode as any);
+                                    saveFilters(undefined, undefined, newMode);
+                                }}
+                                className={`w-14 h-8 rounded-full transition-all relative ${autoCall ? 'bg-green-500' : 'bg-slate-700'}`}
+                            >
+                                <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all ${autoCall ? 'right-1' : 'left-1'}`} />
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            const newMode = autoCall ? 'manual' : 'auto';
-                            setActionMode(newMode as any);
-                            saveFilters(undefined, undefined, newMode);
-                        }}
-                        className={`w-14 h-8 rounded-full transition-all relative ${autoCall ? 'bg-green-500' : 'bg-slate-700'}`}
-                    >
-                        <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all ${autoCall ? 'right-1' : 'left-1'}`} />
-                    </button>
-                </div>
+                )}
             </div>
 
-            {/* Earnings & View Switcher */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50">
-                <div className="flex gap-2 p-1 bg-slate-900 rounded-2xl border border-white/5">
+            {/* Earnings & View Switcher - Compact */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-800/50 p-3 rounded-2xl border border-slate-700/50">
+                <div className="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-white/5">
                     <button
                         onClick={() => setView('active')}
-                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-tighter transition-all ${view === 'active' ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${view === 'active' ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         AKTİF İŞLER
                     </button>
                     <button
                         onClick={() => setView('history')}
-                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-tighter transition-all ${view === 'history' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${view === 'history' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         İŞ GEÇMİŞİM
                     </button>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <div className="text-center hidden sm:block">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">HAVUZDAKİ İŞLER</div>
-                        <div className="text-2xl font-black text-blue-400">{jobs.length}</div>
-                    </div>
-                    <div className="h-8 w-px bg-slate-700 hidden sm:block" />
+                <div className="flex items-center gap-4">
                     <div className="text-center">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">BUGÜNKÜ İŞLER</div>
-                        <div className="text-2xl font-black text-white">{todayWonCount}</div>
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">HAVUZ</div>
+                        <div className="text-lg font-black text-blue-400">{jobs.length}</div>
                     </div>
-                    <div className="h-8 w-px bg-slate-700" />
+                    <div className="h-6 w-px bg-slate-700" />
                     <div className="text-center">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">TOPLAM KAZANÇ</div>
-                        <div className="text-2xl font-black text-green-400 font-mono">{totalEarnings.toLocaleString()} ₺</div>
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">BUGÜN</div>
+                        <div className="text-lg font-black text-white">{todayWonCount}</div>
+                    </div>
+                    <div className="h-6 w-px bg-slate-700" />
+                    <div className="text-center">
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">KAZANÇ</div>
+                        <div className="text-lg font-black text-green-400 font-mono">{totalEarnings.toLocaleString()} ₺</div>
                     </div>
                 </div>
             </div>
 
-            {/* Smart Rota & Automation Section */}
-            <div className="bg-slate-800 rounded-[2rem] border border-slate-700/50 shadow-2xl overflow-hidden transition-all duration-500">
-                {/* Header / Summary Bar */}
-                <div className="p-5 flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-800/50">
-                    <div className="flex flex-col gap-1 w-full md:w-auto">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
-                                <span className="text-xl">🎯</span>
-                            </div>
-                            <div>
-                                <input
-                                    type="text"
-                                    value={rotaName}
-                                    onChange={(e) => {
-                                        const val = e.target.value.toUpperCase();
-                                        setRotaName(val);
-                                        saveFilters(undefined, undefined, undefined, undefined, val);
-                                    }}
-                                    className="bg-transparent border-none text-white font-black text-xl focus:ring-0 p-0 w-32 tracking-tighter"
-                                    placeholder="STRATEJİ ADI"
-                                />
-                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Aktif Strateji</div>
+            {/* Smart Rota & Automation Section - Only visible when panel is open */}
+            {showTopPanel && (
+                <div className="bg-slate-800 rounded-[2rem] border border-slate-700/50 shadow-2xl overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {/* Header / Summary Bar */}
+                    <div className="p-5 flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-800/50">
+                        <div className="flex flex-col gap-1 w-full md:w-auto">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
+                                    <span className="text-xl">🎯</span>
+                                </div>
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={rotaName}
+                                        onChange={(e) => {
+                                            const val = e.target.value.toUpperCase();
+                                            setRotaName(val);
+                                            saveFilters(undefined, undefined, undefined, undefined, val);
+                                        }}
+                                        className="bg-transparent border-none text-white font-black text-xl focus:ring-0 p-0 w-32 tracking-tighter"
+                                        placeholder="STRATEJİ ADI"
+                                    />
+                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Aktif Strateji</div>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Quick Stats / Active Filters Info */}
+                        {!showSettings && (
+                            <div className="flex flex-wrap items-center gap-2 justify-center">
+                                <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
+                                    <span className="text-xs">💰</span>
+                                    <span className="text-[10px] font-black text-green-400">{minPrice}+ ₺</span>
+                                </div>
+                                <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
+                                    <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : '📋'}</span>
+                                    <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : 'İLERİ'}</span>
+                                </div>
+                                {filterSprinter && (
+                                    <div className="bg-amber-600/20 px-3 py-1.5 rounded-xl border border-amber-500/30 flex items-center gap-2">
+                                        <span className="text-xs">🚐</span>
+                                        <span className="text-[10px] font-black text-amber-400 uppercase">SPRİNTER</span>
+                                    </div>
+                                )}
+                                {filterSwap && (
+                                    <div className="bg-purple-600/20 px-3 py-1.5 rounded-xl border border-purple-500/30 flex items-center gap-2">
+                                        <span className="text-xs">🔁</span>
+                                        <span className="text-[10px] font-black text-purple-400 uppercase">TAKAS</span>
+                                    </div>
+                                )}
+                                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${actionMode === 'auto' ? 'bg-orange-600/20 border-orange-500/30 text-orange-400' : 'bg-slate-900/80 border-white/5 text-slate-400'}`}>
+                                    <span className="text-xs">{actionMode === 'auto' ? '⚡' : '👤'}</span>
+                                    <span className="text-[10px] font-black uppercase text-center">{actionMode === 'auto' ? 'OTO-ARA' : 'MANUEL'}</span>
+                                </div>
+                                {selectedRegions.length > 0 && (
+                                    <div className="bg-blue-600/20 px-3 py-1.5 rounded-xl border border-blue-500/30 flex items-center gap-2 text-blue-400">
+                                        <span className="text-xs">🚩</span>
+                                        <span className="text-[10px] font-black uppercase">{selectedRegions.length} BÖLGE</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => setShowSettings(!showSettings)}
+                            className={`w-full md:w-auto px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${showSettings ? 'bg-slate-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-600/20'}`}
+                        >
+                            {showSettings ? 'AYARLARI KAPAT ▲' : 'ROTA AYARLARI ▼'}
+                        </button>
                     </div>
 
-                    {/* Quick Stats / Active Filters Info */}
-                    {!showSettings && (
-                        <div className="flex flex-wrap items-center gap-2 justify-center">
-                            <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
-                                <span className="text-xs">💰</span>
-                                <span className="text-[10px] font-black text-green-400">{minPrice}+ ₺</span>
-                            </div>
-                            <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
-                                <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : '📋'}</span>
-                                <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : 'İLERİ'}</span>
-                            </div>
-                            {filterSprinter && (
-                                <div className="bg-amber-600/20 px-3 py-1.5 rounded-xl border border-amber-500/30 flex items-center gap-2">
-                                    <span className="text-xs">🚐</span>
-                                    <span className="text-[10px] font-black text-amber-400 uppercase">SPRİNTER</span>
+                    {/* Expanded Settings Content */}
+                    {showSettings && (
+                        <div className="p-6 border-t border-slate-700/50 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Left Column: Side Selection & Logic */}
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                            ⚙️ TEMEL YAPILANDIRMA
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-3">
+                                                <div className="text-[10px] font-black text-slate-400 ml-1">İŞ TÜRÜ SEÇİMİ</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {/* Zaman Filtresi (Radyo — tek seçim) */}
+                                                    {[
+                                                        { id: 'all', label: 'TÜMÜ', icon: '📋' },
+                                                        { id: 'ready', label: 'HAZIR', icon: '🚨' },
+                                                        { id: 'scheduled', label: 'İLERİ', icon: '📅' }
+                                                    ].map(m => (
+                                                        <button
+                                                            key={m.id}
+                                                            onClick={() => { setJobMode(m.id as any); saveFilters(undefined, m.id); }}
+                                                            className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${jobMode === m.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                        >
+                                                            <span className="text-base">{m.icon}</span>
+                                                            {m.label}
+                                                        </button>
+                                                    ))}
+
+                                                    {/* Ayırıcı */}
+                                                    <div className="w-px bg-slate-700 mx-1 self-stretch" />
+
+                                                    {/* Araç Tipi Filtreleri (Toggle — bağımsız) */}
+                                                    <button
+                                                        onClick={() => { const newVal = !filterSwap; setFilterSwap(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, newVal); }}
+                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSwap ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                    >
+                                                        <span className="text-base">🔁</span>
+                                                        TAKAS
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { const newVal = !filterSprinter; setFilterSprinter(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, newVal); }}
+                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSprinter ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                    >
+                                                        <span className="text-base">🚐</span>
+                                                        SPRİNTER
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="text-[10px] font-black text-slate-400 ml-1">AKSİYON MODU</div>
+                                                <div className="flex gap-2">
+                                                    {[
+                                                        { id: 'manual', label: 'MANUEL', icon: '👤', color: 'bg-blue-600' },
+                                                        { id: 'auto', label: 'OTO-İŞ AL', icon: '⚡', color: 'bg-orange-600' }
+                                                    ].map(m => (
+                                                        <button
+                                                            key={m.id}
+                                                            onClick={() => { setActionMode(m.id as any); saveFilters(undefined, undefined, m.id); }}
+                                                            className={`flex-1 py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-white/20 text-white shadow-lg` : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                        >
+                                                            <span className="text-base">{m.icon}</span>
+                                                            {m.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">💰 MİNİMUM ÜCRET LİMİTİ</span>
+                                                <span className="text-[9px] text-slate-600 font-bold">BU RAKAMIN ALTINDAKİ İŞLER GİZLENİR</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    value={minPrice}
+                                                    onChange={(e) => {
+                                                        const v = Number(e.target.value);
+                                                        setMinPrice(v);
+                                                        saveFilters(undefined, undefined, undefined, v);
+                                                    }}
+                                                    className="bg-slate-800 border border-slate-700 rounded-lg py-1 px-3 text-sm font-black text-green-400 w-24 text-right focus:ring-1 focus:ring-green-500/50"
+                                                />
+                                                <span className="text-sm font-black text-slate-500">₺</span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="10000"
+                                            step="250"
+                                            value={minPrice}
+                                            onChange={(e) => { const v = Number(e.target.value); setMinPrice(v); saveFilters(undefined, undefined, undefined, v); }}
+                                            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500 hover:accent-green-400 transition-all"
+                                        />
+                                        <div className="flex justify-between mt-2 px-1">
+                                            <span className="text-[10px] font-bold text-slate-600">0 ₺</span>
+                                            <span className="text-[10px] font-bold text-slate-600">10.000 ₺</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-blue-600/5 border border-blue-500/20 p-4 rounded-2xl">
+                                        <div className="flex items-start gap-4">
+                                            <div className="text-xl">ℹ️</div>
+                                            <div>
+                                                <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-tight mb-1">Rota Bilgilendirmesi</h4>
+                                                <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                                                    Şu an <strong>{rotaName}</strong> stratejisi aktif. Seçtiğiniz bölgelerden ve belirlediğiniz fiyattan bir iş geldiğinde panel saniyeler içinde sizi uyarır. Otomasyon modunda ise müşteri hem aranır, hem de <strong>otomatik olarak iş alınır</strong> (WhatsApp mesajı gönderilir).
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                            {filterSwap && (
-                                <div className="bg-purple-600/20 px-3 py-1.5 rounded-xl border border-purple-500/30 flex items-center gap-2">
-                                    <span className="text-xs">🔁</span>
-                                    <span className="text-[10px] font-black text-purple-400 uppercase">TAKAS</span>
+
+                                {/* Right Column: Detailed Region Selection */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700/50">
+                                            <button
+                                                onClick={() => setRegionTab('from')}
+                                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'from'
+                                                    ? 'bg-blue-600 text-white shadow-lg'
+                                                    : 'text-slate-400 hover:text-white'
+                                                    }`}
+                                            >
+                                                🛫 NEREDEN {selectedRegions.length > 0 && `(${selectedRegions.length})`}
+                                            </button>
+                                            <button
+                                                onClick={() => setRegionTab('to')}
+                                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'to'
+                                                    ? 'bg-green-600 text-white shadow-lg'
+                                                    : 'text-slate-400 hover:text-white'
+                                                    }`}
+                                            >
+                                                🏁 NEREYE {selectedToRegions.length > 0 && `(${selectedToRegions.length})`}
+                                            </button>
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <button
+                                                onClick={() => {
+                                                    const newRegs = ISTANBUL_REGIONS.map(r => r.id);
+                                                    if (regionTab === 'from') {
+                                                        setSelectedRegions(newRegs);
+                                                        saveFilters(newRegs);
+                                                    } else {
+                                                        setSelectedToRegions(newRegs);
+                                                        saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
+                                                    }
+                                                }}
+                                                className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase underline-offset-4 hover:underline"
+                                            >
+                                                Hepsini Seç
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (regionTab === 'from') {
+                                                        setSelectedRegions([]);
+                                                        saveFilters([]);
+                                                    } else {
+                                                        setSelectedToRegions([]);
+                                                        saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, []);
+                                                    }
+                                                }}
+                                                className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase underline-offset-4 hover:underline"
+                                            >
+                                                Temizle
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-900/50 border border-slate-700/50 rounded-3xl p-4 overflow-hidden">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[400px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-600">
+                                            {/* Avrupa Yakası Grubu */}
+                                            <div className="space-y-2">
+                                                <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
+                                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest pl-2">Avrupa Yakası</h4>
+                                                </div>
+                                                {ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').map(reg => {
+                                                    const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
+                                                    return (
+                                                        <div
+                                                            key={reg.id}
+                                                            onClick={() => {
+                                                                if (regionTab === 'from') {
+                                                                    const newRegs = isActive
+                                                                        ? selectedRegions.filter(id => id !== reg.id)
+                                                                        : [...selectedRegions, reg.id];
+                                                                    setSelectedRegions(newRegs);
+                                                                    saveFilters(newRegs);
+                                                                } else {
+                                                                    const newRegs = isActive
+                                                                        ? selectedToRegions.filter(id => id !== reg.id)
+                                                                        : [...selectedToRegions, reg.id];
+                                                                    setSelectedToRegions(newRegs);
+                                                                    saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
+                                                                }
+                                                            }}
+                                                            className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
+                                                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
+                                                                : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                                }`}
+                                                        >
+                                                            <span className="text-xs font-bold">{reg.label}</span>
+                                                            {isActive && <span className="text-xs">✓</span>}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+
+                                            {/* Anadolu Yakası Grubu */}
+                                            <div className="space-y-2">
+                                                <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
+                                                    <h4 className="text-[10px] font-black text-green-400 uppercase tracking-widest pl-2">Anadolu Yakası</h4>
+                                                </div>
+                                                {ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').map(reg => {
+                                                    const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
+                                                    return (
+                                                        <div
+                                                            key={reg.id}
+                                                            onClick={() => {
+                                                                if (regionTab === 'from') {
+                                                                    const newRegs = isActive
+                                                                        ? selectedRegions.filter(id => id !== reg.id)
+                                                                        : [...selectedRegions, reg.id];
+                                                                    setSelectedRegions(newRegs);
+                                                                    saveFilters(newRegs);
+                                                                } else {
+                                                                    const newRegs = isActive
+                                                                        ? selectedToRegions.filter(id => id !== reg.id)
+                                                                        : [...selectedToRegions, reg.id];
+                                                                    setSelectedToRegions(newRegs);
+                                                                    saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
+                                                                }
+                                                            }}
+                                                            className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
+                                                                ? 'bg-green-600 border-green-500 text-white shadow-lg'
+                                                                : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                                }`}
+                                                        >
+                                                            <span className="text-xs font-bold">{reg.label}</span>
+                                                            {isActive && <span className="text-xs">✓</span>}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                            <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${actionMode === 'auto' ? 'bg-orange-600/20 border-orange-500/30 text-orange-400' : 'bg-slate-900/80 border-white/5 text-slate-400'}`}>
-                                <span className="text-xs">{actionMode === 'auto' ? '⚡' : '👤'}</span>
-                                <span className="text-[10px] font-black uppercase text-center">{actionMode === 'auto' ? 'OTO-ARA' : 'MANUEL'}</span>
                             </div>
-                            {selectedRegions.length > 0 && (
-                                <div className="bg-blue-600/20 px-3 py-1.5 rounded-xl border border-blue-500/30 flex items-center gap-2 text-blue-400">
-                                    <span className="text-xs">🚩</span>
-                                    <span className="text-[10px] font-black uppercase">{selectedRegions.length} BÖLGE</span>
-                                </div>
-                            )}
                         </div>
                     )}
-
-                    <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className={`w-full md:w-auto px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${showSettings ? 'bg-slate-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-600/20'}`}
-                    >
-                        {showSettings ? 'AYARLARI KAPAT ▲' : 'ROTA AYARLARI ▼'}
-                    </button>
                 </div>
-
-                {/* Expanded Settings Content */}
-                {showSettings && (
-                    <div className="p-6 border-t border-slate-700/50 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Left Column: Side Selection & Logic */}
-                            <div className="space-y-6">
-                                <div className="space-y-4">
-                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                        ⚙️ TEMEL YAPILANDIRMA
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-3">
-                                            <div className="text-[10px] font-black text-slate-400 ml-1">İŞ TÜRÜ SEÇİMİ</div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {/* Zaman Filtresi (Radyo — tek seçim) */}
-                                                {[
-                                                    { id: 'all', label: 'TÜMÜ', icon: '📋' },
-                                                    { id: 'ready', label: 'HAZIR', icon: '🚨' },
-                                                    { id: 'scheduled', label: 'İLERİ', icon: '📅' }
-                                                ].map(m => (
-                                                    <button
-                                                        key={m.id}
-                                                        onClick={() => { setJobMode(m.id as any); saveFilters(undefined, m.id); }}
-                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${jobMode === m.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
-                                                    >
-                                                        <span className="text-base">{m.icon}</span>
-                                                        {m.label}
-                                                    </button>
-                                                ))}
-
-                                                {/* Ayırıcı */}
-                                                <div className="w-px bg-slate-700 mx-1 self-stretch" />
-
-                                                {/* Araç Tipi Filtreleri (Toggle — bağımsız) */}
-                                                <button
-                                                    onClick={() => { const newVal = !filterSwap; setFilterSwap(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, newVal); }}
-                                                    className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSwap ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
-                                                >
-                                                    <span className="text-base">🔁</span>
-                                                    TAKAS
-                                                </button>
-                                                <button
-                                                    onClick={() => { const newVal = !filterSprinter; setFilterSprinter(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, newVal); }}
-                                                    className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSprinter ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
-                                                >
-                                                    <span className="text-base">🚐</span>
-                                                    SPRİNTER
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="text-[10px] font-black text-slate-400 ml-1">AKSİYON MODU</div>
-                                            <div className="flex gap-2">
-                                                {[
-                                                    { id: 'manual', label: 'MANUEL', icon: '👤', color: 'bg-blue-600' },
-                                                    { id: 'auto', label: 'OTO-İŞ AL', icon: '⚡', color: 'bg-orange-600' }
-                                                ].map(m => (
-                                                    <button
-                                                        key={m.id}
-                                                        onClick={() => { setActionMode(m.id as any); saveFilters(undefined, undefined, m.id); }}
-                                                        className={`flex-1 py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-white/20 text-white shadow-lg` : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
-                                                    >
-                                                        <span className="text-base">{m.icon}</span>
-                                                        {m.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 bg-slate-900/50 p-6 rounded-3xl border border-white/5">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">💰 MİNİMUM ÜCRET LİMİTİ</span>
-                                            <span className="text-[9px] text-slate-600 font-bold">BU RAKAMIN ALTINDAKİ İŞLER GİZLENİR</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                value={minPrice}
-                                                onChange={(e) => {
-                                                    const v = Number(e.target.value);
-                                                    setMinPrice(v);
-                                                    saveFilters(undefined, undefined, undefined, v);
-                                                }}
-                                                className="bg-slate-800 border border-slate-700 rounded-lg py-1 px-3 text-sm font-black text-green-400 w-24 text-right focus:ring-1 focus:ring-green-500/50"
-                                            />
-                                            <span className="text-sm font-black text-slate-500">₺</span>
-                                        </div>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="10000"
-                                        step="250"
-                                        value={minPrice}
-                                        onChange={(e) => { const v = Number(e.target.value); setMinPrice(v); saveFilters(undefined, undefined, undefined, v); }}
-                                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500 hover:accent-green-400 transition-all"
-                                    />
-                                    <div className="flex justify-between mt-2 px-1">
-                                        <span className="text-[10px] font-bold text-slate-600">0 ₺</span>
-                                        <span className="text-[10px] font-bold text-slate-600">10.000 ₺</span>
-                                    </div>
-                                </div>
-
-                                <div className="bg-blue-600/5 border border-blue-500/20 p-4 rounded-2xl">
-                                    <div className="flex items-start gap-4">
-                                        <div className="text-xl">ℹ️</div>
-                                        <div>
-                                            <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-tight mb-1">Rota Bilgilendirmesi</h4>
-                                            <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-                                                Şu an <strong>{rotaName}</strong> stratejisi aktif. Seçtiğiniz bölgelerden ve belirlediğiniz fiyattan bir iş geldiğinde panel saniyeler içinde sizi uyarır. Otomasyon modunda ise müşteri hem aranır, hem de <strong>otomatik olarak iş alınır</strong> (WhatsApp mesajı gönderilir).
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right Column: Detailed Region Selection */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700/50">
-                                        <button
-                                            onClick={() => setRegionTab('from')}
-                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'from'
-                                                ? 'bg-blue-600 text-white shadow-lg'
-                                                : 'text-slate-400 hover:text-white'
-                                                }`}
-                                        >
-                                            🛫 NEREDEN {selectedRegions.length > 0 && `(${selectedRegions.length})`}
-                                        </button>
-                                        <button
-                                            onClick={() => setRegionTab('to')}
-                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'to'
-                                                ? 'bg-green-600 text-white shadow-lg'
-                                                : 'text-slate-400 hover:text-white'
-                                                }`}
-                                        >
-                                            🏁 NEREYE {selectedToRegions.length > 0 && `(${selectedToRegions.length})`}
-                                        </button>
-                                    </div>
-
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={() => {
-                                                const newRegs = ISTANBUL_REGIONS.map(r => r.id);
-                                                if (regionTab === 'from') {
-                                                    setSelectedRegions(newRegs);
-                                                    saveFilters(newRegs);
-                                                } else {
-                                                    setSelectedToRegions(newRegs);
-                                                    saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
-                                                }
-                                            }}
-                                            className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase underline-offset-4 hover:underline"
-                                        >
-                                            Hepsini Seç
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                if (regionTab === 'from') {
-                                                    setSelectedRegions([]);
-                                                    saveFilters([]);
-                                                } else {
-                                                    setSelectedToRegions([]);
-                                                    saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, []);
-                                                }
-                                            }}
-                                            className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase underline-offset-4 hover:underline"
-                                        >
-                                            Temizle
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-900/50 border border-slate-700/50 rounded-3xl p-4 overflow-hidden">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[400px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-600">
-                                        {/* Avrupa Yakası Grubu */}
-                                        <div className="space-y-2">
-                                            <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
-                                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest pl-2">Avrupa Yakası</h4>
-                                            </div>
-                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').map(reg => {
-                                                const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
-                                                return (
-                                                    <div
-                                                        key={reg.id}
-                                                        onClick={() => {
-                                                            if (regionTab === 'from') {
-                                                                const newRegs = isActive
-                                                                    ? selectedRegions.filter(id => id !== reg.id)
-                                                                    : [...selectedRegions, reg.id];
-                                                                setSelectedRegions(newRegs);
-                                                                saveFilters(newRegs);
-                                                            } else {
-                                                                const newRegs = isActive
-                                                                    ? selectedToRegions.filter(id => id !== reg.id)
-                                                                    : [...selectedToRegions, reg.id];
-                                                                setSelectedToRegions(newRegs);
-                                                                saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
-                                                            }
-                                                        }}
-                                                        className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
-                                                            ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
-                                                            : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
-                                                            }`}
-                                                    >
-                                                        <span className="text-xs font-bold">{reg.label}</span>
-                                                        {isActive && <span className="text-xs">✓</span>}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-
-                                        {/* Anadolu Yakası Grubu */}
-                                        <div className="space-y-2">
-                                            <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
-                                                <h4 className="text-[10px] font-black text-green-400 uppercase tracking-widest pl-2">Anadolu Yakası</h4>
-                                            </div>
-                                            {ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').map(reg => {
-                                                const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
-                                                return (
-                                                    <div
-                                                        key={reg.id}
-                                                        onClick={() => {
-                                                            if (regionTab === 'from') {
-                                                                const newRegs = isActive
-                                                                    ? selectedRegions.filter(id => id !== reg.id)
-                                                                    : [...selectedRegions, reg.id];
-                                                                setSelectedRegions(newRegs);
-                                                                saveFilters(newRegs);
-                                                            } else {
-                                                                const newRegs = isActive
-                                                                    ? selectedToRegions.filter(id => id !== reg.id)
-                                                                    : [...selectedToRegions, reg.id];
-                                                                setSelectedToRegions(newRegs);
-                                                                saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
-                                                            }
-                                                        }}
-                                                        className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
-                                                            ? 'bg-green-600 border-green-500 text-white shadow-lg'
-                                                            : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
-                                                            }`}
-                                                    >
-                                                        <span className="text-xs font-bold">{reg.label}</span>
-                                                        {isActive && <span className="text-xs">✓</span>}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            )}
 
             {/* Quick Filters */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -1233,10 +1261,9 @@ export default function DriverDashboard() {
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <button
                                                             onClick={() => handleCall(job.phone, job.id)}
-                                                            className="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 flex flex-col items-center justify-center gap-1"
+                                                            className="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 flex items-center justify-center gap-1.5"
                                                         >
-                                                            <span>ARA</span>
-                                                            <span className="text-[9px] opacity-70 font-medium normal-case">{job.phone}</span>
+                                                            <span>📞 ARA</span>
                                                         </button>
                                                         <button
                                                             onClick={() => handleTakeJob(job.id, job.group_id, job.phone)}

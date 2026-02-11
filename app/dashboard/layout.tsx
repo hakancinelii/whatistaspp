@@ -16,7 +16,6 @@ const menuItems = [
   { href: "/dashboard/scheduled", icon: "⏳", label: "Bekleyenler" },
   { href: "/dashboard/history", icon: "📜", label: "Geçmiş" },
   { href: "/dashboard", icon: "📊", label: "Dashboard" },
-  { href: "/dashboard/profile", icon: "👤", label: "Profil" },
   { href: "/dashboard/settings", icon: "⚙️", label: "Ayarlar" },
   { href: "/dashboard/whatsapp", icon: "🟢", label: "WhatsApp" },
 ];
@@ -283,9 +282,11 @@ export default function DashboardLayout({
             </div>
             <div className="flex items-center space-x-2 md:space-x-4">
               <div className="hidden md:block text-sm text-gray-400">{user?.email}</div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                {user?.name?.charAt(0).toUpperCase()}
-              </div>
+              <Link href="/dashboard/profile" className="group" title="Profil">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ring-2 ring-transparent group-hover:ring-purple-400/50 transition-all">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+              </Link>
             </div>
           </div>
         </header>
