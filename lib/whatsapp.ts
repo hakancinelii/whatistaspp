@@ -404,7 +404,7 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                                  OR 
                                  (raw_message = ?)
                              )
-                             AND created_at >= datetime('now', '-3 minutes')
+                             AND created_at >= datetime('now', '-30 seconds')
                              LIMIT 1`,
                             [isUnknown ? 1 : 0, job.from_loc, job.to_loc, job.price, text]
                         );
@@ -415,14 +415,14 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                                 [userId, instanceId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
                             );
 
-                            console.log(`[WA] ✅ Job Captured! ID: ${result.lastID}`);
+                            console.log(`[WA] ✅ Job Captured! ID: ${result.lastID} | ${job.from_loc} -> ${job.to_loc}`);
 
                             if (result.lastID) {
                                 const { runJobAutomation } = require('./job_automation');
                                 runJobAutomation(result.lastID).catch((e: any) => { });
                             }
                         } else {
-                            console.log(`[WA] ⏭️ Job skipped (Duplicate within 3 mins)`);
+                            console.log(`[WA] ⏭️ Job skipped (Duplicate/Recent): ${job.from_loc} -> ${job.to_loc}`);
                         }
                     }
                 }
@@ -757,13 +757,13 @@ async function parseTransferJob(text: string) {
             2. ÖRNEKLER: 
                - "Hazır ihl fatih 1500" -> {"from_loc": "İHL", "to_loc": "Fatih", "price": "1500", "time": "HAZIR 🚨", "is_high_reward": false, "is_swap": false}
                - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true, "is_swap": false}
-            3. **TAKAS (SWAP) VE İŞ DEĞİŞİMİ ANALİZİ:** 
-               - Eğer mesajda "verilir", "alınır", "takas", "boş araç", "iş istenir", "karşılama alınır", "çıkış verilir", "yerine iş alınır" gibi ifadeler geçiyorsa;
+             3. **TAKAS (SWAP) VE İŞ DEĞİŞİMİ ANALİZİ:** 
+               - Eğer mesajda "verilir", "veirlir", "veİrlir", "alınır", "takas", "boş araç", "iş istenir", "karşılama alınır", "çıkış verilir", "yerine iş alınır" gibi ifadeler geçiyorsa;
                - VEYA mesajda birden fazla farklı iş/zaman dilimi varsa (Örn: "05:00 Tuzla-IHL verilir, 10:00 SAW alınır");
                - Bu bir TAKAS (SWAP) işidir. "is_swap": true yap. 
                - Bu durumda "from_loc" değerini "ÇOKLU / TAKAS" olarak ayarla.
-            4. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL", "İGA" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
-            5. ZAMAN: "Hazır", "Hemen", "Acil" gibi kelimeler varsa time="HAZIR 🚨" yap.
+             4. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL", "İGA" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
+             5. ZAMAN: "Hazır", "Hemen", "Acil", "Azır", "Azir" gibi kelimeler varsa time="HAZIR 🚨" yap.
             6. FİYAT: Fiyatı sadece rakam olarak ayıkla. Eğer fiyat yoksa "Belirtilmedi" yaz.
             7. FİYAT ANALİZİ: Rota ve fiyatı değerlendir. Eğer fiyat piyasa ortalamasının üzerindeyse "is_high_reward": true yap. 
 
@@ -827,26 +827,25 @@ async function parseTransferJob(text: string) {
     // Fallback için Zaman Analizi
     let time = "Belirtilmedi";
     const lowerText = text.toLowerCase();
-    if (lowerText.includes("hazır") || lowerText.includes("acil") || lowerText.includes("hemen") || lowerText.includes("bekleyen") || lowerText.includes("yolcu hazır")) {
+    const readyKeywords = ["hazır", "acil", "hemen", "bekleyen", "yolcu hazır", "azır", "azir", "hazir"];
+    if (readyKeywords.some(kw => lowerText.includes(kw))) {
         time = "HAZIR 🚨";
     }
 
     // Fallback için Takas (Swap) Analizi
-    const isSwapKeywords = ["alınır", "verilir", "takas", "yerine", "boş araç", "iş istenir", "karşılama", "çıkış"];
+    const isSwapKeywords = ["alınır", "verilir", "veirlir", "veİrlir", "takas", "yerine", "boş araç", "iş istenir", "karşılama", "çıkış"];
+
     const isSwap = isSwapKeywords.some(kw => lowerText.includes(kw));
 
     const locations = [
-        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI", "İGA",
-        "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE",
-        "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY", "BEYAZIT", "TOPKAPI",
-        "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK", "TARABYA", "İSTİNYE",
         "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR", "ÜMRANİYE", "SANCAKTEPE",
         "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA", "EYÜP", "SİLAHTARAĞA",
         "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE", "BEYLİKDÜZÜ",
         "AVCILAR", "BAĞCILAR", "GÜNGÖREN", "MALTEPE", "KARTAL", "PENDİK", "TUZLA", "KİLYOS", "ŞİLE", "AĞVA",
         "SULTANBEYLİ", "ARNAVUTKÖY", "HADIMKÖY", "KIRAÇ", "KUMBURGAZ", "SELİMPAŞA", "SİLİVRİ", "ÇATALCA",
         "GEBZE", "DARICA", "DİLOVASI", "KOCAELİ", "İZMİT", "SAKARYA", "ADAPAZARI", "SAPANCA", "MAŞUKİYE",
-        "BURSA", "YALOVA", "MUDANYA", "GEMLİK", "BOLU", "ABANT", "KARTALKAYA"
+        "BURSA", "YALOVA", "MUDANYA", "GEMLİK", "BOLU", "ABANT", "KARTALKAYA",
+        "ALİBEYKÖY", "KAZLIÇEŞME", "MERTER", "TOPKAPI", "CEVİZLİBAĞ", "YENİBOSNA", "HALKALI", "GÜNEŞLİ", "İKİTELLİ"
     ];
 
     const foundLocations: { name: string, index: number }[] = [];
