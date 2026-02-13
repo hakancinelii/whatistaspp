@@ -301,6 +301,7 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
 }
 
 const groupMetadataCache = new Map<string, { subject: string, timestamp: number }>();
+const userCache = new Map<number, { role: string, package: string, timestamp: number }>();
 
 function setupMessageListeners(userId: number, sock: any, instanceId: string = 'main') {
     const sessionKey = `${userId}_${instanceId}`;
@@ -313,24 +314,38 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
 
         const fromJid = msg.key.remoteJid || '';
         let from = fromJid.split('@')[0] || '';
-
-        // Optimization: Ignore messages from me at the bridge level if not needed
         const isFromMe = msg.key.fromMe || false;
 
-        // WhatsApp Durum (Story) ve Yayın mesajlarını yoksay
-        if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) {
-            return;
-        }
+        if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) return;
 
         const isGroup = fromJid.includes('@g.us');
 
         try {
             const { getDatabase } = require('./db');
             const db = await getDatabase();
-            const dbUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
+
+            // User Cache (Fetch every 5 mins)
+            let cachedUser = userCache.get(userId);
+            let dbUser: { role: string, package: string } | undefined;
+
+            if (!cachedUser || (Date.now() - cachedUser.timestamp > 300000)) {
+                const freshUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
+                if (freshUser) {
+                    cachedUser = { ...freshUser, timestamp: Date.now() };
+                    userCache.set(userId, cachedUser);
+                    dbUser = freshUser;
+                }
+            } else {
+                dbUser = { role: cachedUser.role, package: cachedUser.package };
+            }
+
             const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
 
-            // Grup mesajıysa ve şoför paketi veya admin yetkisi yoksa yoksay
+            // Sadece log ekle (Takip için)
+            if (isGroup) {
+                console.log(`[WA] 📥 Group Message: ${fromJid} | User ${userId} isDriver: ${isDriverPackage}`);
+            }
+
             if (isGroup && !isDriverPackage) return;
 
             let text = msg.message.conversation ||
@@ -362,6 +377,7 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                     // 2. İş Analizi
                     const job = await parseTransferJob(text);
                     if (job) {
+                        console.log(`[WA] 🎯 Job Found: ${job.from_loc} -> ${job.to_loc}`);
                         const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
                         let groupName = null;
 
@@ -392,10 +408,14 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                                 [userId, instanceId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
                             );
 
+                            console.log(`[WA] ✅ Job Captured! ID: ${result.lastID}`);
+
                             if (result.lastID) {
                                 const { runJobAutomation } = require('./job_automation');
                                 runJobAutomation(result.lastID).catch((e: any) => { });
                             }
+                        } else {
+                            console.log(`[WA] ⏭️ Job skipped (Duplicate within 15 mins)`);
                         }
                     }
                 }

@@ -189,6 +189,7 @@ function initDatabase(): any {
         user_id INTEGER NOT NULL,
         instance_id TEXT, -- Hangi cihazdan yakalandı (main, gathering)
         group_jid TEXT,
+        group_name TEXT,
         sender_jid TEXT,
         from_loc TEXT,
         to_loc TEXT,
@@ -196,6 +197,10 @@ function initDatabase(): any {
         phone TEXT,
         raw_message TEXT,
         status TEXT DEFAULT 'pending', -- pending, called, ignored
+        is_high_reward BOOLEAN DEFAULT 0,
+        is_swap BOOLEAN DEFAULT 0,
+        completed_at DATETIME,
+        time TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );
