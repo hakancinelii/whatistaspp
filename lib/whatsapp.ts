@@ -397,7 +397,7 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                         const duplicateCheck = await db.get(
                             `SELECT id FROM captured_jobs 
                              WHERE from_loc = ? AND to_loc = ? AND price = ? 
-                             AND created_at >= datetime('now', '-15 minutes')
+                             AND created_at >= datetime('now', '-3 minutes')
                              LIMIT 1`,
                             [job.from_loc, job.to_loc, job.price]
                         );
@@ -415,7 +415,7 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                                 runJobAutomation(result.lastID).catch((e: any) => { });
                             }
                         } else {
-                            console.log(`[WA] ⏭️ Job skipped (Duplicate within 15 mins)`);
+                            console.log(`[WA] ⏭️ Job skipped (Duplicate within 3 mins)`);
                         }
                     }
                 }
@@ -826,14 +826,17 @@ async function parseTransferJob(text: string) {
     const isSwap = isSwapKeywords.some(kw => lowerText.includes(kw));
 
     const locations = [
-        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI",
-        "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU",
-        "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY",
-        "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK",
-        "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR",
-        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA",
-        "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE",
-        "AVCILAR", "BAĞCILAR", "GÜNGÖREN"
+        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI", "İGA",
+        "SULTANAHMET", "FATİH", "BEŞİKTAŞ", "ŞİŞLİ", "ESENLER", "ZEYTİNBURNU", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE",
+        "CANKURTARAN", "ÇEKMEKÖY", "LALELİ", "SİRKECİ", "YENİKAPI", "AKSARAY", "BEYAZIT", "TOPKAPI",
+        "PAZARTEKKE", "VATAN", "BEYLİKDÜZÜ", "ESENYURT", "SARIYER", "MASLAK", "TARABYA", "İSTİNYE",
+        "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR", "ÜMRANİYE", "SANCAKTEPE",
+        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA", "EYÜP", "SİLAHTARAĞA",
+        "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE", "BEYLİKDÜZÜ",
+        "AVCILAR", "BAĞCILAR", "GÜNGÖREN", "MALTEPE", "KARTAL", "PENDİK", "TUZLA", "KİLYOS", "ŞİLE", "AĞVA",
+        "SULTANBEYLİ", "ARNAVUTKÖY", "HADIMKÖY", "KIRAÇ", "KUMBURGAZ", "SELİMPAŞA", "SİLİVRİ", "ÇATALCA",
+        "GEBZE", "DARICA", "DİLOVASI", "KOCAELİ", "İZMİT", "SAKARYA", "ADAPAZARI", "SAPANCA", "MAŞUKİYE",
+        "BURSA", "YALOVA", "MUDANYA", "GEMLİK", "BOLU", "ABANT", "KARTALKAYA"
     ];
 
     const foundLocations: { name: string, index: number }[] = [];
