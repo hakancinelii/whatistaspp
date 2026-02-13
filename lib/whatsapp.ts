@@ -838,14 +838,16 @@ async function parseTransferJob(text: string) {
     const isSwap = isSwapKeywords.some(kw => lowerText.includes(kw));
 
     const locations = [
-        "RİXOS", "TERSANE", "TAKSİM", "MECİDİYEKÖY", "BAKIRKÖY", "ATAŞEHİR", "ÜMRANİYE", "SANCAKTEPE",
-        "KADIKÖY", "ÜSKÜDAR", "BEYOĞLU", "KARAKÖY", "EMİNÖNÜ", "BAYRAMPAŞA", "EYÜP", "SİLAHTARAĞA",
-        "GAZİOSMANPAŞA", "ISPARTAKULE", "BAHÇEŞEHİR", "KÜÇÜKÇEKMECE", "BÜYÜKÇEKMECE", "BEYLİKDÜZÜ",
-        "AVCILAR", "BAĞCILAR", "GÜNGÖREN", "MALTEPE", "KARTAL", "PENDİK", "TUZLA", "KİLYOS", "ŞİLE", "AĞVA",
-        "SULTANBEYLİ", "ARNAVUTKÖY", "HADIMKÖY", "KIRAÇ", "KUMBURGAZ", "SELİMPAŞA", "SİLİVRİ", "ÇATALCA",
-        "GEBZE", "DARICA", "DİLOVASI", "KOCAELİ", "İZMİT", "SAKARYA", "ADAPAZARI", "SAPANCA", "MAŞUKİYE",
-        "BURSA", "YALOVA", "MUDANYA", "GEMLİK", "BOLU", "ABANT", "KARTALKAYA",
-        "ALİBEYKÖY", "KAZLIÇEŞME", "MERTER", "TOPKAPI", "CEVİZLİBAĞ", "YENİBOSNA", "HALKALI", "GÜNEŞLİ", "İKİTELLİ"
+        // Havalimanları ve Ana Noktalar
+        "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI", "İGA", "OTOGAR", "PORT", "MARİNA", "GALATAPORT", "TERSANE", "VADİ İSTANBUL", "ZORLU", "İSTİNYE PARK", "METROPOL", "FİŞEKHANE",
+        // Avrupa Yakası İlçeler & Semtler
+        "ARNAVUTKÖY", "AVCILAR", "BAĞCILAR", "BAHÇELİEVLER", "BAKIRKÖY", "BAŞAKŞEHİR", "BAYRAMPAŞA", "BEŞİKTAŞ", "BEYLİKDÜZÜ", "BEYOĞLU", "BÜYÜKÇEKMECE", "ÇATALCA", "ESENLER", "ESENYURT", "EYÜPSULTAN", "EYÜP", "FATİH", "GAZİOSMANPAŞA", "GÜNGÖREN", "KAĞITHANE", "KÜÇÜKÇEKMECE", "SARIYER", "SİLİVRI", "SULTANGAZİ", "ŞİŞLİ", "ZEYTİNBURNU",
+        "TAKSİM", "ORTAKÖY", "BEBEK", "ETİLER", "ULUS", "NİŞANTAŞI", "MECİDİYEKÖY", "LEVENT", "MASLAK", "TARABYA", "İSTİNYE", "YENİKÖY", "EMİRGAN", "KARAKÖY", "EMİNÖNÜ", "SULTANAHMET", "SİRKECİ", "LALELİ", "AKSARAY", "YENİKAPI", "TOPKAPI", "CEVİZLİBAĞ", "MERTER", "GÜNEŞLİ", "HALKALI", "İKİTELLİ", "KAYABAŞI", "ISPARTAKULE", "BAHÇEŞEHİR", "HADIMKÖY", "KIRAÇ", "KUMBURGAZ", "SELİMPAŞA", "GÜRPİNAR", "YAKUPLU", "KAVAKLI", "ALİBEYKÖY", "KAZLIÇEŞME", "YENİBOSNA", "FLORYA", "YEŞİLYURT", "YEŞİLKÖY", "SİLAHTARAĞA",
+        // Anadolu Yakası İlçeler & Semtler
+        "ADALAR", "ATAŞEHİR", "BEYKOZ", "ÇEKMEKÖY", "KADIKÖY", "KARTAL", "MALTEPE", "PENDİK", "SANCAKTEPE", "SULTANBEYLİ", "ŞİLE", "TUZLA", "ÜMRANİYE", "ÜSKÜDAR",
+        "MODA", "FENERBAHÇE", "CADDEBOSTAN", "ERENKÖY", "SUADİYE", "BOSTANCI", "KÜÇÜKYALI", "İDEALTEPE", "ACIBADEM", "KOŞUYOLU", "BEYLERBEYİ", "ÇENGELKÖY", "KANDİLLİ", "KANLICA", "ÇUBUKLU", "PAŞABAHÇE", "KAVACIK", "POLONEZKÖY", "RİVA", "AĞVA", "KURTKÖY", "KAYNARCA", "GÜZELYALI", "AYDINLI", "İÇMELER", "ŞEKERPINAR", "ÇAYIROVA",
+        // Yakın Şehirler & Tatil Yerleri
+        "GEBZE", "DARICA", "DİLOVASI", "KOCAELİ", "İZMİT", "SAKARYA", "ADAPAZARI", "SAPANCA", "MAŞUKİYE", "KARTEPE", "BURSA", "YALOVA", "MUDANYA", "GEMLİK", "BOLU", "ABANT", "KARTALKAYA", "TEKİRDAĞ", "ÇORLU", "ÇERKEZKÖY", "EDİRNE", "KIRKLARELİ"
     ];
 
     const foundLocations: { name: string, index: number }[] = [];
@@ -861,9 +863,19 @@ async function parseTransferJob(text: string) {
     // Mesaj içindeki sırasına göre sırala
     foundLocations.sort((a, b) => a.index - b.index);
 
-    // Lokasyon bulunamadıysa ama fiyat ve telefon varsa yine de kaydet (Genel İş)
+    // Dinamik Lokasyon Ayıklama (Eğer listeden bulunamadıysa)
     let from_loc = foundLocations[0]?.name || "Bilinmeyen Konum";
     let to_loc = foundLocations[1]?.name || "Bilinmeyen Konum";
+
+    if (from_loc === "Bilinmeyen Konum" || to_loc === "Bilinmeyen Konum") {
+        // "A - B" veya "A / B" formatını ara
+        const patternRegex = /([A-ZÇĞİÖŞÜ]{3,})\s*[\-\/]\s*([A-ZÇĞİÖŞÜ]{3,})/i;
+        const patternMatch = text.match(patternRegex);
+        if (patternMatch) {
+            if (from_loc === "Bilinmeyen Konum") from_loc = patternMatch[1].toUpperCase();
+            if (to_loc === "Bilinmeyen Konum") to_loc = patternMatch[2].toUpperCase();
+        }
+    }
 
     if (isSwap) {
         from_loc = "ÇOKLU / TAKAS";
