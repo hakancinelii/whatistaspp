@@ -331,8 +331,8 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
             if (!cachedUser || (Date.now() - cachedUser.timestamp > 300000)) {
                 const freshUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
                 if (freshUser) {
-                    cachedUser = { ...freshUser, timestamp: Date.now() };
-                    userCache.set(userId, cachedUser);
+                    const newCache = { ...freshUser, timestamp: Date.now() };
+                    userCache.set(userId, newCache);
                     dbUser = freshUser;
                 }
             } else {
@@ -394,12 +394,19 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                             }
                         }
 
+                        // Gelişmiş Mükerrer Kontrolü: 
+                        // Lokasyonlar biliniyorsa rota bazlı, bilinmiyorsa mesaj bazlı kontrol et.
+                        const isUnknown = job.from_loc === "Bilinmeyen Konum" && job.to_loc === "Bilinmeyen Konum";
                         const duplicateCheck = await db.get(
                             `SELECT id FROM captured_jobs 
-                             WHERE from_loc = ? AND to_loc = ? AND price = ? 
+                             WHERE (
+                                 (? = 0 AND from_loc = ? AND to_loc = ? AND price = ?) 
+                                 OR 
+                                 (raw_message = ?)
+                             )
                              AND created_at >= datetime('now', '-3 minutes')
                              LIMIT 1`,
-                            [job.from_loc, job.to_loc, job.price]
+                            [isUnknown ? 1 : 0, job.from_loc, job.to_loc, job.price, text]
                         );
 
                         if (!duplicateCheck) {
@@ -730,10 +737,13 @@ export function initScheduler() {
 async function parseTransferJob(text: string) {
     if (!text) return null;
 
-    // 1. Telefon numarasını yakala (Daha esnek regex)
-    const phoneRegex = /(?:\+90|0)?\s*5\d{2}[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}/g;
+    // 1. Telefon numarasını yakala (Çok daha esnek regex)
+    const phoneRegex = /(?:\+90|0)?\s*\(?\s*5\d{2}\s*\)?[\s\.\-]*\d{3}[\s\.\-]*\d{2}[\s\.\-]*\d{2}/g;
     const phoneMatch = text.match(phoneRegex);
-    if (!phoneMatch) return null;
+    if (!phoneMatch) {
+        console.log(`[WA Parser] Telefon bulunamadı, iş iptal: ${text.substring(0, 50)}...`);
+        return null;
+    }
     const phone = phoneMatch[0].replace(/\D/g, '');
 
     // 2. Yapay Zeka ile Analiz Denemesi
