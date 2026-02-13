@@ -549,14 +549,14 @@ export default function AdminPage() {
                                         <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                         Haftalık İş Yakalama Trendi
                                     </h3>
-                                    <div className="h-64 flex items-end justify-between gap-4 pt-4 border-b border-white/5 pb-4">
+                                    <div className="h-72 flex items-end justify-between gap-4 pt-10 border-b border-white/5 pb-4">
                                         {analyticsData.dailyJobs.map((day: any, idx: number) => {
                                             const max = Math.max(...analyticsData.dailyJobs.map((d: any) => d.count), 1);
                                             const height = (day.count / max) * 100;
                                             return (
                                                 <div key={idx} className="flex-1 flex flex-col items-center gap-3 group h-full justify-end">
                                                     <div className="relative w-full flex flex-col items-center justify-end h-full">
-                                                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-all bg-white text-slate-900 text-[10px] font-black px-2 py-1 rounded-lg z-10">
+                                                        <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all bg-white text-slate-900 text-[10px] font-black px-2 py-1.5 rounded-xl z-20 shadow-xl after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-white">
                                                             {day.count}
                                                         </div>
                                                         <div
@@ -579,14 +579,14 @@ export default function AdminPage() {
                                         <span className="w-2 h-2 rounded-full bg-purple-500"></span>
                                         24 Saatlik İş Yakalama Akışı
                                     </h3>
-                                    <div className="h-64 flex items-end justify-between gap-1 pt-4 border-b border-white/5 pb-4 overflow-x-auto">
+                                    <div className="h-72 flex items-end justify-between gap-1 pt-10 border-b border-white/5 pb-4 overflow-x-auto custom-scrollbar">
                                         {(analyticsData.hourlyJobs || []).map((hourData: any, idx: number) => {
                                             const max = Math.max(...(analyticsData.hourlyJobs || []).map((d: any) => d.count), 1);
                                             const height = (hourData.count / max) * 100;
                                             return (
                                                 <div key={idx} className="flex-1 min-w-[30px] flex flex-col items-center gap-3 group h-full justify-end">
                                                     <div className="relative w-full flex flex-col items-center justify-end h-full">
-                                                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-all bg-white text-slate-900 text-[10px] font-black px-2 py-1 rounded-lg z-10 whitespace-nowrap">
+                                                        <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all bg-purple-500 text-white text-[10px] font-black px-2 py-1.5 rounded-xl z-20 shadow-xl whitespace-nowrap after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-purple-500">
                                                             {hourData.count} İş
                                                         </div>
                                                         <div
