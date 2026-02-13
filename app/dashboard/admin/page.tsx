@@ -97,6 +97,7 @@ export default function AdminPage() {
 
     const fetchUserDetail = async (userId: number) => {
         setDetailLoading(true);
+        setDetailUser(null);
         try {
             const token = localStorage.getItem("token");
             const res = await fetch(`/api/admin/users/${userId}`, {
@@ -104,10 +105,18 @@ export default function AdminPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setDetailUser(data);
+                if (data && data.user) {
+                    setDetailUser(data);
+                } else {
+                    alert("Kullanıcı verisi eksik.");
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                alert("Kullanıcı detayları alınamadı: " + (errData.error || "Sunucu hatası"));
             }
         } catch (error) {
             console.error("User detail fetch failed", error);
+            alert("Sistem veya bağlantı hatası oluştu.");
         } finally {
             setDetailLoading(false);
         }
