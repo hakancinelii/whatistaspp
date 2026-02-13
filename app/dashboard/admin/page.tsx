@@ -17,6 +17,7 @@ interface User {
     created_at: string;
     status?: 'active' | 'restricted' | 'banned';
     profile_picture?: string | null;
+    driver_phone?: string;
 }
 
 interface Stats {
@@ -368,6 +369,7 @@ export default function AdminPage() {
                                         <th className="p-4">Mevcut Paket</th>
                                         <th className="p-4">Bakiye</th>
                                         <th className="p-4">Performans</th>
+                                        <th className="p-4">İletişim</th>
                                         <th className="p-4">Durum</th>
                                         <th className="p-4 text-right">İşlemler</th>
                                     </tr>
@@ -438,6 +440,9 @@ export default function AdminPage() {
                                                         <div className="text-[9px] text-slate-500">Arama</div>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="text-xs font-bold text-slate-300">{user.driver_phone || 'Belirtilmedi'}</div>
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-col gap-1">
