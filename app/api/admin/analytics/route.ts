@@ -60,12 +60,22 @@ export async function GET(request: NextRequest) {
             FROM users LIMIT 1
         `);
 
+        // 6. Cihaz Bazlı İş Dağılımı (Hangi cihaz daha çok iş yakalıyor)
+        const deviceStats = await db.all(`
+            SELECT instance_id, COUNT(*) as count 
+            FROM captured_jobs 
+            WHERE instance_id IS NOT NULL
+            GROUP BY instance_id
+            ORDER BY count DESC
+        `);
+
         return NextResponse.json({
             dailyJobs,
             interactionStats,
             topDrivers,
             topGroups,
-            summary
+            summary,
+            deviceStats
         });
     } catch (error: any) {
         console.error('[Analytics API] Error:', error);

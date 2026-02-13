@@ -187,6 +187,7 @@ function initDatabase(): any {
     CREATE TABLE IF NOT EXISTS captured_jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
+        instance_id TEXT, -- Hangi cihazdan yakalandı (main, gathering)
         group_jid TEXT,
         sender_jid TEXT,
         from_loc TEXT,
@@ -296,6 +297,11 @@ function initDatabase(): any {
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN min_delay INTEGER DEFAULT 5;");
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN max_delay INTEGER DEFAULT 10;");
     rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");
+  } catch (e: any) { }
+
+  try {
+    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN instance_id TEXT;");
+    console.log("[DB] Migration: Added instance_id to captured_jobs");
   } catch (e: any) { }
 
   try {
