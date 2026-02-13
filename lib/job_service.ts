@@ -35,7 +35,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         throw new Error('⚠️ Çok hızlı iş alıyorsunuz! Lütfen biraz bekleyin (10 dakikada en fazla 3 iş alabilirsiniz).');
     }
 
-    const veryRecent = recentInteractions.some(i => new Date(i.created_at + (i.created_at.includes('Z') ? '' : 'Z')).getTime() > Date.now() - 45 * 1000);
+    const veryRecent = recentInteractions.some((i: any) => new Date(i.created_at + (i.created_at.includes('Z') ? '' : 'Z')).getTime() > Date.now() - 45 * 1000);
     if (veryRecent) {
         throw new Error('⚠️ İki iş arasında en az 45 saniye beklemelisiniz.');
     }
@@ -72,11 +72,13 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     let userSession = await getSession(userId);
     const userHasWA = userSession.sock && userSession.isConnected;
 
+    console.log(`[JobService] User WA Status: ${userHasWA ? 'Connected' : 'Disconnected'}, Proxy Mode: ${proxyMode}`);
+
     if (!proxyMode && !userHasWA) {
         throw new Error('WhatsApp bağlantınız yok. Lütfen önce WhatsApp\'ı bağlayın.');
     }
 
-    let session;
+    let session: any;
     let isUsingProxy = false;
 
     if (proxyMode && !userHasWA) {
@@ -84,10 +86,10 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         isUsingProxy = true;
 
         if (!session.sock || !session.isConnected) {
+            console.log(`[JobService] Admin session disconnected, attempting connect...`);
             await connectWhatsApp(adminUser.id).catch(console.error);
-            // Wait a bit for connection
             for (let i = 0; i < 3; i++) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 session = await getSession(adminUser.id);
                 if (session.isConnected && session.sock) break;
             }
@@ -95,9 +97,10 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     } else {
         session = userSession;
         if (!session.sock || !session.isConnected) {
+            console.log(`[JobService] User session disconnected, attempting connect...`);
             await connectWhatsApp(userId).catch(console.error);
             for (let i = 0; i < 3; i++) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 session = await getSession(userId);
                 if (session.isConnected && session.sock) break;
             }
@@ -105,7 +108,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     }
 
     if (!session.sock || !session.isConnected) {
-        throw new Error('WhatsApp bağlantısı kurulamadı.');
+        throw new Error('WhatsApp bağlantısı kurulamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
     }
 
     // 6. Prepare Messages
@@ -120,47 +123,50 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     // 7. Send to Customer
     if (customerPhone && customerPhone !== "Belirtilmedi") {
         let cleanPhone = customerPhone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
-        else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
-        const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
-        await session.sock.sendMessage(jid, { text: customerMessage });
+        if (cleanPhone.length >= 10) {
+            if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
+            else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
 
-        if (isUsingProxy && adminUser) {
-            const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
-            const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden bir işe mesaj gönderdi.\n\n👤 *Müşteri:* ${customerPhone}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
-            await session.sock.sendMessage(myJid, { text: adminNotify });
+            const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
+            console.log(`[JobService] Sending message to customer: ${jid}`);
 
-            if (userProfile.driver_phone) {
-                try {
-                    let drPhone = userProfile.driver_phone.replace(/\D/g, '');
-                    if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
-                    else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
-                    const drJid = `${drPhone}@s.whatsapp.net`;
-                    const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için mesaj müşteri (${customerPhone}) ve gruba *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
-                    await session.sock.sendMessage(drJid, { text: driverNotify });
-                } catch (e) { }
+            try {
+                await session.sock.sendMessage(jid, { text: customerMessage });
+
+                // Admin Proxy Bildirimi
+                if (isUsingProxy && adminUser && session.sock.user) {
+                    const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+                    const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden bir işe mesaj gönderdi.\n\n👤 *Müşteri:* ${customerPhone}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
+                    await session.sock.sendMessage(myJid, { text: adminNotify }).catch(() => { });
+
+                    if (userProfile.driver_phone) {
+                        let drPhone = userProfile.driver_phone.replace(/\D/g, '');
+                        if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
+                        else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
+                        const drJid = `${drPhone}@s.whatsapp.net`;
+                        const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için mesaj müşteri (${customerPhone}) ve gruba *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
+                        await session.sock.sendMessage(drJid, { text: driverNotify }).catch(() => { });
+                    }
+                }
+            } catch (err: any) {
+                console.error(`[JobService] Individual Message Error (Customer):`, err.message);
+                throw new Error(`Mesaj gönderilemedi: ${err.message}`);
             }
         }
     } else if (targetSenderJid) {
-        let jid = targetSenderJid;
-        if (!jid.includes('@')) jid += '@s.whatsapp.net';
-        await session.sock.sendMessage(jid, { text: customerMessage });
+        console.log(`[JobService] Sending message to sender: ${targetSenderJid}`);
+        try {
+            let jid = targetSenderJid;
+            if (!jid.includes('@')) jid += '@s.whatsapp.net';
+            await session.sock.sendMessage(jid, { text: customerMessage });
 
-        if (isUsingProxy) {
-            const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
-            const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden grup mesaj sahibine ulaştı.\n\n👤 *Müşteri JID:* ${jid}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
-            await session.sock.sendMessage(myJid, { text: adminNotify });
-
-            if (userProfile.driver_phone) {
-                try {
-                    let drPhone = userProfile.driver_phone.replace(/\D/g, '');
-                    if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
-                    else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
-                    const drJid = `${drPhone}@s.whatsapp.net`;
-                    const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için *Grup Sahibine* mesaj *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
-                    await session.sock.sendMessage(drJid, { text: driverNotify });
-                } catch (e) { }
+            if (isUsingProxy && adminUser && session.sock.user) {
+                const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+                const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden grup mesaj sahibine ulaştı.\n\n👤 *Müşteri JID:* ${jid}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
+                await session.sock.sendMessage(myJid, { text: adminNotify }).catch(() => { });
             }
+        } catch (err: any) {
+            console.error(`[JobService] Individual Message Error (Sender):`, err.message);
         }
     }
 

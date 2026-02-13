@@ -1266,7 +1266,7 @@ export default function DriverDashboard() {
                                                             <span>📞 ARA</span>
                                                         </button>
                                                         <button
-                                                            onClick={() => handleTakeJob(job.id, job.group_id, job.phone)}
+                                                            onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
                                                             disabled={loadingJobId === job.id}
                                                             className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/20"
                                                         >
@@ -1279,7 +1279,7 @@ export default function DriverDashboard() {
                                                     </div>
                                                 ) : (
                                                     <button
-                                                        onClick={() => handleTakeJob(job.id, job.group_id, job.phone)}
+                                                        onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
                                                         disabled={loadingJobId === job.id}
                                                         className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/20"
                                                     >
