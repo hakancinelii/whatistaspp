@@ -1176,11 +1176,11 @@ export default function DriverDashboard() {
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${job.status === 'won' ? 'text-red-500' : 'text-slate-500'}`}>
-                                                        {job.status === 'won' ? '🚀 İŞ SENDE' : (job.time || 'BELİRTİLMEDİ')}
+                                                    <span className={`text-[10px] font-black uppercase tracking-tight whitespace-nowrap ${job.status === 'won' ? 'text-red-500' : 'text-slate-500'}`}>
+                                                        {job.status === 'won' ? '🚀 İŞ SENDE' : (job.time || 'SAAT BELİRSİZ')}
                                                     </span>
                                                     {job.created_at && (
-                                                        <span className="text-[9px] font-bold text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded">
+                                                        <span className="text-[9px] font-bold text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded whitespace-nowrap">
                                                             {(() => {
                                                                 try {
                                                                     const date = new Date(job.created_at);
@@ -1194,15 +1194,15 @@ export default function DriverDashboard() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="font-bold text-slate-300 text-xs mt-0.5 max-w-[200px] truncate">
-                                                    {job.raw_message?.slice(0, 50)}...
+                                                <div className="font-bold text-slate-300 text-[10px] mt-0.5 max-w-[150px] truncate opacity-70">
+                                                    {job.raw_message?.slice(0, 40)}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end">
-                                            <div className="text-xl font-black text-white tracking-tight">{job.price}</div>
+                                        <div className="flex flex-col items-end flex-shrink-0 ml-2">
+                                            <div className="text-lg font-black text-white tracking-tighter whitespace-nowrap">{job.price}</div>
                                             {job.is_swap === 1 && (
-                                                <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase mt-1">
+                                                <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase mt-1 border border-purple-500/20 whitespace-nowrap">
                                                     🔁 TAKASLI
                                                 </span>
                                             )}
