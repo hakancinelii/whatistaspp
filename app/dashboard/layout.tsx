@@ -161,24 +161,55 @@ export default function DashboardLayout({
               </li>
             )}
 
+            {/* Şirket Paketi Paneli (Varsa) */}
+            {user?.package === 'company' && (
+              <li>
+                <Link
+                  href="/dashboard/company"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/company"
+                    ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
+                    : "text-gray-400 hover:bg-slate-800 hover:text-white"
+                    }`}
+                >
+                  <span className="text-xl">🏢</span>
+                  <span className="font-medium">Firma Paneli</span>
+                </Link>
+              </li>
+            )}
+
             {menuItems
               .filter(item => {
+                // Admin her şeyi görür
+                if (user?.role === 'admin') return true;
+
+                // Şoför kısıtlamaları
                 if (user?.package === 'driver') {
-                  const hiddenForDrivers = [
-                    '/dashboard/inbox',           // Sohbetler (zaten gizliydi)
-                    '/dashboard/messages',        // 📨 Toplu Mesaj Gönder
-                    '/dashboard/operation',       // 🏝️ Operasyon
-                    '/dashboard/customers',       // 👥 Müşteriler
-                    '/dashboard/automation',      // 🤖 Otomasyon
-                    '/dashboard/knowledge',       // 🧠 Bilgi Bankası
-                    '/dashboard/templates',       // 📝 Şablonlar
-                    '/dashboard/scheduled',       // ⏳ Bekleyenler
-                    '/dashboard/reports',         // Raporlar (zaten gizliydi)
-                    '/dashboard/history'          // Geçmiş (zaten gizliydi)
+                  const allowedForDrivers = [
+                    '/dashboard',
+                    '/dashboard/whatsapp',
+                    '/dashboard/settings',
+                    '/dashboard/profile'
                   ];
-                  return !hiddenForDrivers.includes(item.href);
+                  return allowedForDrivers.includes(item.href);
                 }
-                return true;
+
+                // Şirket kısıtlamaları
+                if (user?.package === 'company') {
+                  const allowedForCompany = [
+                    '/dashboard',
+                    '/dashboard/operation',
+                    '/dashboard/customers',
+                    '/dashboard/messages',
+                    '/dashboard/whatsapp',
+                    '/dashboard/settings',
+                    '/dashboard/profile'
+                  ];
+                  return allowedForCompany.includes(item.href);
+                }
+
+                // Paket seçilmemişse (veya bilinmeyen bir paketse) sadece profil ve dashboard görsün
+                return ['/dashboard', '/dashboard/profile'].includes(item.href);
               })
               .map((item) => (
                 <li key={item.href}>

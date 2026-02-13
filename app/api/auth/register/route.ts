@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 
 export async function POST(request: NextRequest) {
     try {
-        const { name, email, password } = await request.json();
+        const { name, email, password, package: userPackage } = await request.json();
 
         if (!name || !email || !password) {
             return NextResponse.json(
@@ -40,15 +40,15 @@ export async function POST(request: NextRequest) {
 
         // Create user
         const result = await db.run(
-            'INSERT INTO users (name, email, password, plain_password) VALUES (?, ?, ?, ?)',
-            [name, email, hashedPassword, password]
+            'INSERT INTO users (name, email, password, plain_password, package) VALUES (?, ?, ?, ?, ?)',
+            [name, email, hashedPassword, password, userPackage || 'driver']
         );
 
         const userId = result.lastID;
 
         // Generate JWT
         const token = jwt.sign(
-            { userId, email, name, status: 'active' },
+            { userId, email, name, status: 'active', package: userPackage || 'driver' },
             JWT_SECRET,
             { expiresIn: '7d' }
         );

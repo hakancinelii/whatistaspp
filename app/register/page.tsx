@@ -11,6 +11,7 @@ export default function RegisterPage() {
         email: "",
         password: "",
         confirmPassword: "",
+        package: "driver", // Default to driver
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -34,6 +35,7 @@ export default function RegisterPage() {
                     name: formData.name,
                     email: formData.email,
                     password: formData.password,
+                    package: formData.package,
                 }),
             });
 
@@ -57,7 +59,7 @@ export default function RegisterPage() {
             <div className="w-full max-w-md">
                 <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-white mb-2">Kayıt Ol</h1>
+                        <h1 className="text-3xl font-bold text-white mb-2 font-black italic tracking-tighter">WhatIstaspp</h1>
                         <p className="text-gray-300">Yeni hesap oluşturun</p>
                     </div>
 
@@ -68,6 +70,30 @@ export default function RegisterPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Hesap Türü Seçimi */}
+                        <div className="grid grid-cols-2 gap-3 mb-2">
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, package: 'driver' })}
+                                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${formData.package === 'driver'
+                                    ? 'bg-green-600/20 border-green-500 text-white shadow-lg shadow-green-500/20 scale-[1.02]'
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                            >
+                                <span className="text-2xl">🚕</span>
+                                <span className="text-xs font-black uppercase tracking-widest">Şoförüm</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, package: 'company' })}
+                                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${formData.package === 'company'
+                                    ? 'bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                            >
+                                <span className="text-2xl">🏢</span>
+                                <span className="text-xs font-black uppercase tracking-widest">Şirketim</span>
+                            </button>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-200 mb-2">
                                 Ad Soyad
@@ -128,7 +154,7 @@ export default function RegisterPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-[0.2em] font-black"
                         >
                             {loading ? "Kayıt yapılıyor..." : "Kayıt Ol"}
                         </button>

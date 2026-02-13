@@ -103,12 +103,15 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
             version,
             auth: state,
             printQRInTerminal: false,
-            browser: ["Ubuntu", "Chrome", "114.0.5735.196"],
+            browser: ["WhatIstaspp", "Chrome", "114.0.0.0"],
             syncFullHistory: false,
+            shouldSyncHistoryMessage: () => false, // Geçmiş senkronizasyonunu kapat, telefonu yormasın
             connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 90000,
+            defaultQueryTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
-            generateHighQualityLinkPreview: true,
+            generateHighQualityLinkPreview: false,
+            markOnlineOnConnect: false, // Bağlanınca hemen online olma (CPU tasarrufu)
+            getMessage: async (key: any) => { return { conversation: "" } } // Hafıza tasarrufu
         });
 
         session.sock = sock;
@@ -297,6 +300,8 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
     }
 }
 
+const groupMetadataCache = new Map<string, { subject: string, timestamp: number }>();
+
 function setupMessageListeners(userId: number, sock: any, instanceId: string = 'main') {
     const sessionKey = `${userId}_${instanceId}`;
     console.log(`[WA] 📡 Setting up message listeners for ${sessionKey}...`);
@@ -309,22 +314,7 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
         const fromJid = msg.key.remoteJid || '';
         let from = fromJid.split('@')[0] || '';
 
-        // Eğer mesaj LID (Gizli ID) üzerinden geliyorsa
-        if (fromJid.includes('@lid')) {
-            from = fromJid; // Default to LID if lookup fails
-            try {
-                const { getDatabase } = require('./db');
-                const db = await getDatabase();
-                const matchedContact = await db.get('SELECT phone_number FROM customers WHERE lid = ? AND user_id = ?', [fromJid, userId]);
-                if (matchedContact && matchedContact.phone_number) {
-                    from = matchedContact.phone_number;
-                    console.log(`[WA] LID ${fromJid} mapped to Phone ${from}`);
-                }
-            } catch (e) {
-                console.error('[WA] LID Lookup Error:', e);
-            }
-        }
-
+        // Optimization: Ignore messages from me at the bridge level if not needed
         const isFromMe = msg.key.fromMe || false;
 
         // WhatsApp Durum (Story) ve Yayın mesajlarını yoksay
@@ -338,18 +328,10 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
             const { getDatabase } = require('./db');
             const db = await getDatabase();
             const dbUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
-            // Adminler de şoför paketine sahipmiş gibi işlem yapabilsin
             const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
 
-            console.log(`[WA DEBUG] User: ${userId}, Role: ${dbUser?.role}, Pkg: ${dbUser?.package} -> IsDriver/Admin: ${isDriverPackage}`);
-
             // Grup mesajıysa ve şoför paketi veya admin yetkisi yoksa yoksay
-            if (isGroup && !isDriverPackage) {
-                console.log(`[WA DEBUG] Group message ignored because user ${userId} is not driver/admin.`);
-                return;
-            }
-
-            console.log(`[WA] 📥 Message [${instanceId}] detected: ${from} (Group: ${isGroup}, fromMe: ${isFromMe})`);
+            if (isGroup && !isDriverPackage) return;
 
             let text = msg.message.conversation ||
                 msg.message.extendedTextMessage?.text ||
@@ -358,66 +340,66 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                 msg.message.buttonsResponseMessage?.selectedDisplayText ||
                 msg.message.listResponseMessage?.title || '';
 
-            if (!text) return;
-
             // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
-            // Hem Grup Hem Bireysel Mesajlarda Çalışır
             if (isDriverPackage) {
-                // 1. Yeni Grup Linklerini Keşfet
-                const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
-                const invites = [...text.matchAll(inviteRegex)];
-                for (const match of invites) {
-                    const code = match[1];
-                    const link = `https://chat.whatsapp.com/${code}`;
-                    try {
-                        await db.run(
-                            'INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, found_by_user_id) VALUES (?, ?, ?)',
-                            [code, link, userId]
-                        );
-                    } catch (e) { }
-                }
-
-                const job = await parseTransferJob(text);
-                if (job) {
-                    const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
-                    let groupName = null;
-                    if (isGroup) {
-                        try {
-                            const metadata = await sock.groupMetadata(fromJid);
-                            groupName = metadata.subject;
-                        } catch (err) {
-                            console.warn(`[WA] Could not fetch group metadata for ${fromJid}`);
+                if (!text) {
+                    // Sadece link discovery için devam et (eğer mesaj boşsa ama link varsa - nadir)
+                } else {
+                    // 1. Yeni Grup Linklerini Keşfet
+                    if (text.includes('chat.whatsapp.com')) {
+                        const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
+                        const invites = [...text.matchAll(inviteRegex)];
+                        for (const match of invites) {
+                            const code = match[1];
+                            const link = `https://chat.whatsapp.com/${code}`;
+                            db.run(
+                                'INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, found_by_user_id) VALUES (?, ?, ?)',
+                                [code, link, userId]
+                            ).catch(() => { });
                         }
                     }
 
-                    console.log(`[WA] 🚕 JOB CAPTURED! ${job.from_loc} -> ${job.to_loc} from ${senderJid} (Group: ${groupName || 'PM'})`);
+                    // 2. İş Analizi
+                    const job = await parseTransferJob(text);
+                    if (job) {
+                        const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
+                        let groupName = null;
 
-                    // MÜKERRER KONTROLÜ (DUPLICATE CHECK)
-                    // Son 15 dakika içinde aynı lokasyon ve fiyata sahip, aynı gönderen veya farklı gönderen farketmez (aynı iş farklı gruplara düşebilir) iş var mı?
-                    const duplicateCheck = await db.get(
-                        `SELECT id FROM captured_jobs 
-                         WHERE from_loc = ? AND to_loc = ? AND price = ? 
-                         AND created_at >= datetime('now', '-15 minutes')
-                         LIMIT 1`,
-                        [job.from_loc, job.to_loc, job.price]
-                    );
+                        if (isGroup) {
+                            const cached = groupMetadataCache.get(fromJid);
+                            if (cached && (Date.now() - cached.timestamp < 3600000)) {
+                                groupName = cached.subject;
+                            } else {
+                                try {
+                                    const metadata = await sock.groupMetadata(fromJid);
+                                    groupName = metadata.subject;
+                                    groupMetadataCache.set(fromJid, { subject: groupName, timestamp: Date.now() });
+                                } catch (err) { }
+                            }
+                        }
 
-                    if (!duplicateCheck) {
-                        const result = await db.run(
-                            'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
+                        const duplicateCheck = await db.get(
+                            `SELECT id FROM captured_jobs 
+                             WHERE from_loc = ? AND to_loc = ? AND price = ? 
+                             AND created_at >= datetime('now', '-15 minutes')
+                             LIMIT 1`,
+                            [job.from_loc, job.to_loc, job.price]
                         );
 
-                        // --- OTOMATİK İŞ ALMA TETİKLE ---
-                        if (result.lastID) {
-                            const { runJobAutomation } = require('./job_automation');
-                            runJobAutomation(result.lastID).catch((e: any) => console.error('[WA] Automation Error:', e.message));
+                        if (!duplicateCheck) {
+                            const result = await db.run(
+                                'INSERT INTO captured_jobs (user_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                [userId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
+                            );
+
+                            if (result.lastID) {
+                                const { runJobAutomation } = require('./job_automation');
+                                runJobAutomation(result.lastID).catch((e: any) => { });
+                            }
                         }
-                    } else {
-                        console.log(`[WA] ⚠️ Duplicate job detected from ${senderJid}, skipping...`);
                     }
                 }
-                if (isGroup) return; // Grup mesajları inbox'a düşmesin, sadece yakalansın. PM ise devam etsin.
+                if (isGroup) return;
             }
 
             let mediaUrl = '';
