@@ -156,7 +156,7 @@ export default function DashboardLayout({
                     }`}
                 >
                   <span className="text-xl">🚕</span>
-                  <span className="font-medium">Hızlı Transfer</span>
+                  <span className="font-medium">İşleri Gör</span>
                 </Link>
               </li>
             )}

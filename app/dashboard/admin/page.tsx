@@ -559,6 +559,36 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
+                                {/* Hourly Job Trend (Last 24h) */}
+                                <div className="bg-slate-800/40 p-8 rounded-[2.5rem] border border-white/5 backdrop-blur-sm">
+                                    <h3 className="text-sm font-black text-white mb-8 uppercase tracking-[0.2em] flex items-center gap-3">
+                                        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                        24 Saatlik İş Yakalama Akışı
+                                    </h3>
+                                    <div className="h-64 flex items-end justify-between gap-1 pt-4 border-b border-white/5 pb-4 overflow-x-auto">
+                                        {(analyticsData.hourlyJobs || []).map((hourData: any, idx: number) => {
+                                            const max = Math.max(...(analyticsData.hourlyJobs || []).map((d: any) => d.count), 1);
+                                            const height = (hourData.count / max) * 100;
+                                            return (
+                                                <div key={idx} className="flex-1 min-w-[30px] flex flex-col items-center gap-3 group h-full justify-end">
+                                                    <div className="relative w-full flex flex-col items-center justify-end h-full">
+                                                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-all bg-white text-slate-900 text-[10px] font-black px-2 py-1 rounded-lg z-10 whitespace-nowrap">
+                                                            {hourData.count} İş
+                                                        </div>
+                                                        <div
+                                                            style={{ height: `${height}%` }}
+                                                            className="w-[60%] bg-gradient-to-t from-purple-600 to-purple-400 rounded-t-lg group-hover:scale-x-125 transition-all duration-300"
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-[8px] font-black text-slate-600">
+                                                        {hourData.hour}
+                                                    </span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
                                 {/* Interaction Distribution */}
                                 <div className="bg-slate-800/40 p-8 rounded-[2.5rem] border border-white/5 backdrop-blur-sm">
                                     <h3 className="text-sm font-black text-white mb-8 uppercase tracking-[0.2em]">Sistem Etkileşim Oranı</h3>

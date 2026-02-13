@@ -22,6 +22,15 @@ export async function GET(request: NextRequest) {
             ORDER BY date ASC
         `);
 
+        // 1.1 Son 24 Saatlik Saatlik İş Yakalama Trendi
+        const hourlyJobs = await db.all(`
+            SELECT strftime('%H:00', created_at) as hour, COUNT(*) as count 
+            FROM captured_jobs 
+            WHERE created_at >= datetime('now', '-24 hours')
+            GROUP BY hour
+            ORDER BY hour ASC
+        `);
+
         // 2. Etkileşim Dağılımı (Kazanılan, Aranan, Pas Geçilen)
         const interactionStats = await db.all(`
             SELECT status, COUNT(*) as count 
@@ -71,6 +80,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             dailyJobs,
+            hourlyJobs,
             interactionStats,
             topDrivers,
             topGroups,
