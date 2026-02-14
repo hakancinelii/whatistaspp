@@ -27,7 +27,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     // ⛔ GÜVENLİK: Hız Sınırı (Rate Limiting)
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const recentInteractions = await db.all(
-        'SELECT created_at FROM job_interactions WHERE user_id = ? AND status = "won" AND created_at >= ?',
+        "SELECT created_at FROM job_interactions WHERE user_id = ? AND status = 'won' AND created_at >= ?",
         [userId, tenMinAgo]
     );
 
@@ -56,7 +56,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     if (!job) throw new Error('İş kaydı bulunamadı');
 
     // ⛔ GÜVENLİK: Bu iş zaten birisi tarafından kazanılarak 'won' yapıldı mı?
-    const alreadyTaken = await db.get('SELECT id FROM job_interactions WHERE job_id = ? AND status = "won"', [job.id]);
+    const alreadyTaken = await db.get("SELECT id FROM job_interactions WHERE job_id = ? AND status = 'won'", [job.id]);
     if (alreadyTaken) {
         throw new Error('⚠️ Bu iş az önce başka birisi tarafından alındı.');
     }

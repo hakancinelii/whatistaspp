@@ -83,20 +83,20 @@ export async function POST(request: NextRequest) {
             await db.run('UPDATE users SET package = ? WHERE id = ?', [packageName, userId]);
         }
         else if (action === 'make_admin') {
-            await db.run('UPDATE users SET role = "admin" WHERE id = ?', [userId]);
+            await db.run("UPDATE users SET role = 'admin' WHERE id = ?", [userId]);
         }
         else if (action === 'change_password') {
             const hashedPassword = await bcrypt.hash(newPassword, 10);
             await db.run('UPDATE users SET password = ?, plain_password = ? WHERE id = ?', [hashedPassword, newPassword, userId]);
         }
         else if (action === 'restrict_user') {
-            await db.run('UPDATE users SET status = "restricted" WHERE id = ?', [userId]);
+            await db.run("UPDATE users SET status = 'restricted' WHERE id = ?", [userId]);
         }
         else if (action === 'ban_user') {
-            await db.run('UPDATE users SET status = "banned" WHERE id = ?', [userId]);
+            await db.run("UPDATE users SET status = 'banned' WHERE id = ?", [userId]);
         }
         else if (action === 'unban_user') {
-            await db.run('UPDATE users SET status = "active" WHERE id = ?', [userId]);
+            await db.run("UPDATE users SET status = 'active' WHERE id = ?", [userId]);
         }
 
         return NextResponse.json({ success: true });

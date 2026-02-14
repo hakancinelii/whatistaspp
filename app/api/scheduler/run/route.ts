@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
             try {
                 // Update status to processing to prevent double pick-up
                 await db.run(
-                    'UPDATE scheduled_messages SET status = "processing" WHERE id = ?',
+                    "UPDATE scheduled_messages SET status = 'processing' WHERE id = ?",
                     [msg.id]
                 );
 
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
                 // Update status to completed
                 await db.run(
-                    'UPDATE scheduled_messages SET status = "completed" WHERE id = ?',
+                    "UPDATE scheduled_messages SET status = 'completed' WHERE id = ?",
                     [msg.id]
                 );
                 processedCount++;
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
             } catch (error) {
                 console.error(`Failed to process scheduled msg ${msg.id}:`, error);
                 await db.run(
-                    'UPDATE scheduled_messages SET status = "failed" WHERE id = ?',
+                    "UPDATE scheduled_messages SET status = 'failed' WHERE id = ?",
                     [msg.id]
                 );
             }
