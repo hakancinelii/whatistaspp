@@ -96,7 +96,7 @@ export default function WhatsAppPage() {
 
     return (
         <div className="fade-in max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-white mb-8">WhatsApp Bağlantısı</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">WhatsApp Bağla!</h1>
 
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-8">
                 {/* Connection Status */}
@@ -120,7 +120,7 @@ export default function WhatsAppPage() {
                         >
                             {status.isConnected
                                 ? "Cihaz Bağlı"
-                                : status.isConnecting
+                                : status.isConnecting && status.qrCode
                                     ? "Bağlantı Kuruluyor..."
                                     : "Bağlı Değil"}
                         </span>

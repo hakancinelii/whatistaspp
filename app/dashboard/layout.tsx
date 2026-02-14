@@ -17,7 +17,7 @@ const menuItems = [
   { href: "/dashboard/history", icon: "📜", label: "Geçmiş" },
   { href: "/dashboard", icon: "📊", label: "Dashboard" },
   { href: "/dashboard/settings", icon: "⚙️", label: "Ayarlar" },
-  { href: "/dashboard/whatsapp", icon: "🟢", label: "WhatsApp" },
+  { href: "/dashboard/whatsapp", icon: "🟢", label: "WhatsApp Bağla!" },
 ];
 
 export default function DashboardLayout({
