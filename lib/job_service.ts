@@ -35,7 +35,19 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         throw new Error('⚠️ Çok hızlı iş alıyorsunuz! Lütfen biraz bekleyin (10 dakikada en fazla 3 iş alabilirsiniz).');
     }
 
-    const veryRecent = recentInteractions.some((i: any) => new Date(i.created_at + (i.created_at.includes('Z') ? '' : 'Z')).getTime() > Date.now() - 45 * 1000);
+    // ⛔ GÜVENLİK: İnsani Tepki Süresi Kontrolü (Anti-Bot)
+    // Bir iş oluşturulduktan sonra 500ms (yarım saniye) içinde alınmaya çalışılırsa bu şüphelidir.
+    // Çünkü insanın okuyup, karar verip tıklaması en az 1-2 saniye sürer.
+    const jobCreationTime = new Date(job.created_at).getTime();
+    const now = Date.now();
+    const reactionTime = now - jobCreationTime;
+
+    if (reactionTime < 500) {
+        console.warn(`[ANTI-BOT] User ${userId} attempted to take job ${job.id} in ${reactionTime}ms! This is suspiciously fast.`);
+        // Şimdilik sadece logluyoruz, ileride otomatik ban/kısıtlama eklenebilir.
+        // await db.run('INSERT INTO suspicious_activity (user_id, action, details) VALUES (?, ?, ?)', [userId, 'auto_clicker_suspect', `Reaction: ${reactionTime}ms`]);
+    }
+
     if (veryRecent) {
         throw new Error('⚠️ İki iş arasında en az 45 saniye beklemelisiniz.');
     }
