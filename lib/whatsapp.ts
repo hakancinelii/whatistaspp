@@ -588,10 +588,15 @@ export async function sendMessage(userId: number, to: string, message: string, o
 
     try {
         let jid = to;
-        if (to.includes('@lid') || to.includes('@g.us')) {
-            jid = to; // LID veya Grup ise olduğu gibi bırak
-        } else if (!to.includes('@s.whatsapp.net')) {
-            jid = `${to}@s.whatsapp.net`; // Normal numaraysa uzantı ekle
+        if (to.includes('@lid') || to.includes('@g.us') || to.includes('@s.whatsapp.net')) {
+            jid = to;
+        } else {
+            // Numarayı temizle ve 90 ekle (Türkiye için)
+            let clean = to.replace(/\D/g, '');
+            if (clean.length === 11 && clean.startsWith('0')) clean = '90' + clean.substring(1);
+            else if (clean.length === 10 && clean.startsWith('5')) clean = '90' + clean;
+
+            jid = `${clean}@s.whatsapp.net`;
         }
 
         if (options?.mediaUrl && options.mediaType === 'audio') {

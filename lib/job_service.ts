@@ -68,6 +68,17 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
 
     if (!targetGroupJid) throw new Error('Grup bilgisi bulunamadı');
 
+    // 4.1. Second-Pass Phone Extraction (If phone is missing but exists in raw_message)
+    let finalCustomerPhone = customerPhone;
+    if ((!finalCustomerPhone || finalCustomerPhone === "Belirtilmedi") && job.raw_message) {
+        const phoneRegex = /(?:\+90|0)?\s*\(?\s*5\d{2}\s*\)?[\s\.\-]*\d{3}[\s\.\-]*\d{2}[\s\.\-]*\d{2}/g;
+        const phoneMatch = job.raw_message.match(phoneRegex);
+        if (phoneMatch) {
+            finalCustomerPhone = phoneMatch[0].replace(/\D/g, '');
+            console.log(`[JobService] Found phone in raw_message during take: ${finalCustomerPhone}`);
+        }
+    }
+
     // 5. Check WA Connection
     let userSession = await getSession(userId);
     const userHasWA = userSession.sock && userSession.isConnected;
@@ -121,52 +132,52 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     }
 
     // 7. Send to Customer
-    if (customerPhone && customerPhone !== "Belirtilmedi") {
-        let cleanPhone = customerPhone.replace(/\D/g, '');
-        if (cleanPhone.length >= 10) {
-            if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
-            else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
+    if (finalCustomerPhone && finalCustomerPhone !== "Belirtilmedi" && finalCustomerPhone.length >= 10) {
+        let cleanPhone = finalCustomerPhone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
+        else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
 
-            const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
-            console.log(`[JobService] Sending message to customer: ${jid}`);
+        const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
+        console.log(`[JobService] Sending message to customer: ${jid}`);
 
-            try {
-                await session.sock.sendMessage(jid, { text: customerMessage });
+        try {
+            await session.sock.sendMessage(jid, { text: customerMessage });
 
-                // Admin Proxy Bildirimi
-                if (isUsingProxy && adminUser && session.sock.user) {
-                    const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
-                    const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden bir işe mesaj gönderdi.\n\n👤 *Müşteri:* ${customerPhone}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
-                    await session.sock.sendMessage(myJid, { text: adminNotify }).catch(() => { });
+            // Admin Proxy Bildirimi
+            if (isUsingProxy && adminUser && session.sock.user) {
+                const myJid = (session.sock.user.id || session.sock.user.jid || '').split(':')[0] + '@s.whatsapp.net';
+                const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden bir işe mesaj gönderdi.\n\n👤 *Müşteri:* ${finalCustomerPhone}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
+                await session.sock.sendMessage(myJid, { text: adminNotify }).catch(() => { });
 
-                    if (userProfile.driver_phone) {
-                        let drPhone = userProfile.driver_phone.replace(/\D/g, '');
-                        if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
-                        else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
-                        const drJid = `${drPhone}@s.whatsapp.net`;
-                        const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için mesaj müşteri (${customerPhone}) ve gruba *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
-                        await session.sock.sendMessage(drJid, { text: driverNotify }).catch(() => { });
-                    }
+                if (userProfile.driver_phone) {
+                    let drPhone = userProfile.driver_phone.replace(/\D/g, '');
+                    if (drPhone.startsWith('0')) drPhone = '90' + drPhone.substring(1);
+                    else if (drPhone.startsWith('5') && drPhone.length === 10) drPhone = '90' + drPhone;
+                    const drJid = `${drPhone}@s.whatsapp.net`;
+                    const driverNotify = `✅ *İŞ SAHİPLENİLDİ*\n\nWhatsApp bağlantınız olmadığı için mesaj müşteri (${finalCustomerPhone}) ve gruba *Vekaleten (Admin)* üzerinden gönderildi.\n\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}\n💰 *Fiyat:* ${job.price}`;
+                    await session.sock.sendMessage(drJid, { text: driverNotify }).catch(() => { });
                 }
-            } catch (err: any) {
-                console.error(`[JobService] Individual Message Error (Customer):`, err.message);
-                throw new Error(`Mesaj gönderilemedi: ${err.message}`);
             }
+        } catch (err: any) {
+            console.error(`[JobService] Individual Message Error (Customer):`, err.message);
+            throw new Error(`Müşteriye mesaj gönderilemedi: ${err.message}`);
         }
-    } else if (targetSenderJid) {
-        console.log(`[JobService] Sending message to sender: ${targetSenderJid}`);
+    } else if (targetSenderJid && !targetSenderJid.includes('@g.us')) {
+        console.log(`[JobService] Sending message to sender/participant: ${targetSenderJid}`);
         try {
             let jid = targetSenderJid;
             if (!jid.includes('@')) jid += '@s.whatsapp.net';
+
             await session.sock.sendMessage(jid, { text: customerMessage });
 
             if (isUsingProxy && adminUser && session.sock.user) {
-                const myJid = session.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+                const myJid = (session.sock.user.id || session.sock.user.jid || '').split(':')[0] + '@s.whatsapp.net';
                 const adminNotify = `📢 *PROXY BİLGİSİ*\n\nŞoför *${userProfile?.name}*, sizin numaranız üzerinden grup mesaj sahibine ulaştı.\n\n👤 *Müşteri JID:* ${jid}\n🚕 *İş:* ${job.from_loc} -> ${job.to_loc}`;
                 await session.sock.sendMessage(myJid, { text: adminNotify }).catch(() => { });
             }
         } catch (err: any) {
             console.error(`[JobService] Individual Message Error (Sender):`, err.message);
+            // Don't throw here to allow group message to be sent as fallback
         }
     }
 
