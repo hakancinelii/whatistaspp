@@ -369,6 +369,24 @@ function initDatabase(): any {
     rawDb.exec(`ALTER TABLE driver_filters ADD COLUMN rota_name TEXT DEFAULT 'ROTA 1'`);
   } catch (e: any) { }
 
+  // Harici Şoför Havuzu (Topluluk Şoförleri)
+  try {
+    rawDb.exec(`
+      CREATE TABLE IF NOT EXISTS external_drivers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        plate TEXT,
+        vehicle_type TEXT,
+        notes TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("[DB] Migration: Created external_drivers table");
+  } catch (e: any) { }
+
   try {
     rawDb.exec(`
       CREATE TABLE IF NOT EXISTS job_interactions (

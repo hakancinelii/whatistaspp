@@ -7,9 +7,9 @@ export async function POST(request: NextRequest) {
         const user = await getUserFromToken(request);
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { jobId, groupJid, phone } = await request.json();
+        const { jobId, groupJid, phone, externalDriverId } = await request.json();
 
-        const result = await processJobTaking(user.userId, jobId, groupJid, phone);
+        const result = await processJobTaking(user.userId, jobId, groupJid, phone, externalDriverId);
 
         return NextResponse.json({
             success: true,

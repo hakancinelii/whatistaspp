@@ -256,6 +256,18 @@ export default function DashboardLayout({
                 </li>
                 <li>
                   <Link
+                    href="/dashboard/admin/external-drivers"
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/admin/external-drivers"
+                      ? "bg-purple-600/20 text-purple-300 border border-purple-500/30"
+                      : "text-gray-400 hover:bg-slate-800 hover:text-white"
+                      }`}
+                  >
+                    <span className="text-xl">👥</span>
+                    <span className="font-medium">Harici Şoförler</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/dashboard/admin"
                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/admin"
                       ? "bg-gradient-to-r from-red-600/20 to-orange-600/20 text-red-300 border border-red-500/30"

@@ -2,7 +2,11 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 
+import { useRouter } from "next/navigation";
+
 export default function DriverDashboard() {
+    const router = useRouter();
+
     const [jobs, setJobs] = useState<any[]>([]);
     const [stats, setStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,6 +63,13 @@ export default function DriverDashboard() {
     // selectedRegions yukarıda tanımlıydı
     const [selectedToRegions, setSelectedToRegions] = useState<string[]>([]); // TO (Varış)
     const [regionTab, setRegionTab] = useState<'from' | 'to'>('from'); // UI Tab State
+
+    // Harici Şoför Atama State'leri
+    const [externalDrivers, setExternalDrivers] = useState<any[]>([]);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [assigningJob, setAssigningJob] = useState<any>(null);
+
+
 
     const ISTANBUL_REGIONS = [
         // Avrupa Yakası
@@ -523,22 +534,55 @@ export default function DriverDashboard() {
         }
     }, [actionMode, jobs, filteredJobs]);
 
-    const handleTakeJob = async (jobId: number, groupJid: string, phone: string) => {
+    const fetchExternalDrivers = async () => {
+        if (userProfile?.role !== 'admin') return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/admin/external-drivers', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setExternalDrivers(data.filter((d: any) => d.is_active));
+            }
+        } catch (e) {
+            console.error('Failed to fetch external drivers:', e);
+        }
+    };
+
+    useEffect(() => {
+        if (userProfile?.role === 'admin') {
+            fetchExternalDrivers();
+        }
+    }, [userProfile]);
+
+    const handleTakeJob = async (jobId: number, groupJid: string, phone: string, externalDriverId?: number) => {
         if (isRestricted) {
             alert("🚫 Hesabınız kısıtlı moddadır, iş alamazsınız.");
             return;
         }
+
+        // Eğer kullanıcı adminse ve harici şoför seçilmemişse modalı aç (sadece ilk tıklamada)
+        if (userProfile?.role === 'admin' && !externalDriverId) {
+            const job = jobs.find(j => j.id === jobId);
+            if (job) {
+                setAssigningJob({ jobId, groupJid, phone, details: job });
+                setShowAssignModal(true);
+                return;
+            }
+        }
+
         setLoadingJobId(jobId);
         const token = localStorage.getItem("token");
         try {
-            console.log(`[Driver] Taking job ${jobId} for group ${groupJid}`);
+            console.log(`[Driver] Taking job ${jobId} for group ${groupJid}${externalDriverId ? ` (Assigning to External: ${externalDriverId})` : ''}`);
             const res = await fetch("/api/jobs/take", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ jobId, groupJid, phone })
+                body: JSON.stringify({ jobId, groupJid, phone, externalDriverId })
             });
             const data = await res.json();
 
@@ -549,7 +593,8 @@ export default function DriverDashboard() {
             }
 
             if (res.ok && data.success) {
-                // Başarı durumunda alert kaldırıldı (Hızı artırmak için)
+                setShowAssignModal(false);
+                setAssigningJob(null);
                 fetchJobs();
             } else {
                 console.error("[Driver] Take Job API Error:", data);
@@ -1473,6 +1518,82 @@ export default function DriverDashboard() {
             {isRestricted && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] bg-orange-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 border border-white/20 animate-bounce">
                     <span>🚫 HESABINIZ KISITLANDI (SADECE İZLEME MODU)</span>
+                </div>
+            )}
+
+            {/* Harici Şoför Atama Modalı */}
+            {showAssignModal && assigningJob && (
+                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+                    <div className="bg-slate-900 border border-white/10 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
+                        <div className="text-center space-y-2">
+                            <div className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-purple-500/30">🚕</div>
+                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">İşi Kim Alıyor?</h2>
+                            <p className="text-slate-400 text-sm font-medium">Bu işi kendiniz alabilir veya bir harici şoföre atayabilirsiniz.</p>
+                        </div>
+
+                        <div className="bg-slate-800/50 rounded-2xl p-4 border border-white/5 mb-6">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">SEÇİLEN İŞ</p>
+                            <p className="text-white font-bold">{assigningJob.details.from_loc} → {assigningJob.details.to_loc}</p>
+                            <p className="text-green-400 font-bold text-sm">{assigningJob.details.price}</p>
+                        </div>
+
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            {/* Admin Kendi Alması */}
+                            <button
+                                onClick={() => handleTakeJob(assigningJob.jobId, assigningJob.groupJid, assigningJob.phone, -1)}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl flex items-center justify-between group transition-all"
+                            >
+                                <div className="text-left">
+                                    <p className="font-black text-sm uppercase">KENDİM ALIYORUM</p>
+                                    <p className="text-white/60 text-xs">Kendi şoför bilgilerimle mesaj atılsın</p>
+                                </div>
+                                <span className="text-2xl group-hover:translate-x-1 transition-transform">➡</span>
+                            </button>
+
+                            <div className="relative py-2 flex items-center">
+                                <div className="flex-grow border-t border-white/5"></div>
+                                <span className="flex-shrink mx-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">VEYA HARİCİ ŞOFÖRE ATAYIN</span>
+                                <div className="flex-grow border-t border-white/5"></div>
+                            </div>
+
+                            {/* Harici Şoför Listesi */}
+                            {externalDrivers.length === 0 ? (
+                                <div className="text-center py-4 bg-slate-800/30 rounded-2xl border border-dashed border-white/10">
+                                    <p className="text-slate-500 text-xs font-bold uppercase">Henüz aktif harici şoför yok.</p>
+                                    <button
+                                        onClick={() => router.push('/dashboard/admin/external-drivers')}
+                                        className="text-blue-400 text-[10px] font-black mt-2 underline"
+                                    >
+                                        ŞOFÖR EKLEMEK İÇİN TIKLAYIN
+                                    </button>
+                                </div>
+                            ) : (
+                                externalDrivers.map(dr => (
+                                    <button
+                                        key={dr.id}
+                                        onClick={() => handleTakeJob(assigningJob.jobId, assigningJob.groupJid, assigningJob.phone, dr.id)}
+                                        className="w-full bg-slate-800 hover:bg-slate-700 border border-white/5 hover:border-purple-500/50 text-white p-4 rounded-2xl flex items-center justify-between group transition-all"
+                                    >
+                                        <div className="text-left">
+                                            <p className="font-bold text-sm uppercase">{dr.name}</p>
+                                            <p className="text-slate-400 text-[10px] font-medium">{dr.plate} • {dr.vehicle_type}</p>
+                                        </div>
+                                        <span className="bg-purple-600/20 text-purple-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase opacity-0 group-hover:opacity-100 transition-all">İş Ver</span>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setShowAssignModal(false);
+                                setAssigningJob(null);
+                            }}
+                            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-black py-4 rounded-2xl transition-all text-[10px] uppercase tracking-widest mt-4"
+                        >
+                            Vazgeç
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
