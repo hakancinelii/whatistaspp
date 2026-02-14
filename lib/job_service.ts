@@ -103,6 +103,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
             '1. Sol menüden "🟢 WhatsApp Bağla!" butonuna tıklayın\n' +
             '2. Ekrana gelen QR kodu telefonunuzla taratın\n' +
             '3. WhatsApp → Ayarlar → Bağlı Cihazlar → Cihaz Bağla\n\n' +
+            '💡 İpucu: Aynı telefondan giriyorsanız, QR kodun fotoğrafını başka bir telefonla çekin ve kendi telefonunuzla taratın.\n\n' +
             '✅ Bağlantı kurulduktan sonra işleri alabilirsiniz!'
         );
     }

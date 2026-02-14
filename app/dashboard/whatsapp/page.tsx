@@ -147,6 +147,9 @@ export default function WhatsAppPage() {
                         </div>
                         <div className="mt-6 text-gray-400 space-y-1">
                             <p>WhatsApp → Menü → Bağlı Cihazlar → Cihaz Bağla</p>
+                            <p className="text-xs text-yellow-400 mt-3 bg-yellow-500/10 px-4 py-2 rounded-lg border border-yellow-500/20">
+                                💡 İpucu: Aynı telefondan giriyorsanız, QR kodun fotoğrafını başka bir telefonla çekin ve kendi telefonunuzla taratın.
+                            </p>
                             <p className="text-xs text-gray-500 mt-2">Bu kod otomatik olarak yenilenir.</p>
                         </div>
                     </div>
