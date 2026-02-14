@@ -309,215 +309,239 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
     sock.ev.removeAllListeners('messages.upsert');
 
     sock.ev.on('messages.upsert', async (m: any) => {
-        const msg = m.messages[0];
-        if (!msg || !msg.message) return;
+        for (const msg of m.messages) {
+            if (!msg || !msg.message) continue;
 
-        const fromJid = msg.key.remoteJid || '';
-        let from = fromJid.split('@')[0] || '';
-        const isFromMe = msg.key.fromMe || false;
+            const fromJid = msg.key.remoteJid || '';
+            let from = fromJid.split('@')[0] || '';
+            const isFromMe = msg.key.fromMe || false;
 
-        if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) return;
+            if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) continue;
 
-        const isGroup = fromJid.includes('@g.us');
+            const isGroup = fromJid.includes('@g.us');
+            let groupName = null;
 
-        try {
-            const { getDatabase } = require('./db');
-            const db = await getDatabase();
-
-            // User Cache (Fetch every 5 mins)
-            let cachedUser = userCache.get(userId);
-            let dbUser: { role: string, package: string } | undefined;
-
-            if (!cachedUser || (Date.now() - cachedUser.timestamp > 300000)) {
-                const freshUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
-                if (freshUser) {
-                    const newCache = { ...freshUser, timestamp: Date.now() };
-                    userCache.set(userId, newCache);
-                    dbUser = freshUser;
-                }
-            } else {
-                dbUser = { role: cachedUser.role, package: cachedUser.package };
-            }
-
-            const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
-
-            // Sadece log ekle (Takip için)
             if (isGroup) {
-                console.log(`[WA] 📥 Group Message: ${fromJid} | User ${userId} isDriver: ${isDriverPackage}`);
+                const cached = groupMetadataCache.get(fromJid);
+                if (cached && (Date.now() - cached.timestamp < 3600000)) {
+                    groupName = cached.subject;
+                } else {
+                    try {
+                        const metadata = await sock.groupMetadata(fromJid);
+                        groupName = metadata.subject;
+                        groupMetadataCache.set(fromJid, { subject: groupName, timestamp: Date.now() });
+                    } catch (err) { }
+                }
             }
 
-            if (isGroup && !isDriverPackage) return;
 
-            let text = msg.message.conversation ||
-                msg.message.extendedTextMessage?.text ||
-                msg.message.imageMessage?.caption ||
-                msg.message.videoMessage?.caption ||
-                msg.message.buttonsResponseMessage?.selectedDisplayText ||
-                msg.message.listResponseMessage?.title || '';
+            try {
+                const { getDatabase } = require('./db');
+                const db = await getDatabase();
 
-            // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
-            if (isDriverPackage) {
-                if (!text) {
-                    // Sadece link discovery için devam et (eğer mesaj boşsa ama link varsa - nadir)
-                } else {
-                    // 1. Yeni Grup Linklerini Keşfet
-                    if (text.includes('chat.whatsapp.com')) {
-                        const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
-                        const invites = [...text.matchAll(inviteRegex)];
-                        for (const match of invites) {
-                            const code = match[1];
-                            const link = `https://chat.whatsapp.com/${code}`;
-                            db.run(
-                                'INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, found_by_user_id) VALUES (?, ?, ?)',
-                                [code, link, userId]
-                            ).catch(() => { });
-                        }
+                // User Cache (Fetch every 5 mins)
+                let cachedUser = userCache.get(userId);
+                let dbUser: { role: string, package: string } | undefined;
+
+                if (!cachedUser || (Date.now() - cachedUser.timestamp > 300000)) {
+                    const freshUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
+                    if (freshUser) {
+                        const newCache = { ...freshUser, timestamp: Date.now() };
+                        userCache.set(userId, newCache);
+                        dbUser = freshUser;
                     }
+                } else {
+                    dbUser = { role: cachedUser.role, package: cachedUser.package };
+                }
 
-                    // 2. İş Analizi
-                    const job = await parseTransferJob(text);
-                    if (job) {
-                        console.log(`[WA] 🎯 Job Found: ${job.from_loc} -> ${job.to_loc}`);
-                        const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
-                        let groupName = null;
+                const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
 
-                        if (isGroup) {
-                            const cached = groupMetadataCache.get(fromJid);
-                            if (cached && (Date.now() - cached.timestamp < 3600000)) {
-                                groupName = cached.subject;
-                            } else {
-                                try {
-                                    const metadata = await sock.groupMetadata(fromJid);
-                                    groupName = metadata.subject;
-                                    groupMetadataCache.set(fromJid, { subject: groupName, timestamp: Date.now() });
-                                } catch (err) { }
+                // Sadece log ekle (Takip için)
+                if (isGroup) {
+                    console.log(`[WA] 📥 Group Message: ${fromJid} | User ${userId} isDriver: ${isDriverPackage}`);
+                }
+
+                if (isGroup && !isDriverPackage) continue;
+
+                let text = '';
+                const mData = msg.message;
+                if (mData) {
+                    text = mData.conversation ||
+                        mData.extendedTextMessage?.text ||
+                        mData.imageMessage?.caption ||
+                        mData.videoMessage?.caption ||
+                        mData.buttonsResponseMessage?.selectedDisplayText ||
+                        mData.listResponseMessage?.title ||
+                        mData.templateButtonReplyMessage?.selectedDisplayText ||
+                        mData.viewOnceMessage?.message?.imageMessage?.caption ||
+                        mData.viewOnceMessageV2?.message?.imageMessage?.caption ||
+                        mData.ephemeralMessage?.message?.extendedTextMessage?.text ||
+                        mData.ephemeralMessage?.message?.conversation || '';
+                }
+
+                // Sadece log ekle (Takip için)
+                if (isGroup && text && text.trim().length > 2) {
+                    console.log(`[WA] 📥 Group [${groupName || fromJid}]: ${text.substring(0, 100).replace(/\n/g, ' ')}... | User: ${userId}`);
+                }
+
+                // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
+                if (isDriverPackage) {
+                    if (!text) {
+                        // Sadece link discovery için devam et (eğer mesaj boşsa ama link varsa - nadir)
+                    } else {
+                        // 1. Yeni Grup Linklerini Keşfet
+                        if (text.includes('chat.whatsapp.com')) {
+                            const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
+                            const invites = Array.from(text.matchAll(inviteRegex));
+                            for (const match of invites) {
+                                const code = match[1];
+                                const link = `https://chat.whatsapp.com/${code}`;
+                                db.run(
+                                    'INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, found_by_user_id) VALUES (?, ?, ?)',
+                                    [code, link, userId]
+                                ).catch(() => { });
                             }
                         }
 
-                        // Gelişmiş Mükerrer Kontrolü: 
-                        // Lokasyonlar biliniyorsa rota bazlı, bilinmiyorsa mesaj bazlı kontrol et.
-                        const isUnknown = job.from_loc === "Bilinmeyen Konum" && job.to_loc === "Bilinmeyen Konum";
-                        const duplicateCheck = await db.get(
-                            `SELECT id FROM captured_jobs 
+                        // 2. İş Analizi
+                        const job = await parseTransferJob(text);
+                        if (job) {
+                            const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
+
+                            // Telefon numarası mesajda yoksa, gönderen kişinin numarasını kullan
+                            let finalPhone = job.phone;
+                            if (!finalPhone || finalPhone === "Belirtilmedi") {
+                                finalPhone = senderJid.split('@')[0].split(':')[0];
+                            }
+
+                            console.log(`[WA] 🎯 Job Parsed: ${job.from_loc} -> ${job.to_loc} | Phone: ${finalPhone}`);
+
+                            // Gelişmiş Mükerrer Kontrolü: 
+                            // Lokasyonlar biliniyorsa rota bazlı, bilinmiyorsa mesaj bazlı kontrol et.
+                            const isUnknown = job.from_loc === "Bilinmeyen Konum" && job.to_loc === "Bilinmeyen Konum";
+                            const duplicateCheck = await db.get(
+                                `SELECT id FROM captured_jobs 
                              WHERE (
-                                 (? = 0 AND from_loc = ? AND to_loc = ? AND price = ?) 
+                                 (? = 0 AND from_loc = ? AND to_loc = ? AND phone = ?) 
                                  OR 
                                  (raw_message = ?)
                              )
                              AND created_at >= datetime('now', '-30 seconds')
                              LIMIT 1`,
-                            [isUnknown ? 1 : 0, job.from_loc, job.to_loc, job.price, text]
-                        );
-
-                        if (!duplicateCheck) {
-                            const result = await db.run(
-                                'INSERT INTO captured_jobs (user_id, instance_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                                [userId, instanceId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, job.phone, text, job.is_high_reward || 0, job.is_swap || 0]
+                                [isUnknown ? 1 : 0, job.from_loc, job.to_loc, finalPhone, text]
                             );
 
-                            console.log(`[WA] ✅ Job Captured! ID: ${result.lastID} | ${job.from_loc} -> ${job.to_loc}`);
+                            if (!duplicateCheck) {
+                                const result = await db.run(
+                                    'INSERT INTO captured_jobs (user_id, instance_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                    [userId, instanceId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, finalPhone, text, job.is_high_reward || 0, job.is_swap || 0]
+                                );
 
-                            if (result.lastID) {
-                                const { runJobAutomation } = require('./job_automation');
-                                runJobAutomation(result.lastID).catch((e: any) => { });
+                                console.log(`[WA] ✅ Job Captured! ID: ${result.lastID} in ${groupName || fromJid}`);
+
+                                if (result.lastID) {
+                                    const { runJobAutomation } = require('./job_automation');
+                                    runJobAutomation(result.lastID).catch((e: any) => { });
+                                }
+                            } else {
+                                console.log(`[WA] ⏭️ Duplicate job skipped.`);
                             }
-                        } else {
-                            console.log(`[WA] ⏭️ Job skipped (Duplicate/Recent): ${job.from_loc} -> ${job.to_loc}`);
+                        } else if (isGroup && text.length > 10) {
+                            // console.log(`[WA] ℹ️ Group msg ignored (No job found in text).`);
                         }
                     }
                 }
-                if (isGroup) return;
-            }
 
-            let mediaUrl = '';
-            let mediaType = '';
+                let mediaUrl = '';
+                let mediaType = '';
 
-            // Eğer benden gidiyorsa (Telefondan manuel gönderim kontrolü)
-            if (isFromMe) {
-                // Son 5 saniye içinde sistem tarafından gönderilmiş mi kontrol et (Duplicate önlemek için)
-                const recentlySent = await db.get(
-                    "SELECT id FROM sent_messages WHERE user_id = ? AND phone_number = ? AND sent_at >= datetime('now', '-5 seconds') LIMIT 1",
-                    [userId, from]
-                );
-
-                if (!recentlySent) {
-                    console.log(`[WA] 📱 Manual message from phone detected. Recording...`);
-                    await db.run(
-                        'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                        [userId, from, text || '🖼️ Medya Mesajı', 'sent']
+                // Eğer benden gidiyorsa (Telefondan manuel gönderim kontrolü)
+                if (isFromMe) {
+                    // Son 5 saniye içinde sistem tarafından gönderilmiş mi kontrol et (Duplicate önlemek için)
+                    const recentlySent = await db.get(
+                        "SELECT id FROM sent_messages WHERE user_id = ? AND phone_number = ? AND sent_at >= datetime('now', '-5 seconds') LIMIT 1",
+                        [userId, from]
                     );
+
+                    if (!recentlySent) {
+                        console.log(`[WA] 📱 Manual message from phone detected. Recording...`);
+                        await db.run(
+                            'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                            [userId, from, text || '🖼️ Medya Mesajı', 'sent']
+                        );
+                    }
+                    continue; // Benden giden mesajın işlenmesi burada biter, auto-reply tetiklenmez.
                 }
-                return; // Benden giden mesajın işlenmesi burada biter, auto-reply tetiklenmez.
-            }
 
-            // --- Gelen Mesaj İşleme ---
-            // Handle Audio
-            if (msg.message.audioMessage) {
-                console.log(`[WA] 🎵 Audio detected. Downloading...`);
-                const buffer = await downloadMediaMessage(msg, 'buffer', {});
-                const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'audio');
-                if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+                // --- Gelen Mesaj İşleme ---
+                // Handle Audio
+                if (msg.message.audioMessage) {
+                    console.log(`[WA] 🎵 Audio detected. Downloading...`);
+                    const buffer = await downloadMediaMessage(msg, 'buffer', {});
+                    const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'audio');
+                    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-                const fileName = `${Date.now()}_voice.ogg`;
-                await writeFile(path.join(uploadDir, fileName), buffer as Buffer);
-                mediaUrl = `/uploads/audio/${fileName}`;
-                mediaType = 'audio';
-                text = text || '🎤 Sesli Mesaj';
-            }
-            // Handle Image
-            else if (msg.message.imageMessage) {
-                console.log(`[WA] 🖼️ Image detected. Downloading...`);
-                const buffer = await downloadMediaMessage(msg, 'buffer', {});
-                const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'images');
-                if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+                    const fileName = `${Date.now()}_voice.ogg`;
+                    await writeFile(path.join(uploadDir, fileName), buffer as Buffer);
+                    mediaUrl = `/uploads/audio/${fileName}`;
+                    mediaType = 'audio';
+                    text = text || '🎤 Sesli Mesaj';
+                }
+                // Handle Image
+                else if (msg.message.imageMessage) {
+                    console.log(`[WA] 🖼️ Image detected. Downloading...`);
+                    const buffer = await downloadMediaMessage(msg, 'buffer', {});
+                    const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'images');
+                    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-                const fileName = `${Date.now()}_received.jpg`;
-                await writeFile(path.join(uploadDir, fileName), buffer as Buffer);
-                mediaUrl = `/uploads/images/${fileName}`;
-                mediaType = 'image';
-                text = text || '🖼️ Fotoğraf';
-            }
+                    const fileName = `${Date.now()}_received.jpg`;
+                    await writeFile(path.join(uploadDir, fileName), buffer as Buffer);
+                    mediaUrl = `/uploads/images/${fileName}`;
+                    mediaType = 'image';
+                    text = text || '🖼️ Fotoğraf';
+                }
 
-            if (!text && !mediaUrl) return;
+                if (!text && !mediaUrl) continue;
 
-            const pushName = msg.pushName || 'Bilinmeyen';
+                const pushName = msg.pushName || 'Bilinmeyen';
 
-            await db.run(
-                'INSERT INTO incoming_messages (user_id, phone_number, name, content, media_url, media_type) VALUES (?, ?, ?, ?, ?, ?)',
-                [userId, from, pushName, text, mediaUrl, mediaType]
-            );
-            console.log(`[WA] ✅ Incoming message saved: ${from}`);
-
-            // Profil Bilgilerini Senkronize Et (Arka Planda)
-            syncContactProfile(userId, sock, from).catch(e => console.error('[WA] Profile sync error:', e));
-
-            // --- Auto Reply Logic ---
-            if (text) {
-                const cleanText = text.toLowerCase().trim();
-                const autoReply = await db.get(
-                    "SELECT reply FROM auto_replies WHERE user_id = ? AND is_active = 1 AND ? LIKE '%' || keyword || '%' LIMIT 1",
-                    [userId, cleanText]
+                await db.run(
+                    'INSERT INTO incoming_messages (user_id, phone_number, name, content, media_url, media_type) VALUES (?, ?, ?, ?, ?, ?)',
+                    [userId, from, pushName, text, mediaUrl, mediaType]
                 );
+                console.log(`[WA] ✅ Incoming message saved: ${from}`);
 
-                if (autoReply) {
-                    console.log(`[WA] 🤖 Auto-reply triggered for keyword: ${cleanText}`);
-                    setTimeout(async () => {
-                        const success = await sendMessage(userId, from, autoReply.reply);
-                        if (success) {
-                            await db.run(
-                                'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                                [userId, from, autoReply.reply, 'sent']
-                            );
-                            const dbUser = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
-                            if (dbUser.role !== 'admin') {
-                                await db.run('UPDATE users SET credits = credits - 1 WHERE id = ?', [userId]);
+                // Profil Bilgilerini Senkronize Et (Arka Planda)
+                syncContactProfile(userId, sock, from).catch(e => console.error('[WA] Profile sync error:', e));
+
+                // --- Auto Reply Logic ---
+                if (text) {
+                    const cleanText = text.toLowerCase().trim();
+                    const autoReply = await db.get(
+                        "SELECT reply FROM auto_replies WHERE user_id = ? AND is_active = 1 AND ? LIKE '%' || keyword || '%' LIMIT 1",
+                        [userId, cleanText]
+                    );
+
+                    if (autoReply) {
+                        console.log(`[WA] 🤖 Auto-reply triggered for keyword: ${cleanText}`);
+                        setTimeout(async () => {
+                            const success = await sendMessage(userId, from, autoReply.reply);
+                            if (success) {
+                                await db.run(
+                                    'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                                    [userId, from, autoReply.reply, 'sent']
+                                );
+                                const dbUser = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
+                                if (dbUser.role !== 'admin') {
+                                    await db.run('UPDATE users SET credits = credits - 1 WHERE id = ?', [userId]);
+                                }
                             }
-                        }
-                    }, 2500);
+                        }, 2500);
+                    }
                 }
+            } catch (err) {
+                console.error('[WA] ❌ Error processing message:', err);
             }
-        } catch (err) {
-            console.error('[WA] ❌ Error processing message:', err);
         }
     });
 }
@@ -745,11 +769,10 @@ async function parseTransferJob(text: string) {
     // 1. Telefon numarasını yakala (Çok daha esnek regex)
     const phoneRegex = /(?:\+90|0)?\s*\(?\s*5\d{2}\s*\)?[\s\.\-]*\d{3}[\s\.\-]*\d{2}[\s\.\-]*\d{2}/g;
     const phoneMatch = text.match(phoneRegex);
-    if (!phoneMatch) {
-        console.log(`[WA Parser] Telefon bulunamadı, iş iptal: ${text.substring(0, 50)}...`);
-        return null;
-    }
-    const phone = phoneMatch[0].replace(/\D/g, '');
+    const phone = phoneMatch ? phoneMatch[0].replace(/\D/g, '') : null;
+
+    // Telefon zorunluluğunu kaldırdık, çünkü gönderen JID'den de alınabiliyor.
+    // Ancak mesajda bir iş olduğunu anlamak için başka kriterlere bakacağız.
 
     // 2. Yapay Zeka ile Analiz Denemesi
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
@@ -887,7 +910,7 @@ async function parseTransferJob(text: string) {
         to_loc = "BÖLGE";
     }
 
-    if (phone && (foundLocations.length > 0 || price !== "Belirtilmedi" || isSwap)) {
+    if (foundLocations.length > 0 || price !== "Belirtilmedi" || isSwap || phone) {
         return {
             from_loc,
             to_loc,
@@ -895,7 +918,7 @@ async function parseTransferJob(text: string) {
             time,
             is_high_reward: 0,
             is_swap: isSwap ? 1 : 0,
-            phone
+            phone: phone || "Belirtilmedi"
         };
     }
 
