@@ -35,22 +35,6 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         throw new Error('⚠️ Çok hızlı iş alıyorsunuz! Lütfen biraz bekleyin (10 dakikada en fazla 3 iş alabilirsiniz).');
     }
 
-    // ⛔ GÜVENLİK: İnsani Tepki Süresi Kontrolü (Anti-Bot)
-    // Bir iş oluşturulduktan sonra 500ms (yarım saniye) içinde alınmaya çalışılırsa bu şüphelidir.
-    // Çünkü insanın okuyup, karar verip tıklaması en az 1-2 saniye sürer.
-    const jobCreationTime = new Date(job.created_at).getTime();
-    const now = Date.now();
-    const reactionTime = now - jobCreationTime;
-
-    if (reactionTime < 500) {
-        console.warn(`[ANTI-BOT] User ${userId} attempted to take job ${job.id} in ${reactionTime}ms! This is suspiciously fast.`);
-        // Şimdilik sadece logluyoruz, ileride otomatik ban/kısıtlama eklenebilir.
-        // await db.run('INSERT INTO suspicious_activity (user_id, action, details) VALUES (?, ?, ?)', [userId, 'auto_clicker_suspect', `Reaction: ${reactionTime}ms`]);
-    }
-
-    if (veryRecent) {
-        throw new Error('⚠️ İki iş arasında en az 45 saniye beklemelisiniz.');
-    }
 
     // 2. Get Admin Settings (Proxy Mode)
     const adminUser = await db.get('SELECT id FROM users WHERE role = ?', ['admin']);
@@ -66,6 +50,20 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         );
     }
     if (!job) throw new Error('İş kaydı bulunamadı');
+
+    // ⛔ GÜVENLİK: İnsani Tepki Süresi Kontrolü (Anti-Bot)
+    // Bir iş oluşturulduktan sonra 500ms (yarım saniye) içinde alınmaya çalışılırsa bu şüphelidir.
+    // Çünkü insanın okuyup, karar verip tıklaması en az 1-2 saniye sürer.
+    const jobCreationTime = new Date(job.created_at).getTime();
+    const now = Date.now();
+    const reactionTime = now - jobCreationTime;
+
+    if (reactionTime < 500) {
+        console.warn(`[ANTI-BOT] User ${userId} attempted to take job ${job.id} in ${reactionTime}ms! This is suspiciously fast.`);
+        // Şimdilik sadece logluyoruz, ileride otomatik ban/kısıtlama eklenebilir.
+        // await db.run('INSERT INTO suspicious_activity (user_id, action, details) VALUES (?, ?, ?)', [userId, 'auto_clicker_suspect', `Reaction: ${reactionTime}ms`]);
+    }
+
 
     // ⛔ GÜVENLİK: Bu iş zaten birisi tarafından kazanılarak 'won' yapıldı mı?
     const alreadyTaken = await db.get("SELECT id FROM job_interactions WHERE job_id = ? AND status = 'won'", [job.id]);
@@ -98,7 +96,15 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     console.log(`[JobService] User WA Status: ${userHasWA ? 'Connected' : 'Disconnected'}, Proxy Mode: ${proxyMode}`);
 
     if (!proxyMode && !userHasWA) {
-        throw new Error('WhatsApp bağlantınız yok. Lütfen önce WhatsApp\'ı bağlayın.');
+        throw new Error(
+            '⚠️ WhatsApp Bağlantısı Gerekli!\n\n' +
+            'İşi alabilmek için WhatsApp hesabınızı sisteme bağlamanız gerekiyor.\n\n' +
+            '📱 Nasıl Bağlarım?\n' +
+            '1. Sol menüden "🟢 WhatsApp Bağla!" butonuna tıklayın\n' +
+            '2. Ekrana gelen QR kodu telefonunuzla taratın\n' +
+            '3. WhatsApp → Ayarlar → Bağlı Cihazlar → Cihaz Bağla\n\n' +
+            '✅ Bağlantı kurulduktan sonra işleri alabilirsiniz!'
+        );
     }
 
     let session: any;
