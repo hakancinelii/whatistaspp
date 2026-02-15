@@ -1,17 +1,19 @@
+import { Pool } from 'pg';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
 let dbInstance: any = null;
+let pgPool: Pool | null = null;
+
+// Determine if we should use PostgreSQL (Production) or SQLite (Local)
+const isPostgres = !!process.env.DATABASE_URL;
 
 function getDbPath() {
-  // Railway'de volume /app/data'dır. Eğer bu klasör varsa mutlaka orayı kullan.
   const railwayPath = '/app/data/database.db';
   if (fs.existsSync('/app/data')) {
     return railwayPath;
   }
-
-  // Yerel geliştirme için
   const localDir = path.join(process.cwd(), 'data');
   if (!fs.existsSync(localDir)) {
     fs.mkdirSync(localDir, { recursive: true });
@@ -19,450 +21,351 @@ function getDbPath() {
   return path.join(localDir, 'database.db');
 }
 
-function initDatabase(): any {
+let isMigrated = false;
+
+async function initDatabase(): Promise<any> {
   if (dbInstance) return dbInstance;
 
-  const dbPath = getDbPath();
-  console.log(`[DB] Using Database at: ${dbPath}`);
+  if (isPostgres) {
+    console.log('[DB] Using PostgreSQL at: ' + process.env.DATABASE_URL?.split('@')[1]); // Log host only for safety
+    pgPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
 
-  const rawDb = new Database(dbPath);
-  rawDb.pragma('journal_mode = WAL');
-  rawDb.pragma('synchronous = NORMAL');
-  rawDb.pragma('busy_timeout = 30000'); // 30 saniye bekleme süresi
+    if (!isMigrated) {
+      await runMigrations().catch(err => console.error("[DB] Migration Error:", err));
+      isMigrated = true;
+    }
 
-  rawDb.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT DEFAULT 'user',
-        credits INTEGER DEFAULT 0,
-        package TEXT DEFAULT 'standard',
-        status TEXT DEFAULT 'active',
-        profile_picture TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS whatsapp_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        session_id TEXT UNIQUE NOT NULL,
-        is_connected BOOLEAN DEFAULT 0,
-        qr_code TEXT,
-        last_connected DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
+    dbInstance = pgPool;
+    return dbInstance;
+  } else {
+    const dbPath = getDbPath();
+    console.log(`[DB] Using SQLite at: ${dbPath}`);
+    const rawDb = new Database(dbPath);
+    rawDb.pragma('journal_mode = WAL');
+    rawDb.pragma('synchronous = NORMAL');
+    rawDb.pragma('busy_timeout = 30000');
+    dbInstance = rawDb;
+    return dbInstance;
+  }
+}
 
-    CREATE TABLE IF NOT EXISTS auto_replies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        keyword TEXT NOT NULL,
-        reply TEXT NOT NULL,
-        is_active BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
+// Convert SQLite compatible SQL to PostgreSQL compatible SQL
+function convertSql(sql: string): string {
+  if (!isPostgres) return sql;
 
-    CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        phone_number TEXT NOT NULL,
-        name TEXT,
-        tags TEXT,
-        is_archived BOOLEAN DEFAULT 0,
-        profile_picture_url TEXT,
-        status TEXT,
-        additional_data TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        UNIQUE(user_id, phone_number)
-    );
+  let converted = sql
+    .replace(/DATETIME DEFAULT CURRENT_TIMESTAMP/gi, 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+    .replace(/DATETIME\('now', '-(.*?)'\)/gi, (match, interval) => {
+      // Convert datetime('now', '-1 day') -> NOW() - INTERVAL '${interval}'
+      return `NOW() - INTERVAL '${interval}'`;
+    })
+    .replace(/DATETIME\('now'\)/gi, 'NOW()')
+    .replace(/DATETIME/gi, 'TIMESTAMP')
+    .replace(/REAL/gi, 'DECIMAL')
+    .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, 'SERIAL PRIMARY KEY');
 
-    CREATE TABLE IF NOT EXISTS scheduled_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        customer_ids TEXT NOT NULL, -- JSON string of contact IDs
-        message TEXT NOT NULL,
-        scheduled_at DATETIME NOT NULL,
-        status TEXT DEFAULT 'pending', -- pending, sent, failed, cancelled
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS sent_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        phone_number TEXT NOT NULL,
-        message TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        media_url TEXT,
-        media_type TEXT,
-        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS message_templates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS knowledge_base (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        type TEXT DEFAULT 'text', -- text, pdf_parsed, etc.
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-
-
-    CREATE TABLE IF NOT EXISTS incoming_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        phone_number TEXT NOT NULL,
-        message TEXT NOT NULL,
-        received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS drivers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        phone_number TEXT NOT NULL,
-        license_plate TEXT,
-        vehicle_type TEXT,
-        is_active BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS reservations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        customer_id INTEGER NOT NULL,
-        driver_id INTEGER,
-        driver_phone TEXT,
-        voucher_number TEXT UNIQUE NOT NULL,
-        type TEXT DEFAULT 'transfer', -- transfer, tour, hotel
-        date TEXT NOT NULL,
-        time TEXT NOT NULL,
-        pickup_location TEXT NOT NULL,
-        dropoff_location TEXT NOT NULL,
-        flight_code TEXT,
-        passenger_count INTEGER DEFAULT 1,
-        passenger_names TEXT,
-        price REAL,
-        currency TEXT DEFAULT 'TRY',
-        status TEXT DEFAULT 'pending', -- pending, confirmed, active, completed, cancelled
-        payment_status TEXT DEFAULT 'pending',
-        notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (customer_id) REFERENCES customers(id),
-        FOREIGN KEY (driver_id) REFERENCES drivers(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS user_settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER UNIQUE NOT NULL,
-        webhook_url TEXT,
-        api_key TEXT UNIQUE,
-        min_delay INTEGER DEFAULT 5,
-        max_delay INTEGER DEFAULT 10,
-        daily_limit INTEGER DEFAULT 250,
-        night_mode BOOLEAN DEFAULT 1,
-        message_variation BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS captured_jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        instance_id TEXT, -- Hangi cihazdan yakalandı (main, gathering)
-        group_jid TEXT,
-        group_name TEXT,
-        sender_jid TEXT,
-        from_loc TEXT,
-        to_loc TEXT,
-        price TEXT,
-        phone TEXT,
-        raw_message TEXT,
-        status TEXT DEFAULT 'pending', -- pending, called, ignored
-        is_high_reward BOOLEAN DEFAULT 0,
-        is_swap BOOLEAN DEFAULT 0,
-        completed_at DATETIME,
-        time TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  // Migrations for existing databases
-  try {
-    rawDb.exec("ALTER TABLE customers ADD COLUMN is_archived BOOLEAN DEFAULT 0;");
-    console.log("[DB] Migration: Added is_archived to customers");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE customers ADD COLUMN profile_picture_url TEXT;");
-    rawDb.exec("ALTER TABLE customers ADD COLUMN status TEXT;");
-    console.log("[DB] Migration: Added profile columns to customers");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE reservations ADD COLUMN driver_phone TEXT;");
-    console.log("[DB] Migration: Added driver_phone to reservations");
-  } catch (e: any) {
-    if (!e.message.includes('duplicate column name')) {
-      console.error("[DB] Migration Error (driver_phone):", e.message);
+  // Handle INSERT OR IGNORE
+  if (converted.toUpperCase().includes('INSERT OR IGNORE INTO')) {
+    converted = converted.replace(/INSERT OR IGNORE INTO/gi, 'INSERT INTO');
+    if (!converted.toUpperCase().includes('ON CONFLICT')) {
+      converted += ' ON CONFLICT DO NOTHING';
     }
   }
 
-  try {
-    rawDb.exec("ALTER TABLE reservations ADD COLUMN passenger_names TEXT;");
-    console.log("[DB] Migration: Added passenger_names to reservations");
-  } catch (e: any) {
-    if (!e.message.includes('duplicate column name')) {
-      console.error("[DB] Migration Error (passenger_names):", e.message);
+  // Convert ? to $n
+  return converted.replace(/\?/g, (match, offset, string) => {
+    let count = 0;
+    let insideString = false;
+    for (let i = 0; i < offset; i++) {
+      if (string[i] === "'") insideString = !insideString;
+      if (string[i] === '?' && !insideString) count++;
     }
-  }
-
-  try {
-    rawDb.exec("ALTER TABLE reservations ADD COLUMN passenger_names TEXT;");
-    console.log("[DB] Migration: Added passenger_names to reservations");
-  } catch (e: any) {
-    if (!e.message.includes('duplicate column name')) {
-      console.error("[DB] Migration Error (passenger_names):", e.message);
-    }
-  }
-
-  // Users Migration
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0;");
-    console.log("[DB] Migration: Added credits to users");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN package TEXT DEFAULT 'standard';");
-    console.log("[DB] Migration: Added package to users");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';");
-    console.log("[DB] Migration: Added status to users");
-  } catch (e: any) { }
-
-  // Captured Jobs Migration
-  try {
-    rawDb.exec(`
-            CREATE TABLE IF NOT EXISTS captured_jobs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                group_jid TEXT,
-                from_loc TEXT,
-                to_loc TEXT,
-                price TEXT,
-                phone TEXT,
-                raw_message TEXT,
-                status TEXT DEFAULT 'pending',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-        `);
-    console.log("[DB] Migration: Ensured captured_jobs table exists");
-  } catch (e: any) {
-    console.error("[DB] Migration Error (captured_jobs):", e.message);
-  }
-
-  try {
-    rawDb.exec("ALTER TABLE customers ADD COLUMN lid TEXT;");
-    console.log("[DB] Migration: Added lid to customers");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN sender_jid TEXT;");
-    console.log("[DB] Migration: Added sender_jid to captured_jobs");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN completed_at DATETIME;");
-    console.log("[DB] Migration: Added completed_at to captured_jobs");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN min_delay INTEGER DEFAULT 5;");
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN max_delay INTEGER DEFAULT 10;");
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN night_mode BOOLEAN DEFAULT 1;");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN instance_id TEXT;");
-    console.log("[DB] Migration: Added instance_id to captured_jobs");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN time TEXT;");
-    console.log("[DB] Migration: Added time to captured_jobs");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN group_name TEXT;");
-    console.log("[DB] Migration: Added group_name to captured_jobs");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN plain_password TEXT;");
-    console.log("[DB] Migration: Added plain_password to users");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_whatsapp_sessions_user_id ON whatsapp_sessions(user_id);");
-    console.log("[DB] Migration: Ensured unique user_id in whatsapp_sessions");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec(`
-      CREATE TABLE IF NOT EXISTS group_discovery (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        invite_code TEXT UNIQUE,
-        invite_link TEXT,
-        group_name TEXT,
-        found_by_user_id INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log("[DB] Migration: Created group_discovery table");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec(`
-      CREATE TABLE IF NOT EXISTS driver_filters (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER UNIQUE NOT NULL,
-        regions TEXT, -- JSON array of strings
-        to_regions TEXT, -- JSON array of strings
-        min_price INTEGER DEFAULT 0,
-        job_mode TEXT DEFAULT 'all', -- all, ready, scheduled
-        action_mode TEXT DEFAULT 'manual', -- manual, auto
-        rota_name TEXT DEFAULT 'ROTA 1',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      )
-    `);
-    console.log("[DB] Migration: Created driver_filters table");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec(`ALTER TABLE driver_filters ADD COLUMN to_regions TEXT`);
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec(`ALTER TABLE driver_filters ADD COLUMN rota_name TEXT DEFAULT 'ROTA 1'`);
-  } catch (e: any) { }
-
-  // Harici Şoför Havuzu (Topluluk Şoförleri)
-  try {
-    rawDb.exec(`
-      CREATE TABLE IF NOT EXISTS external_drivers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        plate TEXT,
-        vehicle_type TEXT,
-        notes TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log("[DB] Migration: Created external_drivers table");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec(`
-      CREATE TABLE IF NOT EXISTS job_interactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        job_id INTEGER NOT NULL,
-        status TEXT NOT NULL, -- called, ignored, won
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, job_id)
-      )
-    `);
-    console.log("[DB] Migration: Created job_interactions table");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_high_reward BOOLEAN DEFAULT 0;");
-    rawDb.exec("ALTER TABLE captured_jobs ADD COLUMN is_swap BOOLEAN DEFAULT 0;");
-    console.log("[DB] Migration: Added is_high_reward and is_swap to captured_jobs");
-  } catch (e: any) { }
-
-  // Şoför bilgileri için users tablosuna alanlar
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN driver_phone TEXT;");
-    console.log("[DB] Migration: Added driver_phone to users");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN driver_plate TEXT;");
-    console.log("[DB] Migration: Added driver_plate to users");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE users ADD COLUMN profile_picture TEXT;");
-    console.log("[DB] Migration: Added profile_picture to users");
-  } catch (e: any) { }
-
-  // Admin ayarı: Proxy mesaj modu
-  try {
-    rawDb.exec("ALTER TABLE user_settings ADD COLUMN proxy_message_mode BOOLEAN DEFAULT 0;");
-    console.log("[DB] Migration: Added proxy_message_mode to user_settings");
-  } catch (e: any) { }
-
-  // Kullanıcı heartbeat tablosu (çevrimiçi takibi)
-  try {
-    rawDb.exec(`
-      CREATE TABLE IF NOT EXISTS user_heartbeat (
-        user_id INTEGER PRIMARY KEY,
-        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      )
-    `);
-    console.log("[DB] Migration: Created user_heartbeat table");
-  } catch (e: any) { }
-
-  try {
-    rawDb.exec("ALTER TABLE group_discovery ADD COLUMN group_jid TEXT;");
-    console.log("[DB] Migration: Added group_jid to group_discovery");
-  } catch (e: any) { }
-
-  dbInstance = rawDb;
-  return rawDb;
+    return insideString ? '?' : `$${count + 1}`;
+  });
 }
 
 export async function getDatabase(): Promise<any> {
-  const rawDb = initDatabase();
+  const db = await initDatabase();
 
+  if (isPostgres) {
+    return {
+      get: async (sql: string, params: any[] = []) => {
+        const res = await pgPool!.query(convertSql(sql), params);
+        return res.rows[0];
+      },
+      all: async (sql: string, params: any[] = []) => {
+        const res = await pgPool!.query(convertSql(sql), params);
+        return res.rows;
+      },
+      run: async (sql: string, params: any[] = []) => {
+        const pgSql = convertSql(sql);
+        // Postgres returns multiple rows for INSERT ... RETURNING id
+        // We modify INSERT statements to return ID if it's an insert
+        let finalSql = pgSql;
+        if (pgSql.trim().toUpperCase().startsWith('INSERT')) {
+          finalSql += ' RETURNING id';
+        }
+        const res = await pgPool!.query(finalSql, params);
+        return {
+          lastID: res.rows[0]?.id || null,
+          changes: res.rowCount
+        };
+      },
+      exec: async (sql: string) => {
+        await pgPool!.query(convertSql(sql));
+      },
+      close: async () => {
+        await pgPool!.end();
+      }
+    };
+  }
+
+  // SQLite shim
   return {
-    get: async (sql: string, params: any[] = []) => rawDb.prepare(sql).get(...params),
-    all: async (sql: string, params: any[] = []) => rawDb.prepare(sql).all(...params),
+    get: async (sql: string, params: any[] = []) => db.prepare(sql).get(...params),
+    all: async (sql: string, params: any[] = []) => db.prepare(sql).all(...params),
     run: async (sql: string, params: any[] = []) => {
-      const result = rawDb.prepare(sql).run(...params);
+      const result = db.prepare(sql).run(...params);
       return { lastID: Number(result.lastInsertRowid), changes: result.changes };
     },
     exec: async (sql: string) => {
-      rawDb.exec(sql);
+      db.exec(sql);
     },
-    prepare: (sql: string) => rawDb.prepare(sql)
+    close: async () => {
+      db.close();
+    }
   };
+}
+
+// Global Migration Function for Postgres
+export async function runMigrations() {
+  if (!isPostgres) return;
+  const db = await getDatabase();
+
+  console.log("[DB] Running Postgres Migrations...");
+
+  // Core Tables
+  await db.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            plain_password TEXT,
+            role TEXT DEFAULT 'user',
+            credits INTEGER DEFAULT 0,
+            package TEXT DEFAULT 'standard',
+            status TEXT DEFAULT 'active',
+            profile_picture TEXT,
+            driver_phone TEXT,
+            driver_plate TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
+            session_id TEXT UNIQUE NOT NULL,
+            is_connected BOOLEAN DEFAULT FALSE,
+            qr_code TEXT,
+            last_connected TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS auto_replies (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            keyword TEXT NOT NULL,
+            reply TEXT NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS customers (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            phone_number TEXT NOT NULL,
+            name TEXT,
+            tags TEXT,
+            lid TEXT,
+            is_archived BOOLEAN DEFAULT FALSE,
+            profile_picture_url TEXT,
+            status TEXT,
+            additional_data TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, phone_number)
+        );
+
+        CREATE TABLE IF NOT EXISTS scheduled_messages (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            customer_ids TEXT NOT NULL,
+            message TEXT NOT NULL,
+            scheduled_at TIMESTAMP NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS sent_messages (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            phone_number TEXT NOT NULL,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            media_url TEXT,
+            media_type TEXT,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS message_templates (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS knowledge_base (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            type TEXT DEFAULT 'text',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS incoming_messages (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            phone_number TEXT NOT NULL,
+            name TEXT,
+            content TEXT,
+            media_url TEXT,
+            media_type TEXT,
+            received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS drivers (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            name TEXT NOT NULL,
+            phone_number TEXT NOT NULL,
+            license_plate TEXT,
+            vehicle_type TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS reservations (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            customer_id INTEGER NOT NULL REFERENCES customers(id),
+            driver_id INTEGER REFERENCES drivers(id),
+            driver_phone TEXT,
+            voucher_number TEXT UNIQUE NOT NULL,
+            type TEXT DEFAULT 'transfer',
+            date TEXT NOT NULL,
+            time TEXT NOT NULL,
+            pickup_location TEXT NOT NULL,
+            dropoff_location TEXT NOT NULL,
+            flight_code TEXT,
+            passenger_count INTEGER DEFAULT 1,
+            passenger_names TEXT,
+            price DECIMAL,
+            currency TEXT DEFAULT 'TRY',
+            status TEXT DEFAULT 'pending',
+            payment_status TEXT DEFAULT 'pending',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
+            webhook_url TEXT,
+            api_key TEXT UNIQUE,
+            min_delay INTEGER DEFAULT 5,
+            max_delay INTEGER DEFAULT 10,
+            daily_limit INTEGER DEFAULT 250,
+            night_mode BOOLEAN DEFAULT TRUE,
+            message_variation BOOLEAN DEFAULT TRUE,
+            proxy_message_mode BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS captured_jobs (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            instance_id TEXT,
+            group_jid TEXT,
+            group_name TEXT,
+            sender_jid TEXT,
+            from_loc TEXT,
+            to_loc TEXT,
+            price TEXT,
+            phone TEXT,
+            raw_message TEXT,
+            status TEXT DEFAULT 'pending',
+            is_high_reward BOOLEAN DEFAULT FALSE,
+            is_swap BOOLEAN DEFAULT FALSE,
+            completed_at TIMESTAMP,
+            time TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS group_discovery (
+            id SERIAL PRIMARY KEY,
+            invite_code TEXT UNIQUE,
+            invite_link TEXT,
+            group_name TEXT,
+            group_jid TEXT,
+            found_by_user_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS driver_filters (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
+            regions TEXT,
+            to_regions TEXT,
+            min_price INTEGER DEFAULT 0,
+            job_mode TEXT DEFAULT 'all',
+            action_mode TEXT DEFAULT 'manual',
+            rota_name TEXT DEFAULT 'ROTA 1',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS external_drivers (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            plate TEXT,
+            vehicle_type TEXT,
+            notes TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS job_interactions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            job_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, job_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_heartbeat (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id),
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+
+  console.log("[DB] Postgres Migrations Completed.");
 }
