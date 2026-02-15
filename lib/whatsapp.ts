@@ -356,10 +356,10 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
 
                 const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
 
-                // Sadece log ekle (Takip için)
-                if (isGroup) {
-                    console.log(`[WA] 📥 Group Message: ${fromJid} | User ${userId} isDriver: ${isDriverPackage}`);
-                }
+                // Sadece log ekle (Takip için) - SPAM ÖNLEME: YORUMA ALINDI
+                // if (isGroup) {
+                //    console.log(`[WA] 📥 Group Message: ${fromJid} | User ${userId} isDriver: ${isDriverPackage}`);
+                // }
 
                 if (isGroup && !isDriverPackage) continue;
 
@@ -379,17 +379,18 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                         mData.ephemeralMessage?.message?.conversation || '';
                 }
 
-                // Sadece log ekle (Takip için)
-                if (isGroup && text && text.trim().length > 2) {
-                    console.log(`[WA] 📥 Group [${groupName || fromJid}]: ${text.substring(0, 100).replace(/\n/g, ' ')}... | User: ${userId}`);
-                }
+                // Sadece log ekle (Takip için) - SPAM ÖNLEME: LOGLAMA AZALTILDI
+                // if (isGroup && text && text.trim().length > 2) {
+                //    console.log(`[WA] 📥 Group [${groupName || fromJid}]: ${text.substring(0, 100).replace(/\n/g, ' ')}... | User: ${userId}`);
+                // }
 
                 // --- TRANSFER ŞOFÖRÜ PAKETİ: İŞ YAKALAMA MANTIĞI ---
                 if (isDriverPackage) {
                     if (!text) {
                         // Sadece link discovery için devam et (eğer mesaj boşsa ama link varsa - nadir)
                     } else {
-                        // 1. Yeni Grup Linklerini Keşfet
+                        // 1. Yeni Grup Linklerini Keşfet - İPTAL EDİLDİ (SPAM VE BAN RİSKİ NEDENİYLE)
+                        /*
                         if (text.includes('chat.whatsapp.com')) {
                             const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
                             const invites = Array.from(text.matchAll(inviteRegex));
@@ -402,10 +403,17 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                                 ).catch(() => { });
                             }
                         }
+                        */
 
                         // 2. İş Analizi
                         const job = await parseTransferJob(text);
                         if (job) {
+                            // FİYAT FİLTRESİ: 400 TL altı ve belirsiz düşük fiyatlı işleri yoksay (Korsan taksi/dolmuş engelleme)
+                            const priceNum = parseInt(job.price.replace(/\D/g, ''));
+                            if (!isNaN(priceNum) && priceNum < 400) {
+                                // console.log(`[WA] ⏭️ Job skipped (Low Price): ${job.price}`);
+                                continue;
+                            }
                             const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;
 
                             // Telefon numarası mesajda yoksa, gönderen kişinin numarasını kullan
@@ -511,8 +519,8 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                 );
                 console.log(`[WA] ✅ Incoming message saved: ${from}`);
 
-                // Profil Bilgilerini Senkronize Et (Arka Planda)
-                syncContactProfile(userId, sock, from).catch(e => console.error('[WA] Profile sync error:', e));
+                // Profil Bilgilerini Senkronize Et (Arka Planda) - SPAM ÖNLEME: SADECE GEREKİRSE
+                // syncContactProfile(userId, sock, from).catch(e => console.error('[WA] Profile sync error:', e));
 
                 // --- Auto Reply Logic ---
                 if (text) {
