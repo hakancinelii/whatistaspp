@@ -482,32 +482,19 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                 }
 
                 // --- Gelen Mesaj İşleme ---
-                // Handle Audio
+                // Medya İndirme Kapatıldı (Disk Doluluğunu Önlemek İçin)
+                /*
                 if (msg.message.audioMessage) {
-                    console.log(`[WA] 🎵 Audio detected. Downloading...`);
-                    const buffer = await downloadMediaMessage(msg, 'buffer', {});
-                    const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'audio');
-                    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-                    const fileName = `${Date.now()}_voice.ogg`;
-                    await writeFile(path.join(uploadDir, fileName), buffer as Buffer);
-                    mediaUrl = `/uploads/audio/${fileName}`;
-                    mediaType = 'audio';
-                    text = text || '🎤 Sesli Mesaj';
+                    console.log(`[WA] 🎵 Audio detected. Skipping download to save space.`);
+                    // ... (indirme mantığı yoruma alındı)
+                    text = text || '🎤 Sesli Mesaj (İndirilmedi)';
                 }
-                // Handle Image
                 else if (msg.message.imageMessage) {
-                    console.log(`[WA] 🖼️ Image detected. Downloading...`);
-                    const buffer = await downloadMediaMessage(msg, 'buffer', {});
-                    const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'images');
-                    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-                    const fileName = `${Date.now()}_received.jpg`;
-                    await writeFile(path.join(uploadDir, fileName), buffer as Buffer);
-                    mediaUrl = `/uploads/images/${fileName}`;
-                    mediaType = 'image';
-                    text = text || '🖼️ Fotoğraf';
+                    console.log(`[WA] 🖼️ Image detected. Skipping download to save space.`);
+                    // ... (indirme mantığı yoruma alındı)
+                    text = text || '🖼️ Fotoğraf (İndirilmedi)';
                 }
+                */
 
                 if (!text && !mediaUrl) continue;
 
