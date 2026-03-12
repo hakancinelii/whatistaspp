@@ -39,3 +39,5 @@ next-env.d.ts
 # whatsapp session data
 auth_info/
 whatsapp_session/
+data/*.db-shm
+data/*.db-wal
