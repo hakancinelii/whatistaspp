@@ -101,6 +101,20 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+        db.run(`CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
+            webhook_url TEXT,
+            api_key TEXT UNIQUE,
+            min_delay INTEGER DEFAULT 5,
+            max_delay INTEGER DEFAULT 10,
+            daily_limit INTEGER DEFAULT 250,
+            night_mode INTEGER DEFAULT 1,
+            message_variation INTEGER DEFAULT 1,
+            proxy_message_mode INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
         console.log("Ensuring Super Admin account hakan34.");
         const hashedPw = bcrypt.hashSync('Hakan34.', 10);
 
