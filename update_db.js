@@ -7,9 +7,23 @@ console.log("Updating Database at:", dbPath);
 const db = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
-    console.log("Creating missing tables if they don't exist...");
+        console.log("Creating missing tables if they don't exist...");
 
-    db.run(`CREATE TABLE IF NOT EXISTS group_discovery (
+        db.run(`CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            plain_password TEXT,
+            role TEXT DEFAULT 'driver',
+            package TEXT DEFAULT 'free',
+            status TEXT DEFAULT 'active',
+            credits INTEGER DEFAULT 0,
+            phone TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS group_discovery (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             invite_code TEXT UNIQUE,
             invite_link TEXT,
@@ -19,12 +33,12 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS user_heartbeat (
+        db.run(`CREATE TABLE IF NOT EXISTS user_heartbeat (
             user_id INTEGER PRIMARY KEY REFERENCES users(id),
             last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS job_interactions (
+        db.run(`CREATE TABLE IF NOT EXISTS job_interactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             job_id INTEGER NOT NULL,
@@ -33,7 +47,7 @@ db.serialize(() => {
             UNIQUE(user_id, job_id)
     )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS external_drivers (
+        db.run(`CREATE TABLE IF NOT EXISTS external_drivers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             phone TEXT NOT NULL,
@@ -45,7 +59,7 @@ db.serialize(() => {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS driver_filters (
+        db.run(`CREATE TABLE IF NOT EXISTS driver_filters (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
             regions TEXT,
@@ -57,7 +71,7 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS captured_jobs (
+        db.run(`CREATE TABLE IF NOT EXISTS captured_jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES users(id),
             instance_id TEXT,
@@ -77,12 +91,12 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    console.log("Ensuring Super Admin account hakan34.");
-    const hashedPw = bcrypt.hashSync('Hakan34.', 10);
-    db.run("INSERT OR IGNORE INTO users (name, email, password, plain_password, role, package, status, credits) VALUES ('Hakan Cineli', 'hakancineli@gmail.com', ?, 'Hakan34.', 'admin', 'platinum', 'active', 999999)", [hashedPw]);
-    db.run("UPDATE users SET password = ?, plain_password = 'Hakan34.', role = 'admin', package = 'platinum', credits = 999999 WHERE email = 'hakancineli@gmail.com'", [hashedPw]);
+        console.log("Ensuring Super Admin account hakan34.");
+        const hashedPw = bcrypt.hashSync('Hakan34.', 10);
+        db.run("INSERT OR IGNORE INTO users (name, email, password, plain_password, role, package, status, credits) VALUES ('Hakan Cineli', 'hakancineli@gmail.com', ?, 'Hakan34.', 'admin', 'platinum', 'active', 999999)", [hashedPw]);
+        db.run("UPDATE users SET password = ?, plain_password = 'Hakan34.', role = 'admin', package = 'platinum', credits = 999999 WHERE email = 'hakancineli@gmail.com'", [hashedPw]);
 });
 
 db.close(() => {
-    console.log("✅ Database successfully updated. You can go back to the browser!");
+        console.log("✅ Database successfully updated. You can go back to the browser!");
 });
