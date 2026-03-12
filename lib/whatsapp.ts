@@ -58,28 +58,22 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
     const session = await getSession(userId, instanceId);
 
     if (!force && session.isConnected && session.sock) {
-        console.log(`[WA] Session ${sessionKey} already connected. Refreshing listeners...`);
         setupMessageListeners(userId, session.sock, instanceId);
         return;
     }
 
     const now = Date.now();
-    if (!force && session.isConnecting && session.lastAttempt && (now - session.lastAttempt < 15000)) {
-        console.log(`[WA] Connection attempt already in progress for ${sessionKey}.`);
-        return;
-    }
+    if (!force && session.isConnecting && session.lastAttempt && (now - session.lastAttempt < 15000)) return;
 
-    console.log(`[WA] 🚀 Session ${sessionKey}: Initiating connection...`);
     session.isConnecting = true;
     session.lastAttempt = now;
-    session.qrCode = null;
 
     try {
         const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${sessionKey}`);
         if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
 
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
-
+        
         let version: [number, number, number] = [2, 3000, 1015901307];
         try { const latest = await fetchLatestBaileysVersion(); if (latest.version) version = latest.version; } catch (vErr) { }
 
@@ -113,7 +107,6 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
             const { connection, lastDisconnect, qr } = update;
             const db = await dbLib.getDatabase();
             if (qr) {
-                console.log(`[WA] 🔳 New QR generated for user ${userId}`);
                 session.qrCode = await qrcode.toDataURL(qr);
                 await db.run('INSERT INTO whatsapp_sessions (user_id, session_id, qr_code, is_connected) VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET qr_code = ?, is_connected = 0', [userId, sessionKey, session.qrCode, 0, session.qrCode]).catch(() => { });
             }
@@ -125,41 +118,59 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
                     session.sock = null; if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true }); sessions.delete(sessionKey);
                 }
             } else if (connection === 'open') {
-                console.log(`[WA] ✅ Session ${sessionKey} connected successfully!`);
                 session.isConnected = true; session.isConnecting = false; session.qrCode = null;
                 await db.run('INSERT INTO whatsapp_sessions (user_id, session_id, is_connected, qr_code, last_connected) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(session_id) DO UPDATE SET is_connected = 1, qr_code = NULL, last_connected = CURRENT_TIMESTAMP', [userId, sessionKey, 1, null]).catch(() => { });
             }
         });
 
         setupMessageListeners(userId, sock, instanceId);
-    } catch (error) { console.error(`[WA] Fatal error:`, error); session.isConnecting = false; }
+    } catch (error) { session.isConnecting = false; }
 }
+
+const groupMetadataCache = new Map<string, { subject: string, timestamp: number }>();
+const userCache = new Map<number, { role: string, package: string, timestamp: number }>();
 
 function setupMessageListeners(userId: number, sock: any, instanceId: string = 'main') {
     sock.ev.on('messages.upsert', async (m: any) => {
         for (const msg of m.messages) {
             if (!msg || !msg.message) continue;
+            const fromJid = msg.key.remoteJid || '';
+            let from = fromJid.split('@')[0] || '';
+            const isFromMe = msg.key.fromMe || false;
+            if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) continue;
+            const isGroup = fromJid.includes('@g.us');
+            let groupName = null;
+
+            if (isGroup) {
+                const cached = groupMetadataCache.get(fromJid);
+                if (cached && (Date.now() - cached.timestamp < 3600000)) groupName = cached.subject;
+                else { try { const metadata = await sock.groupMetadata(fromJid); groupName = metadata.subject; groupMetadataCache.set(fromJid, { subject: groupName, timestamp: Date.now() }); } catch (err) { } }
+            }
+
             try {
                 const db = await dbLib.getDatabase();
-                const fromJid = msg.key.remoteJid || '';
-                let from = fromJid.split('@')[0] || '';
-                const isFromMe = msg.key.fromMe || false;
-                if (fromJid === 'status@broadcast' || fromJid.includes('@broadcast')) continue;
-                const isGroup = fromJid.includes('@g.us');
+                let dbUser = await db.get('SELECT role, package FROM users WHERE id = ?', [userId]);
+                const isDriverPackage = dbUser?.package === 'driver' || dbUser?.role === 'admin';
+                
                 let text = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || '';
-                if (!isFromMe && text) await db.run('INSERT INTO incoming_messages (user_id, phone_number, name, content) VALUES (?, ?, ?, ?)', [userId, from, msg.pushName || 'Bilinmeyen', text]);
+                
+                if (isGroup && isDriverPackage && text) {
+                    const job = await parseTransferJob(text);
+                    if (job) {
+                        const senderJid = msg.key.participant || fromJid;
+                        let finalPhone = job.phone === "Belirtilmedi" ? senderJid.split('@')[0].split(':')[0] : job.phone;
+                        await db.run('INSERT INTO captured_jobs (user_id, instance_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [userId, instanceId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, finalPhone, text, job.is_high_reward ? 1 : 0, job.is_swap ? 1 : 0]);
+                        const { runJobAutomation } = await import('./job_automation');
+                        runJobAutomation(userId).catch(() => {});
+                    }
+                }
+
+                if (!isFromMe && text) {
+                    await db.run('INSERT INTO incoming_messages (user_id, phone_number, name, content) VALUES (?, ?, ?, ?)', [userId, from, msg.pushName || 'Bilinmeyen', text]);
+                }
             } catch (err) { }
         }
     });
-}
-
-export async function disconnectWhatsApp(userId: number, instanceId: string = 'main'): Promise<void> {
-    const session = await getSession(userId, instanceId);
-    if (session.sock) { try { session.sock.ev.removeAllListeners('connection.update'); session.sock.end(undefined); } catch (e) { } }
-    session.isConnected = false; session.isConnecting = false; session.qrCode = null; session.sock = null;
-    const authDir = path.join(process.cwd(), 'data', 'auth_info', `user_${userId}_${instanceId}`);
-    if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
-    sessions.delete(`${userId}_${instanceId}`);
 }
 
 export async function sendMessage(userId: number, to: string, message: string, options?: any): Promise<boolean> {
@@ -167,6 +178,20 @@ export async function sendMessage(userId: number, to: string, message: string, o
     if (!session.isConnected || !session.sock) return false;
     try { let jid = to.includes('@') ? to : `${to.replace(/\D/g, '')}@s.whatsapp.net`; await session.sock.sendMessage(jid, { text: message }); return true; } catch (e) { return false; }
 }
+
 export function initScheduler() { }
-async function parseTransferJob(text: string) { return null; }
-async function syncContactProfile(userId: number, sock: any, phone: string) { }
+
+async function parseTransferJob(text: string) {
+    const phoneRegex = /(?:\+90|0)?\s*\(?\s*5\d{2}\s*\)?[\s\.\-]*\d{3}[\s\.\-]*\d{2}[\s\.\-]*\d{2}/g;
+    const phoneMatch = text.match(phoneRegex);
+    const phone = phoneMatch ? phoneMatch[0].replace(/\D/g, '') : "Belirtilmedi";
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+    if (apiKey) {
+        try {
+            const prompt = `Aşağıdaki WhatsApp mesajındaki transfer işini analiz et ve verileri ayıkla JSON olarak ver: {"from_loc": "...", "to_loc": "...", "price": "...", "time": "...", "is_high_reward": boolean, "is_swap": boolean} Mesaj: "${text}"`;
+            const aiText = await tryGemini(prompt, apiKey);
+            if (aiText) { const match = aiText.match(/\{[\s\S]*\}/); if (match) { const data = JSON.parse(match[0]); return { ...data, phone }; } }
+        } catch (e) { }
+    }
+    return null; // AI yoksa veya bulamadıysa şimdilik null dön
+}
