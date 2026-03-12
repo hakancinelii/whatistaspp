@@ -767,6 +767,19 @@ export function initScheduler() {
     }, 60000); // Check every minute
 }
 
+// Helper to normalize Turkish characters for robust matching
+const normalizeTurkish = (str: string) => {
+    return str
+        .replace(/İ/g, 'I')
+        .replace(/ı/g, 'i')
+        .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+        .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+        .replace(/Ş/g, 'S').replace(/ş/g, 's')
+        .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+        .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+        .toUpperCase();
+};
+
 /**
  * Transfer gruplarından gelen mesajları analiz eder.
  * AI Desteği ile lokasyon ve fiyat ayıklama.
@@ -778,9 +791,6 @@ async function parseTransferJob(text: string) {
     const phoneRegex = /(?:\+90|0)?\s*\(?\s*5\d{2}\s*\)?[\s\.\-]*\d{3}[\s\.\-]*\d{2}[\s\.\-]*\d{2}/g;
     const phoneMatch = text.match(phoneRegex);
     const phone = phoneMatch ? phoneMatch[0].replace(/\D/g, '') : null;
-
-    // Telefon zorunluluğunu kaldırdık, çünkü gönderen JID'den de alınabiliyor.
-    // Ancak mesajda bir iş olduğunu anlamak için başka kriterlere bakacağız.
 
     // 2. Yapay Zeka ile Analiz Denemesi
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
@@ -795,9 +805,7 @@ async function parseTransferJob(text: string) {
                - "saw taksim lüks araç 2000" -> {"from_loc": "SAW", "to_loc": "Taksim", "price": "2000", "time": "Belirtilmedi", "is_high_reward": true, "is_swap": false}
              3. **TAKAS (SWAP) VE İŞ DEĞİŞİMİ ANALİZİ:** 
                - Eğer mesajda "verilir", "veirlir", "veİrlir", "alınır", "takas", "boş araç", "iş istenir", "karşılama alınır", "çıkış verilir", "yerine iş alınır" gibi ifadeler geçiyorsa;
-               - VEYA mesajda birden fazla farklı iş/zaman dilimi varsa (Örn: "05:00 Tuzla-IHL verilir, 10:00 SAW alınır");
-               - Bu bir TAKAS (SWAP) işidir. "is_swap": true yap. 
-               - Bu durumda "from_loc" değerini "ÇOKLU / TAKAS" olarak ayarla.
+               - Bu bir TAKAS (SWAP) işidir. "is_swap": true yap ve "from_loc" değerini "ÇOKLU / TAKAS" olarak ayarla.
              4. KISALTMALAR: "İHL", "IHL", "İst", "İsl", "IST", "ISL", "İGA" kelimelerinin tamamı "İstanbul Havalimanı" anlamına gelir.
              5. ZAMAN: "Hazır", "Hemen", "Acil", "Azır", "Azir" gibi kelimeler varsa time="HAZIR 🚨" yap.
             6. FİYAT: Fiyatı sadece rakam olarak ayıkla. Eğer fiyat yoksa "Belirtilmedi" yaz.
@@ -817,7 +825,7 @@ async function parseTransferJob(text: string) {
                         let from = data.from_loc || "Bilinmiyor";
                         let to = data.to_loc || "Bilinmiyor";
 
-                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayör.
+                        // Akıllı Ayırma: Eğer to_loc boşsa ve from_loc içinde boşluk varsa (Örn: "İHL Fatih"), bunları ayır.
                         if (!data.is_swap && (to === "Bilinmiyor" || to === "Bilinmeyen Konum") && from.includes(' ')) {
                             const parts = from.split(/\s+/).filter((p: string) => p.length > 1);
                             if (parts.length >= 2) {
@@ -826,20 +834,20 @@ async function parseTransferJob(text: string) {
                             }
                         }
 
-                        // Fiyata ₺ işareti ekle (eğer yoksa)
+                        // Fiyata ₺ işareti ekle
                         let aiPrice = data.price || "Belirtilmedi";
                         if (aiPrice !== "Belirtilmedi" && !aiPrice.includes("₺") && !aiPrice.includes("TL")) {
                             aiPrice = aiPrice.replace(/(\d+).*/, "$1₺");
                         }
 
                         return {
-                            from_loc: from,
-                            to_loc: to,
+                            from_loc: from.toUpperCase(),
+                            to_loc: to.toUpperCase(),
                             price: aiPrice,
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
                             is_swap: data.is_swap ? 1 : 0,
-                            phone: phone || "Belirtilmedi" // Regex ile bulunan telefon
+                            phone: phone || "Belirtilmedi"
                         };
                     }
                 }
@@ -849,22 +857,16 @@ async function parseTransferJob(text: string) {
         }
     }
 
-    // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
-    // Önce telefon numaralarını metinden temizleyelim ki fiyatla karışmasın
+    // 3. Fallback: Eski Regex Mantığı
     const cleanTextForPrice = text.replace(phoneRegex, ' [TEL] ');
-
-    // Fiyat regexini daha esnek ama kontrollü yapalım: 300 ile 50000 arası değerler
     const priceRegex = /\b(\d{3,4}|[1-5]\d{4}|[1-9][\.\,]\d{3})\b\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft|\+)?/i;
     const priceMatch = cleanTextForPrice.match(priceRegex);
     let price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
-    // Fiyata ₺ işareti ekle (eğer yoksa)
     if (price !== "Belirtilmedi" && !price.includes("₺") && !price.includes("TL") && !price.includes("+")) {
-        // Sadece rakam varsa sonuna ₺ ekle
         price = price.replace(/(\d+).*/, "$1₺");
     }
 
-    // Fallback için Zaman Analizi
     let time = "Belirtilmedi";
     const lowerText = text.toLowerCase();
     const readyKeywords = ["hazır", "acil", "hemen", "bekleyen", "yolcu hazır", "azır", "azir", "hazir"];
@@ -872,48 +874,49 @@ async function parseTransferJob(text: string) {
         time = "HAZIR 🚨";
     }
 
-    // Fallback için Takas (Swap) Analizi
     const isSwapKeywords = ["alınır", "verilir", "veirlir", "veİrlir", "takas", "yerine", "boş araç", "iş istenir", "karşılama", "çıkış"];
-
     const isSwap = isSwapKeywords.some(kw => lowerText.includes(kw));
 
     const locations = [
-        // Havalimanları ve Ana Noktalar
         "SAW", "İHL", "IHL", "IST", "İST", "ISL", "İSL", "SABİHA", "İSTANBUL HAVALİMANI", "HAVALİMANI", "İGA", "OTOGAR", "PORT", "MARİNA", "GALATAPORT", "TERSANE", "VADİ İSTANBUL", "ZORLU", "İSTİNYE PARK", "METROPOL", "FİŞEKHANE",
-        // Avrupa Yakası İlçeler & Semtler
         "ARNAVUTKÖY", "AVCILAR", "BAĞCILAR", "BAHÇELİEVLER", "BAKIRKÖY", "BAŞAKŞEHİR", "BAYRAMPAŞA", "BEŞİKTAŞ", "BEYLİKDÜZÜ", "BEYOĞLU", "BÜYÜKÇEKMECE", "ÇATALCA", "ESENLER", "ESENYURT", "EYÜPSULTAN", "EYÜP", "FATİH", "GAZİOSMANPAŞA", "GÜNGÖREN", "KAĞITHANE", "KÜÇÜKÇEKMECE", "SARIYER", "SİLİVRI", "SULTANGAZİ", "ŞİŞLİ", "ZEYTİNBURNU",
         "TAKSİM", "ORTAKÖY", "BEBEK", "ETİLER", "ULUS", "NİŞANTAŞI", "MECİDİYEKÖY", "LEVENT", "MASLAK", "TARABYA", "İSTİNYE", "YENİKÖY", "EMİRGAN", "KARAKÖY", "EMİNÖNÜ", "SULTANAHMET", "SİRKECİ", "LALELİ", "AKSARAY", "YENİKAPI", "TOPKAPI", "CEVİZLİBAĞ", "MERTER", "GÜNEŞLİ", "HALKALI", "İKİTELLİ", "KAYABAŞI", "ISPARTAKULE", "BAHÇEŞEHİR", "HADIMKÖY", "KIRAÇ", "KUMBURGAZ", "SELİMPAŞA", "GÜRPİNAR", "YAKUPLU", "KAVAKLI", "ALİBEYKÖY", "KAZLIÇEŞME", "YENİBOSNA", "FLORYA", "YEŞİLYURT", "YEŞİLKÖY", "SİLAHTARAĞA",
-        // Anadolu Yakası İlçeler & Semtler
         "ADALAR", "ATAŞEHİR", "BEYKOZ", "ÇEKMEKÖY", "KADIKÖY", "KARTAL", "MALTEPE", "PENDİK", "SANCAKTEPE", "SULTANBEYLİ", "ŞİLE", "TUZLA", "ÜMRANİYE", "ÜSKÜDAR",
         "MODA", "FENERBAHÇE", "CADDEBOSTAN", "ERENKÖY", "SUADİYE", "BOSTANCI", "KÜÇÜKYALI", "İDEALTEPE", "ACIBADEM", "KOŞUYOLU", "BEYLERBEYİ", "ÇENGELKÖY", "KANDİLLİ", "KANLICA", "ÇUBUKLU", "PAŞABAHÇE", "KAVACIK", "POLONEZKÖY", "RİVA", "AĞVA", "KURTKÖY", "KAYNARCA", "GÜZELYALI", "AYDINLI", "İÇMELER", "ŞEKERPINAR", "ÇAYIROVA",
-        // Yakın Şehirler & Tatil Yerleri
         "GEBZE", "DARICA", "DİLOVASI", "KOCAELİ", "İZMİT", "SAKARYA", "ADAPAZARI", "SAPANCA", "MAŞUKİYE", "KARTEPE", "BURSA", "YALOVA", "MUDANYA", "GEMLİK", "BOLU", "ABANT", "KARTALKAYA", "TEKİRDAĞ", "ÇORLU", "ÇERKEZKÖY", "EDİRNE", "KIRKLARELİ"
     ];
 
     const foundLocations: { name: string, index: number }[] = [];
-    const normalizedText = text.toUpperCase();
+    const normalizedText = normalizeTurkish(text);
 
     locations.forEach(loc => {
-        const idx = normalizedText.indexOf(loc);
+        const normalizedLoc = normalizeTurkish(loc);
+        const idx = normalizedText.indexOf(normalizedLoc);
         if (idx !== -1) {
-            foundLocations.push({ name: loc, index: idx });
+            foundLocations.push({ name: normalizedLoc, index: idx });
         }
     });
 
-    // Mesaj içindeki sırasına göre sırala
     foundLocations.sort((a, b) => a.index - b.index);
 
-    // Dinamik Lokasyon Ayıklama (Eğer listeden bulunamadıysa)
-    let from_loc = foundLocations[0]?.name || "Bilinmeyen Konum";
-    let to_loc = foundLocations[1]?.name || "Bilinmeyen Konum";
+    // Mükerrerleri temizle (Örn: "İSTANBUL HAVALİMANI" bulunca "HAVALİMANI" da listeye girmiş olabilir, uzun olanı koru)
+    const uniqueLocations: typeof foundLocations = [];
+    for (const loc of foundLocations) {
+        if (!uniqueLocations.some(ul => ul.index === loc.index || (ul.index <= loc.index && ul.index + ul.name.length >= loc.index + loc.name.length))) {
+            uniqueLocations.push(loc);
+        }
+    }
 
+    let from_loc = uniqueLocations[0]?.name || "Bilinmeyen Konum";
+    let to_loc = uniqueLocations[1]?.name || "Bilinmeyen Konum";
+
+    // Fallback: Eğer Nereye hala bilinmiyorsa ve mesajda tire/slash varsa
     if (from_loc === "Bilinmeyen Konum" || to_loc === "Bilinmeyen Konum") {
-        // "A - B" veya "A / B" formatını ara
         const patternRegex = /([A-ZÇĞİÖŞÜ]{3,})\s*[\-\/]\s*([A-ZÇĞİÖŞÜ]{3,})/i;
         const patternMatch = text.match(patternRegex);
         if (patternMatch) {
-            if (from_loc === "Bilinmeyen Konum") from_loc = patternMatch[1].toUpperCase();
-            if (to_loc === "Bilinmeyen Konum") to_loc = patternMatch[2].toUpperCase();
+            if (from_loc === "Bilinmeyen Konum") from_loc = normalizeTurkish(patternMatch[1]);
+            if (to_loc === "Bilinmeyen Konum") to_loc = normalizeTurkish(patternMatch[2]);
         }
     }
 
@@ -922,10 +925,10 @@ async function parseTransferJob(text: string) {
         to_loc = "BÖLGE";
     }
 
-    if (foundLocations.length > 0 || price !== "Belirtilmedi" || isSwap || phone) {
+    if (uniqueLocations.length > 0 || price !== "Belirtilmedi" || isSwap || phone) {
         return {
-            from_loc,
-            to_loc,
+            from_loc: from_loc.toUpperCase(),
+            to_loc: to_loc.toUpperCase(),
             price: price.toUpperCase(),
             time,
             is_high_reward: 0,
