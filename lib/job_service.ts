@@ -141,20 +141,29 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     }
 
     // 7. Send to Customer
-    if (finalCustomerPhone && finalCustomerPhone !== "Belirtilmedi" && finalCustomerPhone.length >= 10) {
-        let cleanPhone = finalCustomerPhone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
-        else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
-
-        const jid = `${cleanPhone}@s.whatsapp.net`;
-        try {
-            await session.sock.sendMessage(jid, { text: customerMessage });
-        } catch (err: any) {
-            console.error(`[JobService] Customer Send Error:`, err.message);
-            throw new Error(`Müşteriye mesaj gönderilemedi: ${err.message}`);
+    if (finalCustomerPhone && finalCustomerPhone !== "Belirtilmedi") {
+        let jid = '';
+        if (finalCustomerPhone.includes('@')) {
+            // Zaten bir JID (LID veya tam JID)
+            jid = finalCustomerPhone;
+        } else if (finalCustomerPhone.replace(/\D/g, '').length >= 10 && finalCustomerPhone.replace(/\D/g, '').length <= 15) {
+            // Telefon numarası (10-15 hane arası ise güvenli kabul ediyoruz)
+            let cleanPhone = finalCustomerPhone.replace(/\D/g, '');
+            if (cleanPhone.startsWith('0')) cleanPhone = '90' + cleanPhone.substring(1);
+            else if (cleanPhone.startsWith('5') && cleanPhone.length === 10) cleanPhone = '90' + cleanPhone;
+            jid = `${cleanPhone}@s.whatsapp.net`;
         }
-    } else if (targetSenderJid && !targetSenderJid.includes('@g.us')) {
-        let jid = targetSenderJid.includes('@') ? targetSenderJid : `${targetSenderJid}@s.whatsapp.net`;
+
+        if (jid) {
+            try {
+                await session.sock.sendMessage(jid, { text: customerMessage });
+            } catch (err: any) {
+                console.error(`[JobService] Customer Send Error:`, err.message);
+                throw new Error(`Müşteriye mesaj gönderilemedi: ${err.message}`);
+            }
+        }
+    } else if (targetSenderJid && (targetSenderJid.endsWith('@s.whatsapp.net') || targetSenderJid.endsWith('@lid'))) {
+        let jid = targetSenderJid;
         try {
             await session.sock.sendMessage(jid, { text: customerMessage });
         } catch (err: any) {

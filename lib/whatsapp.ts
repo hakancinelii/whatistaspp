@@ -421,7 +421,17 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                             // Telefon numarası mesajda yoksa, gönderen kişinin numarasını kullan
                             let finalPhone = job.phone;
                             if (!finalPhone || finalPhone === "Belirtilmedi") {
-                                finalPhone = senderJid.split('@')[0].split(':')[0];
+                                // SADECE person JID (@s.whatsapp.net veya @lid) olanlardan numara/JID almalıyız.
+                                // Grup JID'lerini (@g.us) kesinlikle telefon numarası olarak kaydetmemeliyiz.
+                                if (senderJid && (senderJid.endsWith('@s.whatsapp.net') || senderJid.endsWith('@lid'))) {
+                                    finalPhone = senderJid;
+                                    // Eğer sadece rakamlı bir s.whatsapp.net ise numarayı ayıkla, LID ise JID kalsın
+                                    if (senderJid.endsWith('@s.whatsapp.net')) {
+                                        finalPhone = senderJid.split('@')[0];
+                                    }
+                                } else {
+                                    finalPhone = "Belirtilmedi";
+                                }
                             }
 
                             console.log(`[WA] 🎯 Job Parsed: ${job.from_loc} -> ${job.to_loc} | Phone: ${finalPhone}`);
@@ -829,7 +839,7 @@ async function parseTransferJob(text: string) {
                             time: data.time || "Belirtilmedi",
                             is_high_reward: data.is_high_reward ? 1 : 0,
                             is_swap: data.is_swap ? 1 : 0,
-                            phone
+                            phone: phone || "Belirtilmedi" // Regex ile bulunan telefon
                         };
                     }
                 }
@@ -840,12 +850,16 @@ async function parseTransferJob(text: string) {
     }
 
     // 3. Fallback: Eski Regex Mantığı (Eğer AI başarısız olursa veya anahtar yoksa)
-    const priceRegex = /(\d{1,2}[\.\,]?\d{3})\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft)?/i;
-    const priceMatch = text.match(priceRegex);
+    // Önce telefon numaralarını metinden temizleyelim ki fiyatla karışmasın
+    const cleanTextForPrice = text.replace(phoneRegex, ' [TEL] ');
+
+    // Fiyat regexini daha esnek ama kontrollü yapalım: 300 ile 50000 arası değerler
+    const priceRegex = /\b(\d{3,4}|[1-5]\d{4}|[1-9][\.\,]\d{3})\b\s*(?:TL|₺|TRY|LİRA|Lira|Nakit|nakit|EFT|eft|\+)?/i;
+    const priceMatch = cleanTextForPrice.match(priceRegex);
     let price = priceMatch ? priceMatch[0].trim() : "Belirtilmedi";
 
     // Fiyata ₺ işareti ekle (eğer yoksa)
-    if (price !== "Belirtilmedi" && !price.includes("₺") && !price.includes("TL")) {
+    if (price !== "Belirtilmedi" && !price.includes("₺") && !price.includes("TL") && !price.includes("+")) {
         // Sadece rakam varsa sonuna ₺ ekle
         price = price.replace(/(\d+).*/, "$1₺");
     }
