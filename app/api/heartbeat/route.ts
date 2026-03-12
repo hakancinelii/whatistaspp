@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
+        console.error('[API Heartbeat POST Error]:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ online_count: result?.online_count || 0 });
     } catch (error: any) {
+        console.error('[API Heartbeat GET Error]:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
