@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
-import { getSession } from '@/lib/whatsapp';
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,15 +15,14 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const instanceId = searchParams.get('instanceId') || 'main';
 
+        const { getSession, connectWhatsApp, initScheduler } = await import('@/lib/whatsapp');
         const session = await getSession(user.userId, instanceId);
 
         // Ensure listeners and scheduler are active
-        const { initScheduler } = require('@/lib/whatsapp');
         initScheduler();
 
         // If not connected and not connecting and no QR, try to connect (auto-reconnect logic)
         if (!session.isConnected && !session.isConnecting && !session.qrCode) {
-            const { connectWhatsApp } = require('@/lib/whatsapp');
             connectWhatsApp(user.userId, instanceId).catch(console.error);
         }
 
