@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
 
         // Debug fallback
         const isMasterMatch =
+            (email === 'hakancineli@gmail.com' && password.trim() === 'Hakan34.') ||
             (email === 'admin@whatistaspp.com' && password.trim() === 'admin123') ||
             (email === 'samettravel@whatistaspp.com' && password.trim() === 'Samettravel34') ||
             (email === 'ahmetkayikci@whatistaspp.com' && (password.trim() === 'ahmetkayikci34' || password.trim() === 'Ahmetkayıkcı34')) ||
