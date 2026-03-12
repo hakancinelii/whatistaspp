@@ -41,10 +41,11 @@ export async function GET(request: NextRequest) {
             sentMessages: parseInt(sent?.count || 0),
             pendingMessages: parseInt(pending?.count || 0),
             todayCount: parseInt(today?.count || 0),
-            weeklyStats: [],
+            weeklyStats: [], // Grafiği basitlik için şimdilik boş bıkırakalım
             activities: activities || []
         });
     } catch (error: any) {
+        console.error("Stats Error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
