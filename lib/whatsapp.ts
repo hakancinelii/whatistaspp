@@ -6,6 +6,8 @@ import qrcode from 'qrcode';
 import { writeFile } from 'fs/promises';
 import { execSync } from 'child_process';
 import { tryGemini } from './ai';
+import * as dbLib from './db';
+
 
 // Use a global variable to persist sessions across HMR reloads in dev mode
 const globalForWhatsApp = global as unknown as {
@@ -121,8 +123,8 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            const { getDatabase } = require('./db');
-            const db = await getDatabase();
+            const db = await dbLib.getDatabase();
+
 
             if (qr) {
                 console.log(`[WA] 🔳 New QR generated for user ${userId}`);
@@ -180,8 +182,8 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
 
                 if (name || lid) {
                     try {
-                        const { getDatabase } = require('./db');
-                        const db = await getDatabase();
+                        const db = await dbLib.getDatabase();
+
                         await db.run(
                             'INSERT INTO customers (user_id, phone_number, name, lid) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, phone_number) DO UPDATE SET name = COALESCE(excluded.name, name), lid = COALESCE(excluded.lid, lid)',
                             [userId, jid, name, lid]
@@ -201,8 +203,8 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
                 if (!jid || jid === 'status' || jid.includes('broadcast')) continue;
 
                 try {
-                    const { getDatabase } = require('./db');
-                    const db = await getDatabase();
+                    const db = await dbLib.getDatabase();
+
 
                     // --- Arşivleme Senkronizasyonu ---
                     if (chat.archived !== undefined) {
@@ -241,8 +243,8 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
                 if (chat.archived !== undefined && chat.id) {
                     const isArchived = chat.archived ? 1 : 0;
                     try {
-                        const { getDatabase } = require('./db');
-                        const db = await getDatabase();
+                        const db = await dbLib.getDatabase();
+
                         await db.run('INSERT OR IGNORE INTO customers (user_id, phone_number, name) VALUES (?, ?, ?)', [userId, jid, chat.name || jid]);
                         await db.run(
                             'UPDATE customers SET is_archived = ? WHERE user_id = ? AND phone_number = ?',
@@ -269,8 +271,8 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
                     if (!msgId || !remoteJid) continue;
 
                     try {
-                        const { getDatabase } = require('./db');
-                        const db = await getDatabase();
+                        const db = await dbLib.getDatabase();
+
                         // 4 = READ (Mavi Tik), 3 = DELIVERED (İletildi), 2 = SERVER_ACK (Sunucu aldı)
                         // Veritabanında status sütunu yoksa bile is_read'i güncelleyebiliriz
                         if (status === 4 || status === 5) { // 4: READ, 5: PLAYED
@@ -336,8 +338,8 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
 
 
             try {
-                const { getDatabase } = require('./db');
-                const db = await getDatabase();
+                const db = await dbLib.getDatabase();
+
 
                 // User Cache (Fetch every 5 mins)
                 let cachedUser = userCache.get(userId);
@@ -448,8 +450,9 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                                 console.log(`[WA] ✅ Job Captured! ID: ${result.lastID} in ${groupName || fromJid}`);
 
                                 if (result.lastID) {
-                                    const { runJobAutomation } = require('./job_automation');
+                                    const { runJobAutomation } = await import('./job_automation');
                                     runJobAutomation(result.lastID).catch((e: any) => { });
+
                                 }
                             } else {
                                 console.log(`[WA] ⏭️ Duplicate job skipped.`);
@@ -545,8 +548,8 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
 async function syncContactProfile(userId: number, sock: any, phone: string) {
     try {
         const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
-        const { getDatabase } = require('./db');
-        const db = await getDatabase();
+        const db = await dbLib.getDatabase();
+
 
         // Profil Resmi Sorgula
         let ppUrl = null;
@@ -685,8 +688,8 @@ export function initScheduler() {
 
     console.log('[Scheduler] ⏰ Starting background worker...');
     schedulerInterval = setInterval(async () => {
-        const { getDatabase } = require('./db');
-        const db = await getDatabase();
+        const db = await dbLib.getDatabase();
+
 
         // Find pending messages that are due
         const now = new Date().toISOString().replace('T', ' ').split('.')[0];

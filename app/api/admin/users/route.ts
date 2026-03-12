@@ -16,8 +16,18 @@ export async function GET(request: NextRequest) {
         const db = await getDatabase();
 
         const totalUsers = await db.get('SELECT COUNT(*) as count FROM users');
-        const onlineUsers = await db.get(`SELECT COUNT(*) as count FROM user_heartbeat WHERE last_seen >= datetime('now', '-60 seconds')`);
-        const activeSessions = await db.get('SELECT COUNT(*) as count FROM whatsapp_sessions WHERE is_connected = 1');
+
+        let onlineCount = 0;
+        try {
+            const onlineUsers = await db.get(`SELECT COUNT(*) as count FROM user_heartbeat WHERE last_seen >= datetime('now', '-60 seconds')`);
+            onlineCount = onlineUsers?.count || 0;
+        } catch (e) { }
+
+        let activeSessionCount = 0;
+        try {
+            const activeSessions = await db.get('SELECT COUNT(*) as count FROM whatsapp_sessions WHERE is_connected = 1');
+            activeSessionCount = activeSessions?.count || 0;
+        } catch (e) { }
 
         // WhatsApp Grup Sayıları
         let totalGroups = 0;
@@ -40,28 +50,47 @@ export async function GET(request: NextRequest) {
             }
         } catch (e) { }
 
-        // Users
+        // Users - basit ve güvenli sorgu
         const users = await db.all(`
-            SELECT u.id, u.name, u.email, u.role, u.status, u.credits, u.package, u.plain_password, u.driver_phone, u.profile_picture, u.created_at,
-                   (SELECT MAX(is_connected) FROM whatsapp_sessions WHERE user_id = u.id) as is_connected,
-                   (SELECT last_seen >= datetime('now', '-60 seconds') FROM user_heartbeat WHERE user_id = u.id) as is_online,
-                   (SELECT COUNT(*) FROM job_interactions WHERE user_id = u.id AND status = 'won') as won_count,
-                   (SELECT COUNT(*) FROM job_interactions WHERE user_id = u.id AND status = 'called') as called_count
+            SELECT u.id, u.name, u.email, u.role, u.status, u.credits, u.package, u.plain_password, u.driver_phone, u.created_at
             FROM users u
             ORDER BY u.created_at DESC
         `);
 
+        // Ek bilgileri ayrı sorgularla güvenli şekilde al
+        const enrichedUsers = [];
+        for (const u of users) {
+            let is_online = false;
+            let won_count = 0;
+            let called_count = 0;
+
+            try {
+                const hb = await db.get('SELECT last_seen >= datetime(\'now\', \'-60 seconds\') as online FROM user_heartbeat WHERE user_id = ?', [u.id]);
+                is_online = !!hb?.online;
+            } catch (e) { }
+
+            try {
+                const won = await db.get('SELECT COUNT(*) as count FROM job_interactions WHERE user_id = ? AND status = \'won\'', [u.id]);
+                won_count = won?.count || 0;
+                const called = await db.get('SELECT COUNT(*) as count FROM job_interactions WHERE user_id = ? AND status = \'called\'', [u.id]);
+                called_count = called?.count || 0;
+            } catch (e) { }
+
+            enrichedUsers.push({ ...u, is_online, won_count, called_count, is_connected: false });
+        }
+
         return NextResponse.json({
-            users: users.map((u: any) => ({ ...u, is_online: !!u.is_online })),
+            users: enrichedUsers,
             stats: {
                 totalUsers: totalUsers?.count || 0,
-                onlineUsers: onlineUsers?.count || 0,
-                activeSessions: activeSessions?.count || 0,
+                onlineUsers: onlineCount,
+                activeSessions: activeSessionCount,
                 totalGroups: totalGroups,
                 joinedGroups: joinedGroups
             }
         });
     } catch (error: any) {
+        console.error('[Admin Users] Error:', error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

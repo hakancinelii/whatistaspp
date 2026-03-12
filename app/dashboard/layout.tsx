@@ -145,7 +145,7 @@ export default function DashboardLayout({
         <nav className="mt-6 flex-grow">
           <ul className="space-y-2 px-4">
             {/* Transfer Şoförü Paketi Linki */}
-            {user?.package === 'driver' && (
+            {(user?.package === 'driver' || user?.role === 'admin') && (
               <li>
                 <Link
                   href="/dashboard/driver"

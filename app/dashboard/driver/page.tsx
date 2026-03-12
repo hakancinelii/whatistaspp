@@ -169,7 +169,11 @@ export default function DriverDashboard() {
         }
 
         // 5. Takas Filtresi
-        if (filterSwap && job.is_swap !== 1) return false;
+        if (filterSwap) {
+            if (job.is_swap !== 1 && job.from_loc !== 'ÇOKLU / TAKAS') return false;
+        } else {
+            if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return false;
+        }
 
         // 6. Bölge Filtresi (Kalkış)
         if (selectedRegions.length > 0) {

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
         const db = await getDatabase();
         const profile = await db.get(
-            'SELECT name, email, driver_phone, driver_plate, profile_picture FROM users WHERE id = ?',
+            'SELECT name, email, driver_phone, driver_plate FROM users WHERE id = ?',
             [user.userId]
         );
 
@@ -22,8 +22,7 @@ export async function GET(request: NextRequest) {
             name: profile?.name || '',
             email: profile?.email || '',
             driver_phone: profile?.driver_phone || '',
-            driver_plate: profile?.driver_plate || '',
-            profile_picture: profile?.profile_picture || null
+            driver_plate: profile?.driver_plate || ''
         });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -38,22 +37,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { driver_phone, driver_plate, profile_picture } = await request.json();
+        const { name, driver_phone, driver_plate } = await request.json();
         const db = await getDatabase();
 
-        if (profile_picture !== undefined) {
-            await db.run(`
-                UPDATE users 
-                SET driver_phone = ?, driver_plate = ?, profile_picture = ?
-                WHERE id = ?
-            `, [driver_phone || null, driver_plate || null, profile_picture, user.userId]);
-        } else {
-            await db.run(`
-                UPDATE users 
-                SET driver_phone = ?, driver_plate = ?
-                WHERE id = ?
-            `, [driver_phone || null, driver_plate || null, user.userId]);
-        }
+        await db.run(`
+            UPDATE users 
+            SET name = COALESCE(?, name), driver_phone = ?, driver_plate = ?
+            WHERE id = ?
+        `, [name || null, driver_phone || null, driver_plate || null, user.userId]);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

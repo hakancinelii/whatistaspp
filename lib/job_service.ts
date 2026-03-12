@@ -1,6 +1,6 @@
 
 import { getDatabase } from './db';
-import { getSession, connectWhatsApp } from './whatsapp';
+// whatsapp imports removed to prevent circular dependency
 
 export async function processJobTaking(userId: number, jobId: number, clientGroupJid?: string, clientPhone?: string, externalDriverId?: number) {
     const db = await getDatabase();
@@ -96,6 +96,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     }
 
     // 5. Check WA Connection
+    const { getSession, connectWhatsApp } = await import('./whatsapp');
     let userSession = await getSession(userId);
     const userHasWA = userSession.sock && userSession.isConnected;
 
