@@ -6,10 +6,27 @@ const dbPath = path.join(process.cwd(), 'data', 'database.db');
 console.log("Updating Database at:", dbPath);
 const db = new sqlite3.Database(dbPath);
 
-db.serialize(() => {
-        console.log("Creating missing tables if they don't exist...");
+// Helper to run SQL as a promise
+const run = (sql, params = []) => new Promise((resolve, reject) => {
+        db.run(sql, params, function (err) {
+                if (err) reject(err);
+                else resolve(this);
+        });
+});
 
-        db.run(`CREATE TABLE IF NOT EXISTS users (
+// Helper to get a row as a promise
+const get = (sql, params = []) => new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+        });
+});
+
+async function update() {
+        try {
+                console.log("Creating missing tables if they don't exist...");
+
+                await run(`CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
@@ -23,17 +40,32 @@ db.serialize(() => {
             driver_phone TEXT,
             driver_plate TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        // Migration for missing columns
-        db.run("ALTER TABLE users ADD COLUMN driver_phone TEXT", (err) => {
-                if (!err) console.log("Added driver_phone column to users");
-        });
-        db.run("ALTER TABLE users ADD COLUMN driver_plate TEXT", (err) => {
-                if (!err) console.log("Added driver_plate column to users");
-        });
+                // Migration for missing columns
+                await run("ALTER TABLE users ADD COLUMN driver_phone TEXT").catch(() => { });
+                await run("ALTER TABLE users ADD COLUMN driver_plate TEXT").catch(() => { });
 
-        db.run(`CREATE TABLE IF NOT EXISTS group_discovery (
+                await run(`CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
+            session_id TEXT UNIQUE NOT NULL,
+            is_connected BOOLEAN DEFAULT FALSE,
+            qr_code TEXT,
+            last_connected DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+                await run(`CREATE TABLE IF NOT EXISTS auto_replies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            keyword TEXT NOT NULL,
+            reply TEXT NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+                await run(`CREATE TABLE IF NOT EXISTS group_discovery (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             invite_code TEXT UNIQUE,
             invite_link TEXT,
@@ -41,23 +73,23 @@ db.serialize(() => {
             group_jid TEXT,
             found_by_user_id INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS user_heartbeat (
+                await run(`CREATE TABLE IF NOT EXISTS user_heartbeat (
             user_id INTEGER PRIMARY KEY REFERENCES users(id),
             last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS job_interactions (
+                await run(`CREATE TABLE IF NOT EXISTS job_interactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             job_id INTEGER NOT NULL,
             status TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id, job_id)
-    )`);
+        )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS external_drivers (
+                await run(`CREATE TABLE IF NOT EXISTS external_drivers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             phone TEXT NOT NULL,
@@ -67,9 +99,9 @@ db.serialize(() => {
             is_active INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS driver_filters (
+                await run(`CREATE TABLE IF NOT EXISTS driver_filters (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
             regions TEXT,
@@ -79,9 +111,9 @@ db.serialize(() => {
             action_mode TEXT DEFAULT 'manual',
             rota_name TEXT DEFAULT 'ROTA 1',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS captured_jobs (
+                await run(`CREATE TABLE IF NOT EXISTS captured_jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES users(id),
             instance_id TEXT,
@@ -99,9 +131,9 @@ db.serialize(() => {
             completed_at DATETIME,
             time TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS user_settings (
+                await run(`CREATE TABLE IF NOT EXISTS user_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
             webhook_url TEXT,
@@ -113,21 +145,24 @@ db.serialize(() => {
             message_variation INTEGER DEFAULT 1,
             proxy_message_mode INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        )`);
 
-        console.log("Ensuring Super Admin account hakan34.");
-        const hashedPw = bcrypt.hashSync('Hakan34.', 10);
+                console.log("Ensuring Super Admin account hakan34.");
+                const hashedPw = bcrypt.hashSync('Hakan34.', 10);
 
-        // Önce var mı diye bakalım, yoksa ekleyelim
-        db.get("SELECT id FROM users WHERE email = 'hakancineli@gmail.com'", (err, row) => {
+                const row = await get("SELECT id FROM users WHERE email = 'hakancineli@gmail.com'");
                 if (!row) {
-                        db.run("INSERT INTO users (name, email, password, plain_password, role, package, status, credits) VALUES ('Hakan Cineli', 'hakancineli@gmail.com', ?, 'Hakan34.', 'admin', 'platinum', 'active', 999999)", [hashedPw]);
+                        await run("INSERT INTO users (name, email, password, plain_password, role, package, status, credits) VALUES ('Hakan Cineli', 'hakancineli@gmail.com', ?, 'Hakan34.', 'admin', 'platinum', 'active', 999999)", [hashedPw]);
                 } else {
-                        db.run("UPDATE users SET password = ?, plain_password = 'Hakan34.', role = 'admin', package = 'platinum', credits = 999999 WHERE email = 'hakancineli@gmail.com'", [hashedPw]);
+                        await run("UPDATE users SET password = ?, plain_password = 'Hakan34.', role = 'admin', package = 'platinum', credits = 999999 WHERE email = 'hakancineli@gmail.com'", [hashedPw]);
                 }
-        });
-});
 
-db.close(() => {
-        console.log("✅ Database successfully updated. You can go back to the browser!");
-});
+                console.log("✅ Database successfully updated. You can go back to the browser!");
+        } catch (err) {
+                console.error("❌ Error during database update:", err);
+        } finally {
+                db.close();
+        }
+}
+
+update();
