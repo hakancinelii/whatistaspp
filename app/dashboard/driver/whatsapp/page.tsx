@@ -57,13 +57,13 @@ export default function DriverWhatsAppPage() {
             <div className="mb-8">
                 <button
                     onClick={() => router.push('/dashboard/driver')}
-                    className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-bold"
+                    className="text-app-muted hover:text-app-fg transition-colors flex items-center gap-2 text-sm font-bold"
                 >
                     ← Geri Dön
                 </button>
             </div>
 
-            <div className="bg-slate-800 rounded-[2.5rem] border border-white/5 p-10 shadow-2xl relative overflow-hidden">
+            <div className="bg-app-card rounded-[2.5rem] border border-app-border/60 p-10 shadow-2xl relative overflow-hidden">
                 {/* Decorative Background */}
                 <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-blue-500/5 pointer-events-none"></div>
 
@@ -72,21 +72,21 @@ export default function DriverWhatsAppPage() {
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-green-500 to-emerald-600 mb-4 shadow-lg shadow-green-900/50">
                         <span className="text-4xl">📱</span>
                     </div>
-                    <h1 className="text-3xl font-black text-white tracking-tight mb-2">WhatsApp Bağlantısı</h1>
-                    <p className="text-slate-400 text-sm font-medium">Kendi WhatsApp hesabınızı bağlayarak gruplarınızdan iş yakalayın</p>
+                    <h1 className="text-3xl font-black text-app-fg tracking-tight mb-2">WhatsApp Bağlantısı</h1>
+                    <p className="text-app-muted text-sm font-medium">Kendi WhatsApp hesabınızı bağlayarak gruplarınızdan iş yakalayın</p>
                 </div>
 
                 {/* Connection Status */}
                 <div className="flex flex-col items-center justify-center mb-10">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4 transition-all duration-500 ${status.isConnected ? 'bg-green-500/20 border-2 border-green-500 shadow-lg shadow-green-900/50 animate-pulse' :
                             status.isConnecting ? 'bg-yellow-500/20 border-2 border-yellow-500 shadow-lg shadow-yellow-900/50 animate-spin' :
-                                'bg-slate-700/50 border-2 border-slate-600'
+                                'bg-app-elevated/50 border-2 border-app-border'
                         }`}>
                         {status.isConnected ? '✓' : status.isConnecting ? '⟳' : '○'}
                     </div>
                     <div className={`text-lg font-black tracking-tight ${status.isConnected ? 'text-green-400' :
                             status.isConnecting ? 'text-yellow-400' :
-                                'text-slate-500'
+                                'text-app-subtle'
                         }`}>
                         {status.isConnected ? 'BAĞLANDI' : status.isConnecting ? 'BAĞLANIYOR...' : 'BAĞLI DEĞİL'}
                     </div>
@@ -99,9 +99,9 @@ export default function DriverWhatsAppPage() {
                             <img src={status.qrCode} alt="QR Code" className="w-64 h-64" />
                         </div>
                         <div className="space-y-2">
-                            <p className="text-white font-bold text-lg">📱 WhatsApp'ı Aç</p>
-                            <p className="text-slate-400 text-sm">Ayarlar → Bağlı Cihazlar → Cihaz Bağla</p>
-                            <p className="text-slate-500 text-xs mt-4">QR kod 60 saniye içinde yenilenir</p>
+                            <p className="text-app-fg font-bold text-lg">📱 WhatsApp'ı Aç</p>
+                            <p className="text-app-muted text-sm">Ayarlar → Bağlı Cihazlar → Cihaz Bağla</p>
+                            <p className="text-app-subtle text-xs mt-4">QR kod 60 saniye içinde yenilenir</p>
                         </div>
                     </div>
                 )}
@@ -113,9 +113,9 @@ export default function DriverWhatsAppPage() {
                         <div className="relative">
                             <div className="text-5xl mb-4">🎉</div>
                             <p className="text-green-400 font-black text-xl mb-2">Bağlantı Başarılı!</p>
-                            <p className="text-slate-400 text-sm">WhatsApp hesabınız aktif. Artık gruplarınızdan otomatik iş yakalayabilirsiniz.</p>
-                            <div className="mt-6 p-4 bg-slate-900/50 rounded-2xl border border-white/5">
-                                <p className="text-xs text-slate-500 mb-2">✨ Aktif Özellikler:</p>
+                            <p className="text-app-muted text-sm">WhatsApp hesabınız aktif. Artık gruplarınızdan otomatik iş yakalayabilirsiniz.</p>
+                            <div className="mt-6 p-4 bg-app-bg/50 rounded-2xl border border-app-border/60">
+                                <p className="text-xs text-app-subtle mb-2">✨ Aktif Özellikler:</p>
                                 <div className="flex flex-wrap gap-2 justify-center">
                                     <span className="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-bold border border-green-500/20">Otomatik İş Yakalama</span>
                                     <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs font-bold border border-blue-500/20">Grup Keşfi</span>
@@ -130,7 +130,7 @@ export default function DriverWhatsAppPage() {
                 {!status.isConnected && !status.isConnecting && !status.qrCode && (
                     <div className="text-center mb-10 py-10 opacity-60">
                         <div className="text-6xl mb-4">📴</div>
-                        <p className="text-slate-400 font-bold">Bağlantı bekleniyor...</p>
+                        <p className="text-app-muted font-bold">Bağlantı bekleniyor...</p>
                         <p className="text-slate-600 text-sm mt-2">Başlamak için aşağıdaki butona tıklayın</p>
                     </div>
                 )}
@@ -161,7 +161,7 @@ export default function DriverWhatsAppPage() {
                 {/* Info Box */}
                 <div className="mt-8 p-6 bg-blue-500/5 rounded-2xl border border-blue-500/10">
                     <p className="text-blue-400 font-bold text-sm mb-2">ℹ️ Bilgi</p>
-                    <ul className="text-slate-400 text-xs space-y-2">
+                    <ul className="text-app-muted text-xs space-y-2">
                         <li>• WhatsApp hesabınızı bağladığınızda, gruplarınızdan gelen işler otomatik olarak yakalanır</li>
                         <li>• Gruplarınızdaki yeni grup linkleri otomatik keşfedilir ve sisteme eklenir</li>
                         <li>• Bağlantınız 7/24 aktif kalır, telefon kapalı olsa bile işler yakalanmaya devam eder</li>

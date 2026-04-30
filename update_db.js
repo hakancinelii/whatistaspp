@@ -147,6 +147,58 @@ async function update() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
+                await run("ALTER TABLE user_settings ADD COLUMN daily_limit INTEGER DEFAULT 250").catch(() => { });
+                await run("ALTER TABLE user_settings ADD COLUMN night_mode INTEGER DEFAULT 1").catch(() => { });
+                await run("ALTER TABLE user_settings ADD COLUMN message_variation INTEGER DEFAULT 1").catch(() => { });
+                await run("ALTER TABLE user_settings ADD COLUMN proxy_message_mode INTEGER DEFAULT 0").catch(() => { });
+
+                await run(`CREATE TABLE IF NOT EXISTS sent_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            phone_number TEXT NOT NULL,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            media_url TEXT,
+            media_type TEXT,
+            job_id INTEGER,
+            customer_id INTEGER,
+            queue_index INTEGER
+        )`);
+
+                await run("ALTER TABLE sent_messages ADD COLUMN job_id INTEGER").catch(() => { });
+                await run("ALTER TABLE sent_messages ADD COLUMN customer_id INTEGER").catch(() => { });
+                await run("ALTER TABLE sent_messages ADD COLUMN queue_index INTEGER").catch(() => { });
+                await run("ALTER TABLE sent_messages ADD COLUMN is_read BOOLEAN DEFAULT 0").catch(() => { });
+
+                await run("ALTER TABLE scheduled_messages ADD COLUMN media_url TEXT").catch(() => { });
+                await run("ALTER TABLE scheduled_messages ADD COLUMN media_type TEXT").catch(() => { });
+
+                await run(`CREATE TABLE IF NOT EXISTS message_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'queued',
+            message TEXT,
+            media_url TEXT,
+            media_type TEXT,
+            customer_ids_json TEXT NOT NULL,
+            total_count INTEGER DEFAULT 0,
+            next_index INTEGER DEFAULT 0,
+            success_count INTEGER DEFAULT 0,
+            error_count INTEGER DEFAULT 0,
+            daily_cap INTEGER DEFAULT 500,
+            last_customer_id INTEGER,
+            last_phone_number TEXT,
+            last_sent_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            started_at DATETIME,
+            finished_at DATETIME
+        )`);
+
+                await run("CREATE INDEX IF NOT EXISTS idx_message_jobs_user_status ON message_jobs(user_id, status)").catch(() => { });
+                await run("CREATE INDEX IF NOT EXISTS idx_message_jobs_user_updated ON message_jobs(user_id, updated_at)").catch(() => { });
+
                 console.log("Ensuring Super Admin account hakan34.");
                 const hashedPw = bcrypt.hashSync('Hakan34.', 10);
 

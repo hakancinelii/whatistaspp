@@ -205,10 +205,12 @@ export async function runMigrations() {
         CREATE TABLE IF NOT EXISTS scheduled_messages (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id),
-            customer_ids TEXT NOT NULL,
-            message TEXT NOT NULL,
+            content TEXT NOT NULL,
             scheduled_at TIMESTAMP NOT NULL,
             status TEXT DEFAULT 'pending',
+            recipients TEXT NOT NULL,
+            media_url TEXT,
+            media_type TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -220,8 +222,43 @@ export async function runMigrations() {
             status TEXT DEFAULT 'pending',
             media_url TEXT,
             media_type TEXT,
+            job_id INTEGER,
+            customer_id INTEGER,
+            queue_index INTEGER,
             sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS message_jobs (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            status TEXT DEFAULT 'queued',
+            message TEXT,
+            media_url TEXT,
+            media_type TEXT,
+            customer_ids_json TEXT NOT NULL,
+            total_count INTEGER DEFAULT 0,
+            next_index INTEGER DEFAULT 0,
+            success_count INTEGER DEFAULT 0,
+            error_count INTEGER DEFAULT 0,
+            daily_cap INTEGER DEFAULT 500,
+            last_customer_id INTEGER,
+            last_phone_number TEXT,
+            last_sent_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            started_at TIMESTAMP,
+            finished_at TIMESTAMP
+        );
+
+        ALTER TABLE sent_messages ADD COLUMN IF NOT EXISTS job_id INTEGER;
+        ALTER TABLE sent_messages ADD COLUMN IF NOT EXISTS customer_id INTEGER;
+        ALTER TABLE sent_messages ADD COLUMN IF NOT EXISTS queue_index INTEGER;
+        ALTER TABLE sent_messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+        ALTER TABLE scheduled_messages ADD COLUMN IF NOT EXISTS media_url TEXT;
+        ALTER TABLE scheduled_messages ADD COLUMN IF NOT EXISTS media_type TEXT;
+
+        CREATE INDEX IF NOT EXISTS idx_message_jobs_user_status ON message_jobs(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_message_jobs_user_updated ON message_jobs(user_id, updated_at);
 
         CREATE TABLE IF NOT EXISTS message_templates (
             id SERIAL PRIMARY KEY,

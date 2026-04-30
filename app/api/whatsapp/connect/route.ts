@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsJson, corsPreflight } from '@/lib/cors';
 import { getUserFromToken } from '@/lib/auth';
 import { connectWhatsApp } from '@/lib/whatsapp';
 
@@ -7,7 +8,7 @@ export async function POST(request: NextRequest) {
         const user = await getUserFromToken(request);
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return corsJson(request, { error: 'Unauthorized' }, { status: 401 });
         }
 
         const { searchParams } = new URL(request.url);
@@ -16,9 +17,13 @@ export async function POST(request: NextRequest) {
         // Start connection in background (force fresh start)
         connectWhatsApp(user.userId, instanceId, true);
 
-        return NextResponse.json({ success: true, message: 'Connection started' });
+        return corsJson(request, { success: true, message: 'Connection started' });
     } catch (error: any) {
         console.error('WhatsApp connect error:', error);
-        return NextResponse.json({ error: 'Failed to connect' }, { status: 500 });
+        return corsJson(request, { error: 'Failed to connect' }, { status: 500 });
     }
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return corsPreflight(request);
 }

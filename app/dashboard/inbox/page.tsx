@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/context/NotificationContext";
+import { apiFetch } from "@/lib/api-client";
 
 interface IncomingMessage {
     id: string | number;
@@ -81,7 +82,7 @@ export default function InboxPage() {
                 .map(m => `${m.is_from_me ? 'Ben' : 'Müşteri'}: ${m.content}`)
                 .join('\n');
 
-            const res = await fetch("/api/ai/parse-reservation", {
+            const res = await apiFetch("/api/ai/parse-reservation", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -110,7 +111,7 @@ export default function InboxPage() {
         e.preventDefault();
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/tourism/reservations", {
+            const res = await apiFetch("/api/tourism/reservations", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -195,7 +196,7 @@ export default function InboxPage() {
             // Detect language via API
             try {
                 const token = localStorage.getItem("token");
-                const res = await fetch("/api/ai/translate", {
+                const res = await apiFetch("/api/ai/translate", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ text: lastMsg.content, detectOnly: true })
@@ -216,7 +217,7 @@ export default function InboxPage() {
         setIsTranslating(String(msgId));
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/ai/translate", {
+            const res = await apiFetch("/api/ai/translate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ text, targetLanguage: 'Türkçe' })
@@ -244,7 +245,7 @@ export default function InboxPage() {
             const targetLang = langNames[detectedLanguage] || 'İngilizce';
 
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/ai/translate", {
+            const res = await apiFetch("/api/ai/translate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ text: replyText, targetLanguage: targetLang })
@@ -271,7 +272,7 @@ export default function InboxPage() {
     const markAsRead = async (phone: string) => {
         try {
             const token = localStorage.getItem("token");
-            await fetch("/api/inbox/mark-read", {
+            await apiFetch("/api/inbox/mark-read", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -292,8 +293,8 @@ export default function InboxPage() {
 
             // Fetch messages and WA status in parallel
             const [msgRes, statusRes] = await Promise.all([
-                fetch("/api/inbox", { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
-                fetch("/api/whatsapp/status", { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+                apiFetch("/api/inbox", { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
+                apiFetch("/api/whatsapp/status", { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
             ]);
 
             if (msgRes.status === 401 || statusRes.status === 401) {
@@ -344,7 +345,7 @@ export default function InboxPage() {
 
             console.log("[Inbox] Sending message:", body);
 
-            const res = await fetch("/api/messages/send", {
+            const res = await apiFetch("/api/messages/send", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -381,7 +382,7 @@ export default function InboxPage() {
                 .slice(0, 5)
                 .map(m => ({ content: m.content, is_from_me: m.is_from_me }));
 
-            const res = await fetch("/api/ai/generate-reply", {
+            const res = await apiFetch("/api/ai/generate-reply", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -456,7 +457,7 @@ export default function InboxPage() {
             const formData = new FormData();
             formData.append('audio', blob);
 
-            const uploadRes = await fetch("/api/upload/audio", {
+            const uploadRes = await apiFetch("/api/upload/audio", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData
@@ -490,7 +491,7 @@ export default function InboxPage() {
             const formData = new FormData();
             formData.append('image', file);
 
-            const uploadRes = await fetch("/api/upload/image", {
+            const uploadRes = await apiFetch("/api/upload/image", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData
@@ -537,31 +538,31 @@ export default function InboxPage() {
     return (
         <div className="h-[calc(100vh-160px)] flex gap-4 fade-in overflow-hidden relative">
             {/* Contact List */}
-            <div className={`w-full lg:w-80 bg-slate-800 rounded-2xl border border-slate-700 flex flex-col overflow-hidden shadow-xl ${selectedContact ? 'hidden lg:flex' : 'flex'}`}>
-                <div className="p-4 border-b border-slate-700 bg-slate-800/50">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <div className={`w-full lg:w-80 bg-app-card rounded-2xl border border-app-border flex flex-col overflow-hidden shadow-xl ${selectedContact ? 'hidden lg:flex' : 'flex'}`}>
+                <div className="p-4 border-b border-app-border bg-app-card/50">
+                    <h2 className="text-xl font-bold text-app-fg flex items-center gap-2">
                         <span>💬</span> Mesajlar
                     </h2>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-slate-700/50">
                     {loading && messages.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400 animate-pulse">Yükleniyor...</div>
+                        <div className="p-8 text-center text-app-muted animate-pulse">Yükleniyor...</div>
                     ) : contacts.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">Gelen mesaj yok</div>
+                        <div className="p-8 text-center text-app-subtle">Gelen mesaj yok</div>
                     ) : (
                         contacts.map((contact) => (
                             <div
                                 key={contact.phone}
                                 onClick={() => setSelectedContact(contact.phone)}
-                                className={`p-4 cursor-pointer transition-all hover:bg-slate-700/30 flex items-center gap-3 ${selectedContact === contact.phone ? "bg-purple-500/10 border-l-4 border-purple-500" : "border-l-4 border-transparent"
+                                className={`p-4 cursor-pointer transition-all hover:bg-app-elevated/30 flex items-center gap-3 ${selectedContact === contact.phone ? "bg-purple-500/10 border-l-4 border-purple-500" : "border-l-4 border-transparent"
                                     }`}
                             >
                                 {/* Avatar */}
-                                <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 shadow-lg">
+                                <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-app-border/70 shadow-lg">
                                     {contact.profile_picture_url ? (
                                         <img src={contact.profile_picture_url} alt={contact.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white font-bold text-sm">
+                                        <div className="w-full h-full bg-app-elevated flex items-center justify-center text-white font-bold text-sm">
                                             {contact.name[0]}
                                         </div>
                                     )}
@@ -569,13 +570,13 @@ export default function InboxPage() {
 
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-start mb-0.5">
-                                        <span className="font-semibold text-white truncate text-sm">{contact.name}</span>
-                                        <span className="text-[10px] text-gray-500">{new Date(contact.lastDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="font-semibold text-app-fg truncate text-sm">{contact.name}</span>
+                                        <span className="text-xs text-app-subtle">{new Date(contact.lastDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <p className="text-xs text-gray-400 truncate pr-2">{contact.lastContent}</p>
+                                        <p className="text-xs text-app-muted truncate pr-2">{contact.lastContent}</p>
                                         {contact.unreadCount > 0 && (
-                                            <span className="bg-purple-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                            <span className="bg-purple-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                                                 {contact.unreadCount}
                                             </span>
                                         )}
@@ -588,7 +589,7 @@ export default function InboxPage() {
             </div>
 
             {/* Chat Window */}
-            <div className={`flex-1 bg-slate-800 rounded-2xl border border-slate-700 flex flex-col overflow-hidden shadow-xl relative ${!selectedContact ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`flex-1 bg-app-card rounded-2xl border border-app-border flex flex-col overflow-hidden shadow-xl relative ${!selectedContact ? 'hidden lg:flex' : 'flex'}`}>
                 {!waConnected && (
                     <div className="bg-red-500/90 text-white px-4 py-2 flex justify-between items-center animate-in slide-in-from-top duration-500 z-10">
                         <div className="flex items-center gap-2 text-sm font-medium">
@@ -606,15 +607,15 @@ export default function InboxPage() {
                 {selectedContact ? (
                     <>
                         {/* Header */}
-                        <div className="p-4 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
+                        <div className="p-4 border-b border-app-border bg-app-card/50 flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => setSelectedContact(null)}
-                                    className="lg:hidden p-2 -ml-2 text-gray-400 hover:text-white"
+                                    className="lg:hidden p-2 -ml-2 text-app-muted hover:text-app-fg"
                                 >
                                     <span className="text-xl">⬅️</span>
                                 </button>
-                                <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-inner flex-shrink-0">
+                                <div className="w-10 h-10 rounded-xl overflow-hidden border border-app-border/70 shadow-inner flex-shrink-0">
                                     {contacts.find(c => c.phone === selectedContact)?.profile_picture_url ? (
                                         <img src={contacts.find(c => c.phone === selectedContact)?.profile_picture_url} className="w-full h-full object-cover" />
                                     ) : (
@@ -624,13 +625,13 @@ export default function InboxPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-white leading-none">{contacts.find(c => c.phone === selectedContact)?.name}</h3>
+                                    <h3 className="font-bold text-app-fg leading-none">{contacts.find(c => c.phone === selectedContact)?.name}</h3>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[10px] text-gray-400">+{selectedContact}</span>
+                                        <span className="text-xs text-app-muted">+{selectedContact}</span>
                                         {contacts.find(c => c.phone === selectedContact)?.bio && (
                                             <>
-                                                <span className="text-[10px] text-gray-600">•</span>
-                                                <span className="text-[10px] text-purple-400 italic truncate max-w-[200px]" title={contacts.find(c => c.phone === selectedContact)?.bio}>
+                                                <span className="text-xs text-app-muted">•</span>
+                                                <span className="text-xs text-purple-400 italic truncate max-w-[200px]" title={contacts.find(c => c.phone === selectedContact)?.bio}>
                                                     {contacts.find(c => c.phone === selectedContact)?.bio}
                                                 </span>
                                             </>
@@ -641,7 +642,7 @@ export default function InboxPage() {
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setShowResModal(true)}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] md:text-xs font-bold transition-all shadow-lg shadow-emerald-500/10 flex items-center gap-1 md:gap-2"
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-app-fg rounded-xl text-xs md:text-xs font-bold transition-all shadow-lg shadow-emerald-500/10 flex items-center gap-1 md:gap-2"
                                 >
                                     <span>🚐</span> <span className="hidden sm:inline">Rezervasyon Oluştur</span><span className="sm:hidden">Rezerv.</span>
                                 </button>
@@ -668,14 +669,14 @@ export default function InboxPage() {
                                     <div
                                         className={`max-w-[80%] p-3 rounded-2xl shadow-md border cursor-pointer group relative ${msg.is_from_me
                                             ? "bg-purple-600 border-purple-500 text-white rounded-tr-none"
-                                            : "bg-slate-700 border-slate-600 text-gray-100 rounded-tl-none"
+                                            : "bg-app-elevated border-app-border text-app-fg rounded-tl-none"
                                             }`}
                                         onClick={() => !msg.is_from_me && msg.content && translateMessage(msg.id, msg.content)}
                                     >
                                         {/* Translate hint for incoming messages */}
                                         {!msg.is_from_me && msg.content && !translations[String(msg.id)] && (
                                             <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-all z-10">
-                                                <span className="bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-lg">🌍</span>
+                                                <span className="bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full shadow-lg">🌍</span>
                                             </div>
                                         )}
 
@@ -705,7 +706,7 @@ export default function InboxPage() {
 
                                         {/* Translation display */}
                                         {translations[String(msg.id)] && (
-                                            <div className="mt-2 pt-2 border-t border-white/20">
+                                            <div className="mt-2 pt-2 border-t border-app-border/70">
                                                 <p className="text-xs text-purple-200 font-medium mb-0.5">🌍 Türkçe:</p>
                                                 <p className="text-sm opacity-90">{translations[String(msg.id)]}</p>
                                             </div>
@@ -716,7 +717,7 @@ export default function InboxPage() {
                                             <div className="text-xs text-purple-200/70 mt-1 animate-pulse">Çevriliyor...</div>
                                         )}
 
-                                        <span className={`text-[9px] mt-1 block text-right ${msg.is_from_me ? "text-purple-200" : "text-gray-400"}`}>
+                                        <span className={`text-[11px] mt-1 block text-right ${msg.is_from_me ? "text-purple-200" : "text-app-muted"}`}>
                                             {new Date(msg.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
@@ -727,7 +728,7 @@ export default function InboxPage() {
 
                         {/* AI Suggestions */}
                         {user?.package === 'platinum' && (
-                            <div className="px-4 py-2 border-t border-slate-700/50 flex flex-wrap gap-2 bg-slate-900/40">
+                            <div className="px-4 py-2 border-t border-app-border/50 flex flex-wrap gap-2 bg-app-bg/40">
                                 <button
                                     onClick={generateAIResponse}
                                     disabled={isGeneratingAI}
@@ -740,7 +741,7 @@ export default function InboxPage() {
                                     <button
                                         key={i}
                                         onClick={() => setReplyText(reply)}
-                                        className="px-3 py-1.5 bg-slate-700/50 text-gray-300 rounded-lg border border-slate-600/30 hover:bg-slate-700 transition-all text-[11px] max-w-[200px] truncate"
+                                        className="px-3 py-1.5 bg-app-elevated/50 text-app-muted rounded-lg border border-app-border/30 hover:bg-app-elevated transition-all text-[11px] max-w-[200px] truncate"
                                         title={reply}
                                     >
                                         {reply}
@@ -750,16 +751,16 @@ export default function InboxPage() {
                         )}
 
                         {/* Reply Input */}
-                        <div className="p-2 md:p-4 bg-slate-800/80 border-t border-slate-700">
+                        <div className="p-2 md:p-4 bg-app-card/80 border-t border-app-border">
                             {isRecording ? (
-                                <div className="flex items-center justify-between bg-slate-900 rounded-xl px-4 py-3 animate-pulse border border-red-500/50">
+                                <div className="flex items-center justify-between bg-app-bg rounded-xl px-4 py-3 animate-pulse border border-red-500/50">
                                     <div className="flex items-center gap-2 md:gap-3">
                                         <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full animate-ping" />
                                         <span className="text-red-500 font-bold text-xs md:text-base">Kayıt... {formatTime(recordingTime)}</span>
                                     </div>
                                     <button
                                         onClick={stopRecording}
-                                        className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 md:px-6 md:py-1.5 rounded-lg text-[10px] md:text-sm font-bold transition-all active:scale-95"
+                                        className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 md:px-6 md:py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all active:scale-95"
                                     >
                                         BİTİR VE GÖNDER
                                     </button>
@@ -778,7 +779,7 @@ export default function InboxPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => document.getElementById('image-upload')?.click()}
-                                                className="h-10 w-10 md:h-12 md:w-12 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all active:scale-90 border border-slate-600 shadow-lg"
+                                                className="h-10 w-10 md:h-12 md:w-12 flex items-center justify-center bg-app-elevated hover:bg-app-elevated text-app-fg rounded-xl transition-all active:scale-90 border border-app-border shadow-lg"
                                                 title="Resim Gönder"
                                             >
                                                 <span className="text-lg md:text-xl font-bold">+</span>
@@ -801,7 +802,7 @@ export default function InboxPage() {
                                             value={replyText}
                                             onChange={(e) => { setReplyText(e.target.value); setTranslatedReply(""); }}
                                             placeholder="Mesaj yazın..."
-                                            className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-3 md:px-4 py-2 md:py-3 text-sm md:text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-inner min-w-0"
+                                            className="flex-1 bg-app-bg/50 border border-app-border rounded-xl px-3 md:px-4 py-2 md:py-3 text-sm md:text-base text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-inner min-w-0"
                                         />
 
                                         {/* Translate button - only show if detected language is not Turkish */}
@@ -838,7 +839,7 @@ export default function InboxPage() {
                                                     Kullan
                                                 </button>
                                             </div>
-                                            <p className="text-sm text-white">{translatedReply}</p>
+                                            <p className="text-sm text-app-fg">{translatedReply}</p>
                                         </div>
                                     )}
                                 </>
@@ -846,9 +847,9 @@ export default function InboxPage() {
                         </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-12 text-center">
+                    <div className="flex-1 flex flex-col items-center justify-center text-app-subtle p-12 text-center">
                         <div className="text-8xl mb-6 opacity-20">📩</div>
-                        <h3 className="text-xl font-bold text-gray-400">Sohbet Başlatın</h3>
+                        <h3 className="text-xl font-bold text-app-muted">Sohbet Başlatın</h3>
                         <p className="max-w-xs mt-2">Sol taraftan bir müşteri seçerek mesajlarını görebilir ve yanıtlayabilirsiniz.</p>
                     </div>
                 )}
@@ -857,11 +858,11 @@ export default function InboxPage() {
             {
                 showResModal && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                        <div className="bg-slate-800 border border-slate-700 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-200">
-                            <div className="p-8 border-b border-white/5 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 flex justify-between items-center">
+                        <div className="bg-app-card border border-app-border rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-200">
+                            <div className="p-8 border-b border-app-border/60 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 flex justify-between items-center">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-white">🚐 Talebi Rezervasyona Dönüştür</h2>
-                                    <p className="text-gray-400 text-sm">WhatsApp üzerinden gelen talebi operasyon listesine kaydet.</p>
+                                    <h2 className="text-2xl font-bold text-app-fg">🚐 Talebi Rezervasyona Dönüştür</h2>
+                                    <p className="text-app-muted text-sm">WhatsApp üzerinden gelen talebi operasyon listesine kaydet.</p>
                                 </div>
                                 {isParsingAI && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 rounded-full border border-purple-500/30 animate-pulse">
@@ -871,23 +872,23 @@ export default function InboxPage() {
                             </div>
                             <form onSubmit={handleCreateReservation} className="p-8 grid md:grid-cols-2 gap-6">
                                 <div className="col-span-2 md:col-span-1 space-y-4">
-                                    <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-2">Yolcu Bilgileri</h3>
+                                    <h3 className="text-xs font-black text-app-subtle uppercase tracking-widest border-b border-app-border/60 pb-2">Yolcu Bilgileri</h3>
                                     <div>
-                                        <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">İsim Soyisim</label>
-                                        <input type="text" required value={reservationData.customerName} onChange={e => setReservationData({ ...reservationData, customerName: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all" />
+                                        <label className="block text-xs text-app-muted mb-1 uppercase font-bold">İsim Soyisim</label>
+                                        <input type="text" required value={reservationData.customerName} onChange={e => setReservationData({ ...reservationData, customerName: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all" />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">WhatsApp No</label>
-                                        <input type="text" readOnly value={reservationData.customerPhone} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-gray-500 cursor-not-allowed text-sm" />
+                                        <label className="block text-xs text-app-muted mb-1 uppercase font-bold">WhatsApp No</label>
+                                        <input type="text" readOnly value={reservationData.customerPhone} className="w-full bg-app-bg/50 border border-app-border/50 rounded-xl px-4 py-3 text-app-subtle cursor-not-allowed text-sm" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Fiyat</label>
-                                            <input type="number" required value={reservationData.price} onChange={e => setReservationData({ ...reservationData, price: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold text-emerald-400" />
+                                            <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Fiyat</label>
+                                            <input type="number" required value={reservationData.price} onChange={e => setReservationData({ ...reservationData, price: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold text-emerald-400" />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Birim</label>
-                                            <select value={reservationData.currency} onChange={e => setReservationData({ ...reservationData, currency: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all">
+                                            <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Birim</label>
+                                            <select value={reservationData.currency} onChange={e => setReservationData({ ...reservationData, currency: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all">
                                                 <option value="TRY">TRY</option>
                                                 <option value="USD">USD</option>
                                                 <option value="EUR">EUR</option>
@@ -898,39 +899,39 @@ export default function InboxPage() {
                                 </div>
 
                                 <div className="col-span-2 md:col-span-1 space-y-4">
-                                    <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-2">Transfer Detayları</h3>
+                                    <h3 className="text-xs font-black text-app-subtle uppercase tracking-widest border-b border-app-border/60 pb-2">Transfer Detayları</h3>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Tarih</label>
-                                            <input type="date" required value={reservationData.date} onChange={e => setReservationData({ ...reservationData, date: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all" />
+                                            <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Tarih</label>
+                                            <input type="date" required value={reservationData.date} onChange={e => setReservationData({ ...reservationData, date: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all" />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Saat</label>
-                                            <input type="time" required value={reservationData.time} onChange={e => setReservationData({ ...reservationData, time: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold text-amber-400" />
+                                            <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Saat</label>
+                                            <input type="time" required value={reservationData.time} onChange={e => setReservationData({ ...reservationData, time: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold text-amber-400" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Nereden (Alış)</label>
-                                        <input type="text" required value={reservationData.pickup} onChange={e => setReservationData({ ...reservationData, pickup: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all" placeholder="Örn: Havalimanı" />
+                                        <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Nereden (Alış)</label>
+                                        <input type="text" required value={reservationData.pickup} onChange={e => setReservationData({ ...reservationData, pickup: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all" placeholder="Örn: Havalimanı" />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Nereye (Varış)</label>
-                                        <input type="text" required value={reservationData.dropoff} onChange={e => setReservationData({ ...reservationData, dropoff: e.target.value })} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all" placeholder="Örn: X Hotel" />
+                                        <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Nereye (Varış)</label>
+                                        <input type="text" required value={reservationData.dropoff} onChange={e => setReservationData({ ...reservationData, dropoff: e.target.value })} className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all" placeholder="Örn: X Hotel" />
                                     </div>
                                 </div>
 
-                                <div className="col-span-2 space-y-2 pt-2 border-t border-white/5">
-                                    <label className="block text-[10px] text-gray-400 mb-1 uppercase font-bold">Ek Notlar / Uçuş Kodu</label>
+                                <div className="col-span-2 space-y-2 pt-2 border-t border-app-border/60">
+                                    <label className="block text-xs text-app-muted mb-1 uppercase font-bold">Ek Notlar / Uçuş Kodu</label>
                                     <textarea
                                         value={reservationData.notes}
                                         onChange={e => setReservationData({ ...reservationData, notes: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 transition-all text-xs min-h-[60px]"
+                                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-emerald-500/50 transition-all text-xs min-h-[60px]"
                                         placeholder="Uçuş kodu, valiz sayısı, bebek koltuğu vb..."
                                     />
                                 </div>
 
-                                <div className="col-span-2 flex gap-4 pt-4 border-t border-white/5">
-                                    <button type="button" onClick={() => setShowResModal(false)} className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-2xl transition-all">İptal</button>
+                                <div className="col-span-2 flex gap-4 pt-4 border-t border-app-border/60">
+                                    <button type="button" onClick={() => setShowResModal(false)} className="flex-1 py-4 bg-app-elevated hover:bg-app-elevated text-app-fg font-bold rounded-2xl transition-all">İptal</button>
                                     <button type="submit" className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20">
                                         ✅ Rezervasyona Dönüştür
                                     </button>

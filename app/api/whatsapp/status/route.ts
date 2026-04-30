@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsJson, corsPreflight } from '@/lib/cors';
 import { getUserFromToken } from '@/lib/auth';
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
         const user = await getUserFromToken(request);
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return corsJson(request, { error: 'Unauthorized' }, { status: 401 });
         }
 
         const { searchParams } = new URL(request.url);
@@ -26,13 +27,17 @@ export async function GET(request: NextRequest) {
             connectWhatsApp(user.userId, instanceId).catch(console.error);
         }
 
-        return NextResponse.json({
+        return corsJson(request, {
             isConnected: session.isConnected,
             isConnecting: session.isConnecting,
             qrCode: session.qrCode,
         });
     } catch (error: any) {
         console.error('WhatsApp status error:', error);
-        return NextResponse.json({ error: 'Failed to get status' }, { status: 500 });
+        return corsJson(request, { error: 'Failed to get status' }, { status: 500 });
     }
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return corsPreflight(request);
 }

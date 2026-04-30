@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
         const groups = await db.all('SELECT id, invite_code, invite_link, group_jid FROM group_discovery');
 
         if (!groups || groups.length === 0) {
-            return NextResponse.json({ message: 'No groups found to join' });
+            return NextResponse.json({
+                success: true,
+                message: 'Henüz katılınacak keşfedilmiş grup davet linki yok.',
+                stats: { total: 0, success: 0, failed: 0, already_joined: 0, details: [] }
+            });
         }
 
         const session = await getSession(user.userId, instanceId);
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
                 }
             } catch (err: any) {
                 // Zaten üye hatası
-                if (err.message && (err.message.includes('already-in-group') || err.message.includes('409'))) {
+                if (err.message && (err.message.includes('already-in-group') || err.message.includes('already-exists') || err.message.includes('409'))) {
                     stats.already_joined++;
                     // JID'yi bulup kaydetmeye çalış (tekrar)
                     try {

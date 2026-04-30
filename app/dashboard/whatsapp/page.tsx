@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-client";
 
 export default function WhatsAppPage() {
     const router = useRouter();
@@ -20,7 +21,7 @@ export default function WhatsAppPage() {
     const fetchStatus = useCallback(async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/whatsapp/status", {
+            const res = await apiFetch("/api/whatsapp/status", {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -49,7 +50,7 @@ export default function WhatsAppPage() {
 
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/whatsapp/connect", {
+            const res = await apiFetch("/api/whatsapp/connect", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -71,7 +72,7 @@ export default function WhatsAppPage() {
         setActionLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/whatsapp/disconnect", {
+            const res = await apiFetch("/api/whatsapp/disconnect", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -96,9 +97,9 @@ export default function WhatsAppPage() {
 
     return (
         <div className="fade-in max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-white mb-8">WhatsApp Bağla!</h1>
+            <h1 className="text-3xl font-bold text-app-fg mb-8">WhatsApp Bağla!</h1>
 
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-8">
+            <div className="bg-app-card rounded-xl border border-app-border p-8">
                 {/* Connection Status */}
                 <div className="flex flex-col items-center justify-center mb-8">
                     <div className="flex items-center mb-1">
@@ -126,7 +127,7 @@ export default function WhatsAppPage() {
                         </span>
                     </div>
                     {status.isConnecting && !status.qrCode && (
-                        <p className="text-gray-400 text-sm animate-pulse mt-2">
+                        <p className="text-app-muted text-sm animate-pulse mt-2">
                             WhatsApp ile güvenli kanal açılıyor, 5-10 saniye sürebilir...
                         </p>
                     )}
@@ -145,12 +146,12 @@ export default function WhatsAppPage() {
                                 className="w-64 h-64"
                             />
                         </div>
-                        <div className="mt-6 text-gray-400 space-y-1">
+                        <div className="mt-6 text-app-muted space-y-1">
                             <p>WhatsApp → Menü → Bağlı Cihazlar → Cihaz Bağla</p>
                             <p className="text-xs text-yellow-400 mt-3 bg-yellow-500/10 px-4 py-2 rounded-lg border border-yellow-500/20">
                                 💡 İpucu: Aynı telefondan giriyorsanız, QR kodun fotoğrafını başka bir telefonla çekin ve kendi telefonunuzla taratın.
                             </p>
-                            <p className="text-xs text-gray-500 mt-2">Bu kod otomatik olarak yenilenir.</p>
+                            <p className="text-xs text-app-subtle mt-2">Bu kod otomatik olarak yenilenir.</p>
                         </div>
                     </div>
                 )}
@@ -162,7 +163,7 @@ export default function WhatsAppPage() {
                         <p className="text-green-400 text-2xl font-bold mb-2">
                             WhatsApp Bağlandı!
                         </p>
-                        <p className="text-gray-400">
+                        <p className="text-app-muted">
                             Artık sistem üzerinden mesaj gönderebilirsiniz.
                         </p>
                     </div>
@@ -172,17 +173,17 @@ export default function WhatsAppPage() {
                 {!status.isConnected && !status.isConnecting && !status.qrCode && (
                     <div className="text-center mb-8 py-10">
                         <div className="text-6xl mb-4">📱</div>
-                        <p className="text-gray-400 text-lg mb-2">
+                        <p className="text-app-muted text-lg mb-2">
                             WhatsApp hesabınız henüz bağlı değil.
                         </p>
-                        <p className="text-gray-500 text-sm">
+                        <p className="text-app-subtle text-sm">
                             Bağlantıyı başlatmak için aşağıdaki butona tıklayın.
                         </p>
                     </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap justify-center gap-4 border-t border-slate-700 pt-8 mt-4">
+                <div className="flex flex-wrap justify-center gap-4 border-t border-app-border pt-8 mt-4">
                     {!status.isConnected && !status.isConnecting && (
                         <button
                             onClick={handleConnect}
@@ -197,7 +198,7 @@ export default function WhatsAppPage() {
                         <button
                             onClick={handleDisconnect}
                             disabled={actionLoading}
-                            className="px-6 py-3 bg-slate-700/50 text-red-400 font-semibold rounded-lg hover:bg-red-500 hover:text-white transition-all disabled:opacity-50 border border-red-500/20"
+                            className="px-6 py-3 bg-app-elevated/50 text-red-400 font-semibold rounded-lg hover:bg-red-500 hover:text-app-fg transition-all disabled:opacity-50 border border-red-500/20"
                         >
                             {actionLoading ? "Kesiliyor..." : "Bağlantıyı Kes / Sıfırla"}
                         </button>
@@ -205,7 +206,7 @@ export default function WhatsAppPage() {
 
                     <button
                         onClick={() => router.push("/dashboard")}
-                        className="px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition"
+                        className="px-6 py-3 bg-app-elevated text-app-fg font-semibold rounded-lg hover:bg-app-elevated transition"
                     >
                         Dashboard'a Dön
                     </button>
@@ -213,11 +214,11 @@ export default function WhatsAppPage() {
             </div>
 
             {/* Help Card */}
-            <div className="mt-8 bg-slate-800/30 rounded-xl border border-slate-700/50 p-6">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="mt-8 bg-app-card/30 rounded-xl border border-app-border/50 p-6">
+                <h2 className="text-lg font-semibold text-app-fg mb-4 flex items-center">
                     <span className="mr-2">💡</span> İpucu
                 </h2>
-                <p className="text-gray-400 text-sm leading-relaxed">
+                <p className="text-app-muted text-sm leading-relaxed">
                     Eğer karekod uzun süre gelmezse veya bağlantı hatası alırsanız,
                     <strong> "Bağlantıyı Kes / Sıfırla"</strong> butonuna basarak süreci tertemiz bir şekilde yeniden başlatabilirsiniz.
                 </p>

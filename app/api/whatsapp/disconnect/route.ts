@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsJson, corsPreflight } from '@/lib/cors';
 import { getUserFromToken } from '@/lib/auth';
 import { disconnectWhatsApp } from '@/lib/whatsapp';
 
@@ -7,7 +8,7 @@ export async function POST(request: NextRequest) {
         const user = await getUserFromToken(request);
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return corsJson(request, { error: 'Unauthorized' }, { status: 401 });
         }
 
         const { searchParams } = new URL(request.url);
@@ -15,9 +16,13 @@ export async function POST(request: NextRequest) {
 
         await disconnectWhatsApp(user.userId, instanceId);
 
-        return NextResponse.json({ success: true, message: 'Disconnected successfully' });
+        return corsJson(request, { success: true, message: 'Disconnected successfully' });
     } catch (error: any) {
         console.error('WhatsApp disconnect error:', error);
-        return NextResponse.json({ error: 'Failed to disconnect' }, { status: 500 });
+        return corsJson(request, { error: 'Failed to disconnect' }, { status: 500 });
     }
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return corsPreflight(request);
 }

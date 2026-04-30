@@ -391,21 +391,19 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                     if (!text) {
                         // Sadece link discovery için devam et (eğer mesaj boşsa ama link varsa - nadir)
                     } else {
-                        // 1. Yeni Grup Linklerini Keşfet - İPTAL EDİLDİ (SPAM VE BAN RİSKİ NEDENİYLE)
-                        /*
                         if (text.includes('chat.whatsapp.com')) {
                             const inviteRegex = /chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9]{20,26})/g;
                             const invites = Array.from(text.matchAll(inviteRegex));
                             for (const match of invites) {
                                 const code = match[1];
                                 const link = `https://chat.whatsapp.com/${code}`;
-                                db.run(
-                                    'INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, found_by_user_id) VALUES (?, ?, ?)',
-                                    [code, link, userId]
+                                await db.run(
+                                    `INSERT OR IGNORE INTO group_discovery (invite_code, invite_link, group_name, group_jid, found_by_user_id)
+                                     VALUES (?, ?, ?, ?, ?)`,
+                                    [code, link, groupName, fromJid, userId]
                                 ).catch(() => { });
                             }
                         }
-                        */
 
                         // 2. İş Analizi
                         const job = await parseTransferJob(text);
@@ -709,53 +707,60 @@ export function initScheduler() {
         );
 
         for (const job of pending) {
-            console.log(`[Scheduler] 🚀 Processing job ${job.id} for user ${job.userId}`);
+            console.log(`[Scheduler] 🚀 Processing job ${job.id} for user ${job.user_id}`);
 
             try {
-                // Update status to prevent double processing
                 await db.run("UPDATE scheduled_messages SET status = 'processing' WHERE id = ?", [job.id]);
 
-                const customerIds = JSON.parse(job.customer_ids);
+                const customerIds = JSON.parse(job.recipients || '[]').map((id: any) => Number(id)).filter(Boolean);
+                if (customerIds.length === 0) {
+                    await db.run("UPDATE scheduled_messages SET status = 'failed' WHERE id = ?", [job.id]);
+                    continue;
+                }
+
                 const placeholders = customerIds.map(() => '?').join(',');
                 const customers = await db.all(
                     `SELECT * FROM customers WHERE id IN (${placeholders}) AND user_id = ?`,
-                    [...customerIds, job.userId]
+                    [...customerIds, job.user_id]
                 );
 
-                if (customers.length > 0) {
-                    // Send using the existing process
-                    // We can't use the API route here, so we call sendMessage directly or a helper
-                    for (const customer of customers) {
-                        let personalizedMsg = job.message;
-                        personalizedMsg = personalizedMsg.replace(/{{isim}}/gi, customer.name || "");
+                const byId = new Map(customers.map((customer: any) => [Number(customer.id), customer]));
+                const orderedCustomers = customerIds.map((id: number) => byId.get(id)).filter(Boolean);
 
-                        if (customer.additional_data) {
-                            try {
-                                const extra = JSON.parse(customer.additional_data);
-                                Object.keys(extra).forEach(key => {
-                                    const regex = new RegExp(`{{${key}}}`, 'gi');
-                                    personalizedMsg = personalizedMsg.replace(regex, extra[key]);
-                                });
-                            } catch (e) { }
-                        }
+                for (const customer of orderedCustomers) {
+                    let personalizedMsg = job.content || '';
+                    personalizedMsg = personalizedMsg.replace(/{{isim}}/gi, customer.name || "");
 
-                        const success = await sendMessage(job.userId, customer.phone_number, personalizedMsg);
-                        if (success) {
-                            await db.run(
-                                'INSERT INTO sent_messages (user_id, phone_number, message, status, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                                [job.userId, customer.phone_number, personalizedMsg, 'sent']
-                            );
-                            // Deduct credit
-                            const u = await db.get('SELECT role FROM users WHERE id = ?', [job.userId]);
-                            if (u.role !== 'admin') {
-                                await db.run('UPDATE users SET credits = credits - 1 WHERE id = ?', [job.userId]);
-                            }
-                        }
-                        // Get user settings for delay
-                        let userSettings = await db.get('SELECT min_delay FROM user_settings WHERE user_id = ?', [job.userId]);
-                        const delaySeconds = userSettings?.min_delay || 5;
-                        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+                    if (customer.additional_data) {
+                        try {
+                            const extra = JSON.parse(customer.additional_data);
+                            Object.keys(extra).forEach(key => {
+                                const regex = new RegExp(`{{${key}}}`, 'gi');
+                                personalizedMsg = personalizedMsg.replace(regex, extra[key]);
+                            });
+                        } catch (e) { }
                     }
+
+                    const success = await sendMessage(job.user_id, customer.phone_number, personalizedMsg, {
+                        mediaUrl: job.media_url || undefined,
+                        mediaType: job.media_type || undefined,
+                    });
+
+                    await db.run(
+                        'INSERT INTO sent_messages (user_id, phone_number, message, status, media_url, media_type, sent_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                        [job.user_id, customer.phone_number, personalizedMsg, success ? 'sent' : 'failed', job.media_url || null, job.media_type || null]
+                    );
+
+                    if (success) {
+                        const u = await db.get('SELECT role FROM users WHERE id = ?', [job.user_id]);
+                        if (u.role !== 'admin') {
+                            await db.run('UPDATE users SET credits = credits - 1 WHERE id = ?', [job.user_id]);
+                        }
+                    }
+
+                    const userSettings = await db.get('SELECT min_delay FROM user_settings WHERE user_id = ?', [job.user_id]);
+                    const delaySeconds = userSettings?.min_delay || 5;
+                    await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
                 }
 
                 await db.run("UPDATE scheduled_messages SET status = 'sent' WHERE id = ?", [job.id]);

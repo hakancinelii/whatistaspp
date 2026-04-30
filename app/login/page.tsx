@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-client";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -17,7 +18,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const res = await fetch("/api/auth/login", {
+            const res = await apiFetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
@@ -39,12 +40,12 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgb(124_58_237_/_0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgb(219_39_119_/_0.14),transparent_34%)] bg-app-bg flex items-center justify-center p-4">
             <div className="w-full max-w-md">
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8">
+                <div className="bg-app-elevated/70 backdrop-blur-xl rounded-2xl shadow-2xl border border-app-border/70 p-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-white mb-2">Giriş Yap</h1>
-                        <p className="text-gray-300">WhatIstaspp hesabınıza giriş yapın</p>
+                        <h1 className="text-3xl font-bold text-app-fg mb-2">Giriş Yap</h1>
+                        <p className="text-app-muted">WhatIstaspp hesabınıza giriş yapın</p>
                     </div>
 
                     {error && (
@@ -55,7 +56,7 @@ export default function LoginPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
+                            <label className="block text-sm font-medium text-app-fg mb-2">
                                 E-posta
                             </label>
                             <input
@@ -63,13 +64,13 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className="w-full px-4 py-3 bg-app-card/70 border border-app-border/70 rounded-lg text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                 placeholder="ornek@email.com"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
+                            <label className="block text-sm font-medium text-app-fg mb-2">
                                 Şifre
                             </label>
                             <input
@@ -77,21 +78,21 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className="w-full px-4 py-3 bg-app-card/70 border border-app-border/70 rounded-lg text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                 placeholder="••••••••"
                             />
                         </div>
 
-                        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                        <div className="bg-app-card/70 border border-app-border/70 rounded-xl p-4 space-y-3">
                             <div className="flex items-start gap-3">
                                 <input
                                     id="kvkk"
                                     type="checkbox"
                                     required
-                                    className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                    className="mt-1 w-4 h-4 rounded border-app-border/70 bg-app-card/70 text-purple-600 focus:ring-purple-500 focus:ring-offset-app-bg"
                                 />
-                                <label htmlFor="kvkk" className="text-[11px] leading-relaxed text-gray-400">
-                                    <span className="text-white font-semibold">WhatsApp & KVKK Onayı:</span> Bu sistemi kullanarak; WhatsApp altyapısının kullanımı nedeniyle oluşabilecek <span className="text-orange-400">hesap kısıtlaması (Ban) risklerini</span>, verilerimin hizmet sunumu için işlenmesini ve WhatIstaspp'ın WhatsApp INC. ile resmi bir bağı olmadığını kabul ediyorum. Tüm sorumluluk kullanıcıya aittir.
+                                <label htmlFor="kvkk" className="text-[11px] leading-relaxed text-app-muted">
+                                    <span className="text-app-fg font-semibold">WhatsApp & KVKK Onayı:</span> Bu sistemi kullanarak; WhatsApp altyapısının kullanımı nedeniyle oluşabilecek <span className="text-orange-400">hesap kısıtlaması (Ban) risklerini</span>, verilerimin hizmet sunumu için işlenmesini ve WhatIstaspp'ın WhatsApp INC. ile resmi bir bağı olmadığını kabul ediyorum. Tüm sorumluluk kullanıcıya aittir.
                                 </label>
                             </div>
                         </div>
@@ -106,7 +107,7 @@ export default function LoginPage() {
                     </form>
 
                     <div className="mt-6 text-center">
-                        <p className="text-gray-300">
+                        <p className="text-app-muted">
                             Hesabınız yok mu?{" "}
                             <Link
                                 href="/register"

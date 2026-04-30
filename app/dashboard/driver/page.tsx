@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-client";
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -246,12 +247,12 @@ export default function DriverDashboard() {
         try {
             const token = localStorage.getItem("token");
             if (!token) return;
-            const res = await fetch("/api/whatsapp/status", {
+            const res = await apiFetch("/api/whatsapp/status", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Kullanıcı bilgilerini de çekelim (telefon için)
             // Endpoint /api/profile olarak düzeltildi
-            const meRes = await fetch("/api/profile", { headers: { Authorization: `Bearer ${token}` } });
+            const meRes = await apiFetch("/api/profile", { headers: { Authorization: `Bearer ${token}` } });
             if (meRes.ok) {
                 const me = await meRes.json();
                 // API profile ne dönüyor kontrol etmeliyiz ama genellikle user objesi döner
@@ -281,7 +282,7 @@ export default function DriverDashboard() {
         try {
             const token = localStorage.getItem("token");
             if (!token) return;
-            const res = await fetch("/api/driver/filters", {
+            const res = await apiFetch("/api/driver/filters", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -305,7 +306,7 @@ export default function DriverDashboard() {
         setIsSaving(true);
         try {
             const token = localStorage.getItem("token");
-            await fetch("/api/driver/filters", {
+            await apiFetch("/api/driver/filters", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -332,7 +333,7 @@ export default function DriverDashboard() {
     const handleCall = async (phone: string, jobId: number) => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs", {
+            const res = await apiFetch("/api/jobs", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -358,7 +359,7 @@ export default function DriverDashboard() {
     const fetchJobs = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs", {
+            const res = await apiFetch("/api/jobs", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -422,7 +423,7 @@ export default function DriverDashboard() {
     const fetchStats = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs/stats", {
+            const res = await apiFetch("/api/jobs/stats", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -435,7 +436,7 @@ export default function DriverDashboard() {
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/profile", {
+            const res = await apiFetch("/api/profile", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -484,7 +485,7 @@ export default function DriverDashboard() {
         setIsSavingProfile(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/profile", {
+            const res = await apiFetch("/api/profile", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -542,7 +543,7 @@ export default function DriverDashboard() {
         if (userProfile?.role !== 'admin') return;
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/admin/external-drivers', {
+            const res = await apiFetch('/api/admin/external-drivers', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -580,7 +581,7 @@ export default function DriverDashboard() {
         const token = localStorage.getItem("token");
         try {
             console.log(`[Driver] Taking job ${jobId} for group ${groupJid}${externalDriverId ? ` (Assigning to External: ${externalDriverId})` : ''}`);
-            const res = await fetch("/api/jobs/take", {
+            const res = await apiFetch("/api/jobs/take", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -619,7 +620,7 @@ export default function DriverDashboard() {
     const handleWonJob = async (jobId: number) => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs", {
+            const res = await apiFetch("/api/jobs", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -643,7 +644,7 @@ export default function DriverDashboard() {
     const handleIgnore = async (jobId: number) => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs", {
+            const res = await apiFetch("/api/jobs", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -672,7 +673,7 @@ export default function DriverDashboard() {
 
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("/api/jobs/manual", {
+            const res = await apiFetch("/api/jobs/manual", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -704,7 +705,7 @@ export default function DriverDashboard() {
         .length;
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-screen bg-slate-900">
+        <div className="flex items-center justify-center min-h-screen bg-app-bg">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
         </div>
     );
@@ -715,34 +716,34 @@ export default function DriverDashboard() {
             <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" />
 
             {/* Compact Top Bar - Always Visible */}
-            <div className="bg-slate-800 rounded-2xl border border-slate-700 shadow-xl">
+            <div className="bg-app-card rounded-2xl border border-app-border shadow-xl">
                 <div className="flex items-center justify-between p-3 gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                         <span className="text-xl flex-shrink-0">🚕</span>
                         <div className="min-w-0">
-                            <div className="text-sm font-black text-white truncate">SOSYAL TRANSFER</div>
+                            <div className="text-sm font-black text-app-fg truncate">SOSYAL TRANSFER</div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${waStatus.isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-                                <span className={`text-[9px] font-bold ${waStatus.isConnected ? 'text-green-400' : 'text-red-400'}`}>
+                                <span className={`text-[11px] font-bold ${waStatus.isConnected ? 'text-green-400' : 'text-red-400'}`}>
                                     {waStatus.isConnected ? 'BAĞLI' : 'KOPUK'}
                                 </span>
-                                <span className="text-[9px] text-slate-500">•</span>
-                                <span className="text-[9px] font-bold text-slate-400">{filteredJobs.length} İŞ</span>
-                                <span className="text-[9px] text-slate-500">•</span>
-                                <span className={`text-[9px] font-bold ${autoCall ? 'text-green-400' : 'text-slate-500'}`}>{autoCall ? '⚡OTO' : '👤MAN'}</span>
+                                <span className="text-[11px] text-app-subtle">•</span>
+                                <span className="text-[11px] font-bold text-app-muted">{filteredJobs.length} İŞ</span>
+                                <span className="text-[11px] text-app-subtle">•</span>
+                                <span className={`text-[11px] font-bold ${autoCall ? 'text-green-400' : 'text-app-subtle'}`}>{autoCall ? '⚡OTO' : '👤MAN'}</span>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={() => setIsAddingJob(true)}
-                            className="bg-green-600 hover:bg-green-500 text-white font-black px-3 py-2 rounded-xl shadow-lg active:scale-95 transition-all text-[10px] uppercase tracking-wider"
+                            className="bg-green-600 hover:bg-green-500 text-white font-black px-3 py-2 rounded-xl shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider"
                         >
                             ➕ EKLE
                         </button>
                         <button
                             onClick={() => setShowTopPanel(!showTopPanel)}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95 border ${showTopPanel ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'}`}
+                            className={`px-3 py-2 rounded-xl text-xs font-black uppercase transition-all active:scale-95 border ${showTopPanel ? 'bg-app-elevated text-app-fg border-app-border' : 'bg-app-bg text-app-muted border-app-border hover:text-app-fg'}`}
                         >
                             {showTopPanel ? '▲ KAPAT' : '⚙️ PANEL'}
                         </button>
@@ -751,33 +752,33 @@ export default function DriverDashboard() {
 
                 {/* Expandable Full Panel */}
                 {showTopPanel && (
-                    <div className="border-t border-slate-700 p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="border-t border-app-border p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="flex flex-wrap items-center gap-2">
                             <button
                                 onClick={toggleWakeLock}
-                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                                className={`px-3 py-1 rounded-full text-xs font-black uppercase transition-all border ${isWakeLockActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-app-elevated text-app-muted border-transparent'}`}
                             >
                                 {isWakeLockActive ? '🔅 UYANIK KAL: AÇIK' : '💤 UYANIK KAL: KAPALI'}
                             </button>
                             <button
                                 onClick={() => setSoundEnabled(!soundEnabled)}
-                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all border ${soundEnabled ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-slate-700 text-slate-400 border-transparent'}`}
+                                className={`px-3 py-1 rounded-full text-xs font-black uppercase transition-all border ${soundEnabled ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-app-elevated text-app-muted border-transparent'}`}
                             >
                                 {soundEnabled ? '🔔 SES: AÇIK' : '🔕 SES: KAPALI'}
                             </button>
                             <button
                                 onClick={checkWAStatus}
-                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border flex items-center gap-1.5 transition-all active:scale-95 ${waStatus.isConnected ? 'bg-green-500/20 text-green-400 border-green-500/40' : waStatus.isConnecting ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30'}`}
+                                className={`px-3 py-1 rounded-full text-xs font-black uppercase border flex items-center gap-1.5 transition-all active:scale-95 ${waStatus.isConnected ? 'bg-green-500/20 text-green-400 border-green-500/40' : waStatus.isConnecting ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30'}`}
                             >
                                 <div className={`w-1.5 h-1.5 rounded-full ${waStatus.isConnected ? 'bg-green-400' : waStatus.isConnecting ? 'bg-yellow-400' : 'bg-red-400'}`} />
                                 {waStatus.isConnected ? 'WHATSAPP: BAĞLI' : waStatus.isConnecting ? 'WHATSAPP: BAĞLANIYOR...' : 'WHATSAPP: BAĞLI DEĞİL (BAĞLAN)'}
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-4 bg-app-bg/50 p-3 rounded-2xl border border-app-border/60">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OTOMATİK ARA</span>
-                                <span className={`text-xs font-bold ${autoCall ? 'text-green-400' : 'text-slate-400'}`}>
+                                <span className="text-xs font-black text-app-subtle uppercase tracking-widest">OTOMATİK ARA</span>
+                                <span className={`text-xs font-bold ${autoCall ? 'text-green-400' : 'text-app-muted'}`}>
                                     {autoCall ? 'AKTİF' : 'KAPALI'}
                                 </span>
                             </div>
@@ -787,7 +788,7 @@ export default function DriverDashboard() {
                                     setActionMode(newMode as any);
                                     saveFilters(undefined, undefined, newMode);
                                 }}
-                                className={`w-14 h-8 rounded-full transition-all relative ${autoCall ? 'bg-green-500' : 'bg-slate-700'}`}
+                                className={`w-14 h-8 rounded-full transition-all relative ${autoCall ? 'bg-green-500' : 'bg-app-elevated'}`}
                             >
                                 <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all ${autoCall ? 'right-1' : 'left-1'}`} />
                             </button>
@@ -797,17 +798,17 @@ export default function DriverDashboard() {
             </div>
 
             {/* Earnings & View Switcher - Compact */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-800/50 p-3 rounded-2xl border border-slate-700/50">
-                <div className="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-white/5">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-center bg-app-card/50 p-3 rounded-2xl border border-app-border/50">
+                <div className="flex gap-1.5 p-1 bg-app-bg rounded-xl border border-app-border/60">
                     <button
                         onClick={() => setView('active')}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${view === 'active' ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-tighter transition-all ${view === 'active' ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'text-app-subtle hover:text-app-muted'}`}
                     >
                         AKTİF İŞLER
                     </button>
                     <button
                         onClick={() => setView('history')}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${view === 'history' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-tighter transition-all ${view === 'history' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-app-subtle hover:text-app-muted'}`}
                     >
                         İŞ GEÇMİŞİM
                     </button>
@@ -815,17 +816,17 @@ export default function DriverDashboard() {
 
                 <div className="flex items-center gap-4">
                     <div className="text-center">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">HAVUZ</div>
+                        <div className="text-[11px] font-black text-app-subtle uppercase tracking-widest">HAVUZ</div>
                         <div className="text-lg font-black text-blue-400">{jobs.length}</div>
                     </div>
-                    <div className="h-6 w-px bg-slate-700" />
+                    <div className="h-6 w-px bg-app-elevated" />
                     <div className="text-center">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">BUGÜN</div>
-                        <div className="text-lg font-black text-white">{todayWonCount}</div>
+                        <div className="text-[11px] font-black text-app-subtle uppercase tracking-widest">BUGÜN</div>
+                        <div className="text-lg font-black text-app-fg">{todayWonCount}</div>
                     </div>
-                    <div className="h-6 w-px bg-slate-700" />
+                    <div className="h-6 w-px bg-app-elevated" />
                     <div className="text-center">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">KAZANÇ</div>
+                        <div className="text-[11px] font-black text-app-subtle uppercase tracking-widest">KAZANÇ</div>
                         <div className="text-lg font-black text-green-400 font-mono">{totalEarnings.toLocaleString()} ₺</div>
                     </div>
                 </div>
@@ -833,7 +834,7 @@ export default function DriverDashboard() {
 
             {/* Smart Rota & Automation Section - Only visible when panel is open */}
             {showTopPanel && (
-                <div className="bg-slate-800 rounded-[2rem] border border-slate-700/50 shadow-2xl overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="bg-app-card rounded-[2rem] border border-app-border/50 shadow-2xl overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* Header / Summary Bar */}
                     <div className="p-5 flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-800/50">
                         <div className="flex flex-col gap-1 w-full md:w-auto">
@@ -850,10 +851,10 @@ export default function DriverDashboard() {
                                             setRotaName(val);
                                             saveFilters(undefined, undefined, undefined, undefined, val);
                                         }}
-                                        className="bg-transparent border-none text-white font-black text-xl focus:ring-0 p-0 w-32 tracking-tighter"
+                                        className="bg-transparent border-none text-app-fg font-black text-xl focus:ring-0 p-0 w-32 tracking-tighter"
                                         placeholder="STRATEJİ ADI"
                                     />
-                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Aktif Strateji</div>
+                                    <div className="text-xs text-app-subtle font-bold uppercase tracking-widest mt-0.5">Aktif Strateji</div>
                                 </div>
                             </div>
                         </div>
@@ -861,34 +862,34 @@ export default function DriverDashboard() {
                         {/* Quick Stats / Active Filters Info */}
                         {!showSettings && (
                             <div className="flex flex-wrap items-center gap-2 justify-center">
-                                <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
+                                <div className="bg-app-bg/80 px-3 py-1.5 rounded-xl border border-app-border/60 flex items-center gap-2">
                                     <span className="text-xs">💰</span>
-                                    <span className="text-[10px] font-black text-green-400">{minPrice}+ ₺</span>
+                                    <span className="text-xs font-black text-green-400">{minPrice}+ ₺</span>
                                 </div>
-                                <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
+                                <div className="bg-app-bg/80 px-3 py-1.5 rounded-xl border border-app-border/60 flex items-center gap-2">
                                     <span className="text-xs">{jobMode === 'ready' ? '🚨' : jobMode === 'scheduled' ? '📅' : '📋'}</span>
-                                    <span className="text-[10px] font-black text-slate-300 uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : 'İLERİ'}</span>
+                                    <span className="text-xs font-black text-app-muted uppercase">{jobMode === 'all' ? 'TÜMÜ' : jobMode === 'ready' ? 'HAZIR' : 'İLERİ'}</span>
                                 </div>
                                 {filterSprinter && (
                                     <div className="bg-amber-600/20 px-3 py-1.5 rounded-xl border border-amber-500/30 flex items-center gap-2">
                                         <span className="text-xs">🚐</span>
-                                        <span className="text-[10px] font-black text-amber-400 uppercase">SPRİNTER</span>
+                                        <span className="text-xs font-black text-amber-400 uppercase">SPRİNTER</span>
                                     </div>
                                 )}
                                 {filterSwap && (
                                     <div className="bg-purple-600/20 px-3 py-1.5 rounded-xl border border-purple-500/30 flex items-center gap-2">
                                         <span className="text-xs">🔁</span>
-                                        <span className="text-[10px] font-black text-purple-400 uppercase">TAKAS</span>
+                                        <span className="text-xs font-black text-purple-400 uppercase">TAKAS</span>
                                     </div>
                                 )}
-                                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${actionMode === 'auto' ? 'bg-orange-600/20 border-orange-500/30 text-orange-400' : 'bg-slate-900/80 border-white/5 text-slate-400'}`}>
+                                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${actionMode === 'auto' ? 'bg-orange-600/20 border-orange-500/30 text-orange-400' : 'bg-app-bg/80 border-app-border/60 text-app-muted'}`}>
                                     <span className="text-xs">{actionMode === 'auto' ? '⚡' : '👤'}</span>
-                                    <span className="text-[10px] font-black uppercase text-center">{actionMode === 'auto' ? 'OTO-ARA' : 'MANUEL'}</span>
+                                    <span className="text-xs font-black uppercase text-center">{actionMode === 'auto' ? 'OTO-ARA' : 'MANUEL'}</span>
                                 </div>
                                 {selectedRegions.length > 0 && (
                                     <div className="bg-blue-600/20 px-3 py-1.5 rounded-xl border border-blue-500/30 flex items-center gap-2 text-blue-400">
                                         <span className="text-xs">🚩</span>
-                                        <span className="text-[10px] font-black uppercase">{selectedRegions.length} BÖLGE</span>
+                                        <span className="text-xs font-black uppercase">{selectedRegions.length} BÖLGE</span>
                                     </div>
                                 )}
                             </div>
@@ -896,7 +897,7 @@ export default function DriverDashboard() {
 
                         <button
                             onClick={() => setShowSettings(!showSettings)}
-                            className={`w-full md:w-auto px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${showSettings ? 'bg-slate-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-600/20'}`}
+                            className={`w-full md:w-auto px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${showSettings ? 'bg-app-elevated text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-600/20'}`}
                         >
                             {showSettings ? 'AYARLARI KAPAT ▲' : 'ROTA AYARLARI ▼'}
                         </button>
@@ -904,17 +905,17 @@ export default function DriverDashboard() {
 
                     {/* Expanded Settings Content */}
                     {showSettings && (
-                        <div className="p-6 border-t border-slate-700/50 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="p-6 border-t border-app-border/50 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Left Column: Side Selection & Logic */}
                                 <div className="space-y-6">
                                     <div className="space-y-4">
-                                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <h3 className="text-xs font-black text-app-subtle uppercase tracking-widest flex items-center gap-2">
                                             ⚙️ TEMEL YAPILANDIRMA
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-3">
-                                                <div className="text-[10px] font-black text-slate-400 ml-1">İŞ TÜRÜ SEÇİMİ</div>
+                                                <div className="text-xs font-black text-app-muted ml-1">İŞ TÜRÜ SEÇİMİ</div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {/* Zaman Filtresi (Radyo — tek seçim) */}
                                                     {[
@@ -925,7 +926,7 @@ export default function DriverDashboard() {
                                                         <button
                                                             key={m.id}
                                                             onClick={() => { setJobMode(m.id as any); saveFilters(undefined, m.id); }}
-                                                            className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${jobMode === m.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                            className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[11px] font-black transition-all flex flex-col items-center gap-1.5 ${jobMode === m.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-app-bg border-app-border text-app-subtle hover:bg-app-card'}`}
                                                         >
                                                             <span className="text-base">{m.icon}</span>
                                                             {m.label}
@@ -933,19 +934,19 @@ export default function DriverDashboard() {
                                                     ))}
 
                                                     {/* Ayırıcı */}
-                                                    <div className="w-px bg-slate-700 mx-1 self-stretch" />
+                                                    <div className="w-px bg-app-elevated mx-1 self-stretch" />
 
                                                     {/* Araç Tipi Filtreleri (Toggle — bağımsız) */}
                                                     <button
                                                         onClick={() => { const newVal = !filterSwap; setFilterSwap(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, newVal); }}
-                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSwap ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[11px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSwap ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-app-bg border-app-border text-app-subtle hover:bg-app-card'}`}
                                                     >
                                                         <span className="text-base">🔁</span>
                                                         TAKAS
                                                     </button>
                                                     <button
                                                         onClick={() => { const newVal = !filterSprinter; setFilterSprinter(newVal); saveFilters(undefined, undefined, undefined, undefined, undefined, newVal); }}
-                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSprinter ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/30' : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                        className={`flex-1 min-w-[60px] py-3 rounded-xl border text-[11px] font-black transition-all flex flex-col items-center gap-1.5 ${filterSprinter ? 'bg-amber-600 border-amber-500 text-app-fg shadow-lg shadow-amber-600/30' : 'bg-app-bg border-app-border text-app-subtle hover:bg-app-card'}`}
                                                     >
                                                         <span className="text-base">🚐</span>
                                                         SPRİNTER
@@ -953,7 +954,7 @@ export default function DriverDashboard() {
                                                 </div>
                                             </div>
                                             <div className="space-y-3">
-                                                <div className="text-[10px] font-black text-slate-400 ml-1">AKSİYON MODU</div>
+                                                <div className="text-xs font-black text-app-muted ml-1">AKSİYON MODU</div>
                                                 <div className="flex gap-2">
                                                     {[
                                                         { id: 'manual', label: 'MANUEL', icon: '👤', color: 'bg-blue-600' },
@@ -962,7 +963,7 @@ export default function DriverDashboard() {
                                                         <button
                                                             key={m.id}
                                                             onClick={() => { setActionMode(m.id as any); saveFilters(undefined, undefined, m.id); }}
-                                                            className={`flex-1 py-3 rounded-xl border text-[9px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-white/20 text-white shadow-lg` : 'bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800'}`}
+                                                            className={`flex-1 py-3 rounded-xl border text-[11px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-app-border/70 text-app-fg shadow-lg` : 'bg-app-bg border-app-border text-app-subtle hover:bg-app-card'}`}
                                                         >
                                                             <span className="text-base">{m.icon}</span>
                                                             {m.label}
@@ -973,11 +974,11 @@ export default function DriverDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4 bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                                    <div className="space-y-4 bg-app-bg/50 p-6 rounded-3xl border border-app-border/60">
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">💰 MİNİMUM ÜCRET LİMİTİ</span>
-                                                <span className="text-[9px] text-slate-600 font-bold">BU RAKAMIN ALTINDAKİ İŞLER GİZLENİR</span>
+                                                <span className="text-xs font-black text-app-subtle uppercase tracking-widest">💰 MİNİMUM ÜCRET LİMİTİ</span>
+                                                <span className="text-[11px] text-app-subtle font-bold">BU RAKAMIN ALTINDAKİ İŞLER GİZLENİR</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <input
@@ -988,9 +989,9 @@ export default function DriverDashboard() {
                                                         setMinPrice(v);
                                                         saveFilters(undefined, undefined, undefined, v);
                                                     }}
-                                                    className="bg-slate-800 border border-slate-700 rounded-lg py-1 px-3 text-sm font-black text-green-400 w-24 text-right focus:ring-1 focus:ring-green-500/50"
+                                                    className="bg-app-card border border-app-border rounded-lg py-1 px-3 text-sm font-black text-green-400 w-24 text-right focus:ring-1 focus:ring-green-500/50"
                                                 />
-                                                <span className="text-sm font-black text-slate-500">₺</span>
+                                                <span className="text-sm font-black text-app-subtle">₺</span>
                                             </div>
                                         </div>
                                         <input
@@ -1000,11 +1001,11 @@ export default function DriverDashboard() {
                                             step="250"
                                             value={minPrice}
                                             onChange={(e) => { const v = Number(e.target.value); setMinPrice(v); saveFilters(undefined, undefined, undefined, v); }}
-                                            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500 hover:accent-green-400 transition-all"
+                                            className="w-full h-2 bg-app-card rounded-lg appearance-none cursor-pointer accent-green-500 hover:accent-green-400 transition-all"
                                         />
                                         <div className="flex justify-between mt-2 px-1">
-                                            <span className="text-[10px] font-bold text-slate-600">0 ₺</span>
-                                            <span className="text-[10px] font-bold text-slate-600">10.000 ₺</span>
+                                            <span className="text-xs font-bold text-app-subtle">0 ₺</span>
+                                            <span className="text-xs font-bold text-app-subtle">10.000 ₺</span>
                                         </div>
                                     </div>
 
@@ -1012,8 +1013,8 @@ export default function DriverDashboard() {
                                         <div className="flex items-start gap-4">
                                             <div className="text-xl">ℹ️</div>
                                             <div>
-                                                <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-tight mb-1">Rota Bilgilendirmesi</h4>
-                                                <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                                                <h4 className="text-[11px] font-black text-app-muted uppercase tracking-tight mb-1">Rota Bilgilendirmesi</h4>
+                                                <p className="text-xs text-app-subtle leading-relaxed font-medium">
                                                     Şu an <strong>{rotaName}</strong> stratejisi aktif. Seçtiğiniz bölgelerden ve belirlediğiniz fiyattan bir iş geldiğinde panel saniyeler içinde sizi uyarır. Otomasyon modunda ise müşteri hem aranır, hem de <strong>otomatik olarak iş alınır</strong> (WhatsApp mesajı gönderilir).
                                                 </p>
                                             </div>
@@ -1024,21 +1025,21 @@ export default function DriverDashboard() {
                                 {/* Right Column: Detailed Region Selection */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between mb-4">
-                                        <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700/50">
+                                        <div className="flex bg-app-bg rounded-xl p-1 border border-app-border/50">
                                             <button
                                                 onClick={() => setRegionTab('from')}
-                                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'from'
+                                                className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'from'
                                                     ? 'bg-blue-600 text-white shadow-lg'
-                                                    : 'text-slate-400 hover:text-white'
+                                                    : 'text-app-muted hover:text-app-fg'
                                                     }`}
                                             >
                                                 🛫 NEREDEN {selectedRegions.length > 0 && `(${selectedRegions.length})`}
                                             </button>
                                             <button
                                                 onClick={() => setRegionTab('to')}
-                                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'to'
+                                                className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase transition-all flex items-center gap-2 ${regionTab === 'to'
                                                     ? 'bg-green-600 text-white shadow-lg'
-                                                    : 'text-slate-400 hover:text-white'
+                                                    : 'text-app-muted hover:text-app-fg'
                                                     }`}
                                             >
                                                 🏁 NEREYE {selectedToRegions.length > 0 && `(${selectedToRegions.length})`}
@@ -1057,7 +1058,7 @@ export default function DriverDashboard() {
                                                         saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, newRegs);
                                                     }
                                                 }}
-                                                className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase underline-offset-4 hover:underline"
+                                                className="text-xs font-black text-blue-400 hover:text-blue-300 uppercase underline-offset-4 hover:underline"
                                             >
                                                 Hepsini Seç
                                             </button>
@@ -1071,19 +1072,19 @@ export default function DriverDashboard() {
                                                         saveFilters(undefined, undefined, undefined, undefined, undefined, undefined, undefined, []);
                                                     }
                                                 }}
-                                                className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase underline-offset-4 hover:underline"
+                                                className="text-xs font-black text-red-400 hover:text-red-300 uppercase underline-offset-4 hover:underline"
                                             >
                                                 Temizle
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-900/50 border border-slate-700/50 rounded-3xl p-4 overflow-hidden">
+                                    <div className="bg-app-bg/50 border border-app-border/50 rounded-3xl p-4 overflow-hidden">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[400px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-600">
                                             {/* Avrupa Yakası Grubu */}
                                             <div className="space-y-2">
-                                                <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
-                                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest pl-2">Avrupa Yakası</h4>
+                                                <div className="sticky top-0 bg-app-bg z-10 py-2 border-b border-app-border mb-2">
+                                                    <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest pl-2">Avrupa Yakası</h4>
                                                 </div>
                                                 {ISTANBUL_REGIONS.filter(r => r.side === 'Avrupa').map(reg => {
                                                     const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
@@ -1107,7 +1108,7 @@ export default function DriverDashboard() {
                                                             }}
                                                             className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
                                                                 ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
-                                                                : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                                : 'bg-app-card/50 border-app-border/50 text-app-muted hover:bg-app-card hover:border-app-border'
                                                                 }`}
                                                         >
                                                             <span className="text-xs font-bold">{reg.label}</span>
@@ -1119,8 +1120,8 @@ export default function DriverDashboard() {
 
                                             {/* Anadolu Yakası Grubu */}
                                             <div className="space-y-2">
-                                                <div className="sticky top-0 bg-slate-900 z-10 py-2 border-b border-slate-800 mb-2">
-                                                    <h4 className="text-[10px] font-black text-green-400 uppercase tracking-widest pl-2">Anadolu Yakası</h4>
+                                                <div className="sticky top-0 bg-app-bg z-10 py-2 border-b border-app-border mb-2">
+                                                    <h4 className="text-xs font-black text-green-400 uppercase tracking-widest pl-2">Anadolu Yakası</h4>
                                                 </div>
                                                 {ISTANBUL_REGIONS.filter(r => r.side === 'Anadolu').map(reg => {
                                                     const isActive = regionTab === 'from' ? selectedRegions.includes(reg.id) : selectedToRegions.includes(reg.id);
@@ -1144,7 +1145,7 @@ export default function DriverDashboard() {
                                                             }}
                                                             className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${isActive
                                                                 ? 'bg-green-600 border-green-500 text-white shadow-lg'
-                                                                : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                                                                : 'bg-app-card/50 border-app-border/50 text-app-muted hover:bg-app-card hover:border-app-border'
                                                                 }`}
                                                         >
                                                             <span className="text-xs font-bold">{reg.label}</span>
@@ -1167,26 +1168,26 @@ export default function DriverDashboard() {
                 <input
                     type="text"
                     placeholder="Varış yeri veya kelime ara..."
-                    className="bg-slate-800 border-none text-white text-xs font-bold rounded-xl px-4 py-3 min-w-[200px] flex-1 focus:ring-1 focus:ring-blue-500 placeholder-slate-500"
+                    className="bg-app-card border-none text-app-fg text-xs font-bold rounded-xl px-4 py-3 min-w-[200px] flex-1 focus:ring-1 focus:ring-blue-500 placeholder:text-app-subtle"
                     value={regionSearch}
                     onChange={(e) => setRegionSearch(e.target.value)}
                 />
                 <button
                     onClick={() => setShowOnlyAirport(!showOnlyAirport)}
-                    className={`px-4 py-3 rounded-xl min-w-fit text-xs font-black uppercase tracking-tight transition-all active:scale-95 border ${showOnlyAirport ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+                    className={`px-4 py-3 rounded-xl min-w-fit text-xs font-black uppercase tracking-tight transition-all active:scale-95 border ${showOnlyAirport ? 'bg-blue-600 text-white border-blue-500' : 'bg-app-card text-app-muted border-app-border hover:bg-app-elevated'}`}
                 >
                     ✈️ HAVALİMANI
                 </button>
                 <button
                     onClick={() => setShowOnlyVip(!showOnlyVip)}
-                    className={`px-4 py-3 rounded-xl min-w-fit text-xs font-black uppercase tracking-tight transition-all active:scale-95 border ${showOnlyVip ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+                    className={`px-4 py-3 rounded-xl min-w-fit text-xs font-black uppercase tracking-tight transition-all active:scale-95 border ${showOnlyVip ? 'bg-amber-600 text-app-fg border-amber-500' : 'bg-app-card text-app-muted border-app-border hover:bg-app-elevated'}`}
                 >
                     👑 VIP (2000+)
                 </button>
             </div>
 
             <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black text-white tracking-tighter flex items-center gap-2">
+                <h2 className="text-lg font-black text-app-fg tracking-tighter flex items-center gap-2">
                     📋 {filteredJobs.length} UYGUN İŞ BULUNDU
                 </h2>
             </div>
@@ -1194,7 +1195,7 @@ export default function DriverDashboard() {
             {/* Jobs List */}
             <div className="space-y-4">
                 {filteredJobs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 text-slate-500 bg-slate-800/50 rounded-3xl border border-slate-700/50 border-dashed">
+                    <div className="flex flex-col items-center justify-center p-12 text-app-subtle bg-app-card/50 rounded-3xl border border-app-border/50 border-dashed">
                         <div className="text-4xl mb-4">📭</div>
                         <div className="font-black text-lg">HİÇ İŞ YOK</div>
                         <div className="text-sm opacity-60">Şu an kriterlerinize uygun iş bulunamadı.</div>
@@ -1205,10 +1206,10 @@ export default function DriverDashboard() {
                             {filteredJobs.slice(0, visibleCount).map((job: any) => (
                                 <div
                                     key={job.id}
-                                    className={`relative group bg-slate-800 rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${job.status === 'won' ? 'border-red-500 shadow-red-900/40' :
+                                    className={`relative group bg-app-card rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${job.status === 'won' ? 'border-red-500 shadow-red-900/40' :
                                         job.status === 'ignored' ? 'border-red-500/50 opacity-60 grayscale' :
                                             job.status === 'called' ? 'border-blue-500/50 shadow-blue-900/20' :
-                                                'border-slate-700 hover:border-slate-500'
+                                                'border-app-border hover:border-app-border'
                                         }`}
                                 >
                                     {/* ... (Job card header remains same) ... */}
@@ -1219,17 +1220,17 @@ export default function DriverDashboard() {
                                                 className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg cursor-help ${job.status === 'won' ? 'bg-red-600' :
                                                     job.status === 'ignored' ? 'bg-red-500' :
                                                         job.status === 'called' ? 'bg-blue-500' :
-                                                            'bg-gradient-to-br from-slate-600 to-slate-700'
+                                                            'bg-app-elevated text-app-muted'
                                                     }`}>
                                                 {job.status === 'won' ? '✓' : job.status === 'ignored' ? '✕' : job.status === 'called' ? '📞' : '⚡'}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-[10px] font-black uppercase tracking-tight whitespace-nowrap ${job.status === 'won' ? 'text-red-500' : 'text-slate-500'}`}>
+                                                    <span className={`text-xs font-black uppercase tracking-tight whitespace-nowrap ${job.status === 'won' ? 'text-red-500' : 'text-app-subtle'}`}>
                                                         {job.status === 'won' ? '🚀 İŞ SENDE' : (job.time || 'SAAT BELİRSİZ')}
                                                     </span>
                                                     {job.created_at && (
-                                                        <span className="text-[9px] font-bold text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                                        <span className="text-[11px] font-bold text-app-subtle bg-app-bg/50 px-1.5 py-0.5 rounded whitespace-nowrap">
                                                             {(() => {
                                                                 try {
                                                                     const date = new Date(job.created_at);
@@ -1243,15 +1244,15 @@ export default function DriverDashboard() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="font-bold text-slate-300 text-[10px] mt-0.5 max-w-[150px] truncate opacity-70">
+                                                <div className="font-bold text-app-muted text-xs mt-0.5 max-w-[150px] truncate opacity-70">
                                                     {job.raw_message?.slice(0, 40)}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end flex-shrink-0 ml-2">
-                                            <div className="text-lg font-black text-white tracking-tighter whitespace-nowrap">{job.price}</div>
+                                            <div className="text-lg font-black text-app-fg tracking-tighter whitespace-nowrap">{job.price}</div>
                                             {job.is_swap === 1 && (
-                                                <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase mt-1 border border-purple-500/20 whitespace-nowrap">
+                                                <span className="text-[11px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase mt-1 border border-purple-500/20 whitespace-nowrap">
                                                     🔁 TAKASLI
                                                 </span>
                                             )}
@@ -1260,32 +1261,32 @@ export default function DriverDashboard() {
 
                                     {/* Route Visual */}
                                     {job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS' ? (
-                                        <div className="bg-slate-900/50 p-4 rounded-2xl mb-4 border border-purple-500/20 relative overflow-hidden group-hover:border-purple-500/40 transition-colors">
+                                        <div className="bg-app-bg/50 p-4 rounded-2xl mb-4 border border-purple-500/20 relative overflow-hidden group-hover:border-purple-500/40 transition-colors">
                                             <div className="absolute top-0 right-0 p-2 opacity-10">
                                                 <span className="text-4xl">🔁</span>
                                             </div>
-                                            <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                            <div className="text-xs font-black text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                                 <span>🔁 TAKAS / ÇOKLU İŞ DETAYI</span>
                                                 <div className="h-px bg-purple-500/20 flex-1"></div>
                                             </div>
-                                            <p className="text-sm font-bold text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                            <p className="text-sm font-bold text-app-fg whitespace-pre-wrap leading-relaxed">
                                                 {job.raw_message}
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl mb-4 border border-white/5">
+                                        <div className="flex items-center gap-3 bg-app-bg/50 p-4 rounded-2xl mb-4 border border-app-border/60">
                                             <div className="flex-1 min-w-0 text-right">
-                                                <div className="text-sm font-black text-white truncate" title={job.from_loc}>{job.from_loc || '?'}</div>
-                                                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREDEN</div>
+                                                <div className="text-sm font-black text-app-fg truncate" title={job.from_loc}>{job.from_loc || '?'}</div>
+                                                <div className="text-[11px] font-black text-app-subtle uppercase tracking-widest">NEREDEN</div>
                                             </div>
                                             <div className="flex flex-col items-center justify-center px-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mb-1" />
-                                                <div className="h-8 w-px bg-gradient-to-b from-slate-600 via-green-500 to-slate-600" />
-                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-app-elevated mb-1" />
+                                                <div className="h-8 w-px bg-gradient-to-b from-[rgb(var(--app-border))] via-green-500 to-[rgb(var(--app-border))]" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-app-elevated mt-1" />
                                             </div>
                                             <div className="flex-1 min-w-0 text-left">
-                                                <div className="text-sm font-black text-white truncate" title={job.to_loc}>{job.to_loc || '?'}</div>
-                                                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NEREYE</div>
+                                                <div className="text-sm font-black text-app-fg truncate" title={job.to_loc}>{job.to_loc || '?'}</div>
+                                                <div className="text-[11px] font-black text-app-subtle uppercase tracking-widest">NEREYE</div>
                                             </div>
                                         </div>
                                     )}
@@ -1295,13 +1296,13 @@ export default function DriverDashboard() {
                                         {job.status === 'won' ? (
                                             <div className="col-span-2 bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-center animate-in zoom-in-95 duration-300">
                                                 <div className="text-red-500 font-black text-sm uppercase">İŞ SENİN! 🚀</div>
-                                                <div className="text-[10px] text-red-500/60 font-bold mt-1 uppercase tracking-widest">Müşteriye mesajın gönderildi.</div>
+                                                <div className="text-xs text-red-500/60 font-bold mt-1 uppercase tracking-widest">Müşteriye mesajın gönderildi.</div>
                                             </div>
                                         ) : (
                                             <>
                                                 <button
                                                     onClick={() => handleIgnore(job.id)}
-                                                    className="bg-slate-700/50 hover:bg-slate-700 text-slate-400 font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-transparent hover:border-slate-600"
+                                                    className="bg-app-elevated/50 hover:bg-app-elevated text-app-muted font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-transparent hover:border-app-border"
                                                 >
                                                     Yoksay
                                                 </button>
@@ -1347,7 +1348,7 @@ export default function DriverDashboard() {
                                     {job.status === 'called' && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleIgnore(job.id); }}
-                                            className="absolute top-2 right-2 p-2 text-slate-600 hover:text-red-400 transition-colors"
+                                            className="absolute top-2 right-2 p-2 text-app-subtle hover:text-red-400 transition-colors"
                                             title="Listeden Kaldır"
                                         >
                                             ✕
@@ -1361,7 +1362,7 @@ export default function DriverDashboard() {
                         {visibleCount < filteredJobs.length && (
                             <button
                                 onClick={() => setVisibleCount(prev => prev + 50)}
-                                className="w-full py-4 mt-6 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold rounded-2xl transition-all border border-slate-700 hover:border-slate-600"
+                                className="w-full py-4 mt-6 bg-app-card hover:bg-app-elevated text-app-muted hover:text-app-fg font-bold rounded-2xl transition-all border border-app-border hover:border-app-border"
                             >
                                 DAHA FAZLA GÖSTER ({filteredJobs.length - visibleCount} İŞ DAHA)
                             </button>
@@ -1372,14 +1373,14 @@ export default function DriverDashboard() {
             {/* Manual Job Modal */}
             {isAddingJob && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-slate-800 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 bg-slate-900/50 border-b border-slate-700 flex justify-between items-center">
-                            <h3 className="text-xl font-black text-white flex items-center gap-2">
+                    <div className="bg-app-card rounded-3xl border border-app-border shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 bg-app-bg/50 border-b border-app-border flex justify-between items-center">
+                            <h3 className="text-xl font-black text-app-fg flex items-center gap-2">
                                 ➕ YENİ İŞ EKLE
                             </h3>
                             <button
                                 onClick={() => setIsAddingJob(false)}
-                                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
+                                className="w-8 h-8 rounded-full bg-app-card text-app-muted hover:text-app-fg hover:bg-app-elevated flex items-center justify-center transition-colors"
                             >
                                 ✕
                             </button>
@@ -1388,20 +1389,20 @@ export default function DriverDashboard() {
                         <div className="p-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">NEREDEN *</label>
+                                    <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">NEREDEN *</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-app-subtle"
                                         placeholder="Örn: Havalimanı"
                                         value={newJobData.from_loc}
                                         onChange={e => setNewJobData({ ...newJobData, from_loc: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">NEREYE *</label>
+                                    <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">NEREYE *</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-app-subtle"
                                         placeholder="Örn: Taksim"
                                         value={newJobData.to_loc}
                                         onChange={e => setNewJobData({ ...newJobData, to_loc: e.target.value })}
@@ -1411,20 +1412,20 @@ export default function DriverDashboard() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">FİYAT (TL) *</label>
+                                    <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">FİYAT (TL) *</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-green-400 font-black text-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-green-400 font-black text-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all placeholder:text-app-subtle"
                                         placeholder="0"
                                         value={newJobData.price}
                                         onChange={e => setNewJobData({ ...newJobData, price: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">SAAT / TARİH</label>
+                                    <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">SAAT / TARİH</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-app-subtle"
                                         placeholder="Örn: HEMEN veya 14:30"
                                         value={newJobData.time}
                                         onChange={e => setNewJobData({ ...newJobData, time: e.target.value })}
@@ -1433,21 +1434,21 @@ export default function DriverDashboard() {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">İLETİŞİM NUMARASI *</label>
+                                <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">İLETİŞİM NUMARASI *</label>
                                 <input
                                     type="tel"
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-app-subtle"
                                     placeholder="05xxxxxxxxx"
                                     value={newJobData.contact_phone}
                                     onChange={e => setNewJobData({ ...newJobData, contact_phone: e.target.value })}
                                 />
-                                <p className="text-[10px] text-slate-500 ml-1">Diğer sürücüler sizi bu numaradan arayacaktır.</p>
+                                <p className="text-xs text-app-subtle ml-1">Diğer sürücüler sizi bu numaradan arayacaktır.</p>
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">AÇIKLAMA / NOT</label>
+                                <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">AÇIKLAMA / NOT</label>
                                 <textarea
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600 h-24 resize-none"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-muted text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-app-subtle h-24 resize-none"
                                     placeholder="Araç tipi, yolcu sayısı veya diğer detaylar..."
                                     value={newJobData.description}
                                     onChange={e => setNewJobData({ ...newJobData, description: e.target.value })}
@@ -1467,40 +1468,40 @@ export default function DriverDashboard() {
 
             {/* Profil Tamamlama Modal */}
             {showProfileModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
-                    <div className="bg-slate-900 border border-white/10 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-app-bg/90 backdrop-blur-xl">
+                    <div className="bg-app-bg border border-app-border/70 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
                         <div className="text-center space-y-2">
                             <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 border border-blue-500/30">👤</div>
-                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">Profilini Tamamla</h2>
-                            <p className="text-slate-400 text-sm font-medium">İş alabilmek için profil bilgilerini doldurman zorunludur.</p>
+                            <h2 className="text-2xl font-black text-app-fg tracking-tight uppercase">Profilini Tamamla</h2>
+                            <p className="text-app-muted text-sm font-medium">İş alabilmek için profil bilgilerini doldurman zorunludur.</p>
                         </div>
 
                         <div className="space-y-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">AD SOYAD</label>
+                                <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">AD SOYAD</label>
                                 <input
                                     type="text"
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3.5 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full bg-app-card border border-app-border rounded-2xl px-5 py-3.5 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                     placeholder="Mustafa Çoban"
                                     value={profileFormData.name}
                                     onChange={e => setProfileFormData({ ...profileFormData, name: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">TELEFON NUMARASI</label>
+                                <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">TELEFON NUMARASI</label>
                                 <input
                                     type="tel"
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3.5 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full bg-app-card border border-app-border rounded-2xl px-5 py-3.5 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                     placeholder="05xxxxxxxxx"
                                     value={profileFormData.driver_phone}
                                     onChange={e => setProfileFormData({ ...profileFormData, driver_phone: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">ARAÇ PLAKASI</label>
+                                <label className="text-xs font-black text-app-subtle uppercase tracking-widest ml-1">ARAÇ PLAKASI</label>
                                 <input
                                     type="text"
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3.5 text-white font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full bg-app-card border border-app-border rounded-2xl px-5 py-3.5 text-app-fg font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                     placeholder="34 ABC 123"
                                     value={profileFormData.driver_plate}
                                     onChange={e => setProfileFormData({ ...profileFormData, driver_plate: e.target.value.toUpperCase() })}
@@ -1520,24 +1521,24 @@ export default function DriverDashboard() {
             )}
 
             {isRestricted && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] bg-orange-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 border border-white/20 animate-bounce">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] bg-orange-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 border border-app-border/70 animate-bounce">
                     <span>🚫 HESABINIZ KISITLANDI (SADECE İZLEME MODU)</span>
                 </div>
             )}
 
             {/* Harici Şoför Atama Modalı */}
             {showAssignModal && assigningJob && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
-                    <div className="bg-slate-900 border border-white/10 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
+                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-app-bg/90 backdrop-blur-xl">
+                    <div className="bg-app-bg border border-app-border/70 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
                         <div className="text-center space-y-2">
                             <div className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-purple-500/30">🚕</div>
-                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">İşi Kim Alıyor?</h2>
-                            <p className="text-slate-400 text-sm font-medium">Bu işi kendiniz alabilir veya bir harici şoföre atayabilirsiniz.</p>
+                            <h2 className="text-2xl font-black text-app-fg tracking-tight uppercase">İşi Kim Alıyor?</h2>
+                            <p className="text-app-muted text-sm font-medium">Bu işi kendiniz alabilir veya bir harici şoföre atayabilirsiniz.</p>
                         </div>
 
-                        <div className="bg-slate-800/50 rounded-2xl p-4 border border-white/5 mb-6">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">SEÇİLEN İŞ</p>
-                            <p className="text-white font-bold">{assigningJob.details.from_loc} → {assigningJob.details.to_loc}</p>
+                        <div className="bg-app-card/50 rounded-2xl p-4 border border-app-border/60 mb-6">
+                            <p className="text-xs font-black text-app-subtle uppercase tracking-widest mb-2">SEÇİLEN İŞ</p>
+                            <p className="text-app-fg font-bold">{assigningJob.details.from_loc} → {assigningJob.details.to_loc}</p>
                             <p className="text-green-400 font-bold text-sm">{assigningJob.details.price}</p>
                         </div>
 
@@ -1549,24 +1550,24 @@ export default function DriverDashboard() {
                             >
                                 <div className="text-left">
                                     <p className="font-black text-sm uppercase">KENDİM ALIYORUM</p>
-                                    <p className="text-white/60 text-xs">Kendi şoför bilgilerimle mesaj atılsın</p>
+                                    <p className="text-app-fg/60 text-xs">Kendi şoför bilgilerimle mesaj atılsın</p>
                                 </div>
                                 <span className="text-2xl group-hover:translate-x-1 transition-transform">➡</span>
                             </button>
 
                             <div className="relative py-2 flex items-center">
-                                <div className="flex-grow border-t border-white/5"></div>
-                                <span className="flex-shrink mx-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">VEYA HARİCİ ŞOFÖRE ATAYIN</span>
-                                <div className="flex-grow border-t border-white/5"></div>
+                                <div className="flex-grow border-t border-app-border/60"></div>
+                                <span className="flex-shrink mx-4 text-xs font-black text-app-subtle uppercase tracking-widest">VEYA HARİCİ ŞOFÖRE ATAYIN</span>
+                                <div className="flex-grow border-t border-app-border/60"></div>
                             </div>
 
                             {/* Harici Şoför Listesi */}
                             {externalDrivers.length === 0 ? (
-                                <div className="text-center py-4 bg-slate-800/30 rounded-2xl border border-dashed border-white/10">
-                                    <p className="text-slate-500 text-xs font-bold uppercase">Henüz aktif harici şoför yok.</p>
+                                <div className="text-center py-4 bg-app-card/30 rounded-2xl border border-dashed border-app-border/70">
+                                    <p className="text-app-subtle text-xs font-bold uppercase">Henüz aktif harici şoför yok.</p>
                                     <button
                                         onClick={() => router.push('/dashboard/admin/external-drivers')}
-                                        className="text-blue-400 text-[10px] font-black mt-2 underline"
+                                        className="text-blue-400 text-xs font-black mt-2 underline"
                                     >
                                         ŞOFÖR EKLEMEK İÇİN TIKLAYIN
                                     </button>
@@ -1576,13 +1577,13 @@ export default function DriverDashboard() {
                                     <button
                                         key={dr.id}
                                         onClick={() => handleTakeJob(assigningJob.jobId, assigningJob.groupJid, assigningJob.phone, dr.id)}
-                                        className="w-full bg-slate-800 hover:bg-slate-700 border border-white/5 hover:border-purple-500/50 text-white p-4 rounded-2xl flex items-center justify-between group transition-all"
+                                        className="w-full bg-app-card hover:bg-app-elevated border border-app-border/60 hover:border-purple-500/50 text-app-fg p-4 rounded-2xl flex items-center justify-between group transition-all"
                                     >
                                         <div className="text-left">
                                             <p className="font-bold text-sm uppercase">{dr.name}</p>
-                                            <p className="text-slate-400 text-[10px] font-medium">{dr.plate} • {dr.vehicle_type}</p>
+                                            <p className="text-app-muted text-xs font-medium">{dr.plate} • {dr.vehicle_type}</p>
                                         </div>
-                                        <span className="bg-purple-600/20 text-purple-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase opacity-0 group-hover:opacity-100 transition-all">İş Ver</span>
+                                        <span className="bg-purple-600/20 text-purple-400 px-3 py-1 rounded-lg text-xs font-black uppercase opacity-0 group-hover:opacity-100 transition-all">İş Ver</span>
                                     </button>
                                 ))
                             )}
@@ -1593,7 +1594,7 @@ export default function DriverDashboard() {
                                 setShowAssignModal(false);
                                 setAssigningJob(null);
                             }}
-                            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-black py-4 rounded-2xl transition-all text-[10px] uppercase tracking-widest mt-4"
+                            className="w-full bg-app-card hover:bg-app-elevated text-app-muted font-black py-4 rounded-2xl transition-all text-xs uppercase tracking-widest mt-4"
                         >
                             Vazgeç
                         </button>

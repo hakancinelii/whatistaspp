@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-client";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -28,7 +29,7 @@ export default function RegisterPage() {
         }
 
         try {
-            const res = await fetch("/api/auth/register", {
+            const res = await apiFetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -55,12 +56,12 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgb(124_58_237_/_0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgb(219_39_119_/_0.14),transparent_34%)] bg-app-bg flex items-center justify-center p-4">
             <div className="w-full max-w-md">
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8">
+                <div className="bg-app-elevated/70 backdrop-blur-xl rounded-2xl shadow-2xl border border-app-border/70 p-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-white mb-2 font-black italic tracking-tighter">WhatIstaspp</h1>
-                        <p className="text-gray-300">Yeni hesap oluşturun</p>
+                        <h1 className="text-3xl font-bold text-app-fg mb-2 font-black italic tracking-tighter">WhatIstaspp</h1>
+                        <p className="text-app-muted">Yeni hesap oluşturun</p>
                     </div>
 
                     {error && (
@@ -77,7 +78,7 @@ export default function RegisterPage() {
                                 onClick={() => setFormData({ ...formData, package: 'driver' })}
                                 className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${formData.package === 'driver'
                                     ? 'bg-green-600/20 border-green-500 text-white shadow-lg shadow-green-500/20 scale-[1.02]'
-                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                                    : 'bg-app-card/70 border-app-border/70 text-app-muted hover:bg-app-elevated/70'}`}
                             >
                                 <span className="text-2xl">🚕</span>
                                 <span className="text-xs font-black uppercase tracking-widest">Şoförüm</span>
@@ -87,7 +88,7 @@ export default function RegisterPage() {
                                 onClick={() => setFormData({ ...formData, package: 'company' })}
                                 className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${formData.package === 'company'
                                     ? 'bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
-                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                                    : 'bg-app-card/70 border-app-border/70 text-app-muted hover:bg-app-elevated/70'}`}
                             >
                                 <span className="text-2xl">🏢</span>
                                 <span className="text-xs font-black uppercase tracking-widest">Şirketim</span>
@@ -95,7 +96,7 @@ export default function RegisterPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
+                            <label className="block text-sm font-medium text-app-fg mb-2">
                                 Ad Soyad
                             </label>
                             <input
@@ -103,13 +104,13 @@ export default function RegisterPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className="w-full px-4 py-3 bg-app-card/70 border border-app-border/70 rounded-lg text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                 placeholder="Adınız Soyadınız"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
+                            <label className="block text-sm font-medium text-app-fg mb-2">
                                 E-posta
                             </label>
                             <input
@@ -117,13 +118,13 @@ export default function RegisterPage() {
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className="w-full px-4 py-3 bg-app-card/70 border border-app-border/70 rounded-lg text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                 placeholder="ornek@email.com"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
+                            <label className="block text-sm font-medium text-app-fg mb-2">
                                 Şifre
                             </label>
                             <input
@@ -132,13 +133,13 @@ export default function RegisterPage() {
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 required
                                 minLength={6}
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className="w-full px-4 py-3 bg-app-card/70 border border-app-border/70 rounded-lg text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                 placeholder="En az 6 karakter"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
+                            <label className="block text-sm font-medium text-app-fg mb-2">
                                 Şifre Tekrar
                             </label>
                             <input
@@ -146,7 +147,7 @@ export default function RegisterPage() {
                                 value={formData.confirmPassword}
                                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className="w-full px-4 py-3 bg-app-card/70 border border-app-border/70 rounded-lg text-app-fg placeholder:text-app-subtle focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                 placeholder="Şifrenizi tekrar girin"
                             />
                         </div>
@@ -161,7 +162,7 @@ export default function RegisterPage() {
                     </form>
 
                     <div className="mt-6 text-center">
-                        <p className="text-gray-300">
+                        <p className="text-app-muted">
                             Zaten hesabınız var mı?{" "}
                             <Link
                                 href="/login"

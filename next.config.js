@@ -6,6 +6,8 @@ const withPWA = require('next-pwa')({
 });
 
 /** @type {import('next').NextConfig} */
+const apiProxyTarget = process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const nextConfig = {
     // output: 'standalone', // Disabled - causes issues with bcryptjs/jwt
     eslint: {
@@ -16,6 +18,16 @@ const nextConfig = {
     },
     images: {
         unoptimized: true,
+    },
+    async rewrites() {
+        if (!apiProxyTarget) return [];
+
+        return [
+            {
+                source: '/api/:path*',
+                destination: `${apiProxyTarget.replace(/\/$/, '')}/api/:path*`,
+            },
+        ];
     },
     webpack: (config) => {
         config.externals.push({

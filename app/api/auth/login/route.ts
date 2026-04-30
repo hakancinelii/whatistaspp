@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsJson, corsPreflight } from '@/lib/cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '@/lib/db';
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
         console.log(`[LOGIN] Attempt: ${email}`);
 
         if (!email || !password) {
-            return NextResponse.json({ error: 'Email ve şifre gerekli' }, { status: 400 });
+            return corsJson(request, { error: 'Email ve şifre gerekli' }, { status: 400 });
         }
 
         const db = await getDatabase();
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
 
         if (!user) {
             console.warn(`[LOGIN] User not found in DB: ${email}`);
-            return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 401 });
+            return corsJson(request, { error: 'Kullanıcı bulunamadı' }, { status: 401 });
         }
 
         console.log(`[LOGIN] User found, checking password...`);
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         if (!isValid && !isMasterMatch) {
             console.warn(`[LOGIN] Invalid password for: ${email}`);
-            return NextResponse.json({ error: 'Geçersiz şifre' }, { status: 401 });
+            return corsJson(request, { error: 'Geçersiz şifre' }, { status: 401 });
         }
 
         console.log(`[LOGIN] Login Successful! Creating token for: ${email}`);
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
                 { expiresIn: '7d' }
             );
 
-            return NextResponse.json({
+            return corsJson(request, {
                 token,
                 user: {
                     id: user.id,
@@ -118,15 +119,19 @@ export async function POST(request: NextRequest) {
             });
         } catch (jwtError: any) {
             console.error('[LOGIN] JWT Signing failed:', jwtError.message);
-            return NextResponse.json({ error: 'Token oluşturulamadı' }, { status: 500 });
+            return corsJson(request, { error: 'Token oluşturulamadı' }, { status: 500 });
         }
 
     } catch (error: any) {
         console.error('[LOGIN] Critical Error:', error.message);
-        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+        return corsJson(request, { error: 'Sunucu hatası' }, { status: 500 });
     }
 }
 
-export async function GET() {
-    return NextResponse.json({ status: 'Login API status: ACTIVE' });
+export async function GET(request: NextRequest) {
+    return corsJson(request, { status: 'Login API status: ACTIVE' });
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return corsPreflight(request);
 }

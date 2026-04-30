@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsJson, corsPreflight } from '@/lib/cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '@/lib/db';
@@ -10,15 +11,13 @@ export async function POST(request: NextRequest) {
         const { name, email, password, package: userPackage } = await request.json();
 
         if (!name || !email || !password) {
-            return NextResponse.json(
-                { error: 'Tüm alanlar gerekli' },
+            return corsJson(request, { error: 'Tüm alanlar gerekli' },
                 { status: 400 }
             );
         }
 
         if (password.length < 6) {
-            return NextResponse.json(
-                { error: 'Şifre en az 6 karakter olmalı' },
+            return corsJson(request, { error: 'Şifre en az 6 karakter olmalı' },
                 { status: 400 }
             );
         }
@@ -29,8 +28,7 @@ export async function POST(request: NextRequest) {
         const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [email]);
 
         if (existingUser) {
-            return NextResponse.json(
-                { error: 'Bu email zaten kayıtlı' },
+            return corsJson(request, { error: 'Bu email zaten kayıtlı' },
                 { status: 409 }
             );
         }
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
             { expiresIn: '7d' }
         );
 
-        return NextResponse.json({
+        return corsJson(request, {
             token,
             user: {
                 id: userId,
@@ -64,9 +62,13 @@ export async function POST(request: NextRequest) {
         }, { status: 201 });
     } catch (error: any) {
         console.error('Register error:', error);
-        return NextResponse.json(
+        return corsJson(request,
             { error: 'Kayıt başarısız' },
             { status: 500 }
         );
     }
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return corsPreflight(request);
 }

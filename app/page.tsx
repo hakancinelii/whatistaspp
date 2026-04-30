@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0f172a] text-white selection:bg-purple-500/30 overflow-x-hidden">
+    <main className="min-h-screen bg-app-bg text-app-fg selection:bg-purple-500/30 overflow-x-hidden">
       {/* Dynamic Background Elements */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse"></div>
@@ -10,18 +10,18 @@ export default function Home() {
       </div>
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/50 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-app-bg/50 backdrop-blur-xl border-b border-app-border/60">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
               <span className="text-xl font-bold">W</span>
             </div>
-            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">WhatIstaspp</span>
+            <span className="text-xl font-bold tracking-tight gradient-text">WhatIstaspp</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
-            <a href="#features" className="hover:text-white transition">Özellikler</a>
-            <a href="#pricing" className="hover:text-white transition">Fiyatlandırma</a>
-            <a href="#faq" className="hover:text-white transition">SSS</a>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-app-muted">
+            <a href="#features" className="hover:text-app-fg transition">Özellikler</a>
+            <a href="#pricing" className="hover:text-app-fg transition">Fiyatlandırma</a>
+            <a href="#faq" className="hover:text-app-fg transition">SSS</a>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm font-medium hover:text-purple-400 transition">Giriş Yap</Link>
@@ -46,7 +46,7 @@ export default function Home() {
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">Süper Güçlerin</span> Olsun
           </h1>
 
-          <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+          <p className="text-lg md:text-xl text-app-muted max-w-3xl mx-auto mb-12 leading-relaxed">
             Yapay zeka yanıt asistanı, akıllı anahtar kelime cevaplayıcı ve gelişmiş zamanlama ile platformumuz, işletmenizi WhatsApp üzerinde otonom hale getirir.
           </p>
 
@@ -54,17 +54,17 @@ export default function Home() {
             <Link href="/register" className="w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-bold text-lg hover:scale-105 transition-all shadow-2xl shadow-purple-600/25">
               Hemen Ücretsiz Başla
             </Link>
-            <a href="#features" className="w-full sm:w-auto px-10 py-5 bg-slate-800 rounded-2xl font-bold text-lg hover:bg-slate-700 transition-all border border-slate-700">
+            <a href="#features" className="w-full sm:w-auto px-10 py-5 bg-app-card rounded-2xl font-bold text-lg hover:bg-app-elevated transition-all border border-app-border">
               Özellikleri Keşfet
             </a>
           </div>
 
           {/* Minimal App Preview */}
           <div className="mt-20 relative max-w-5xl mx-auto">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent z-10 h-full"></div>
-            <div className="bg-slate-800/50 rounded-3xl border border-white/5 p-4 backdrop-blur-sm shadow-2xl skew-y-3">
-              <div className="bg-[#0f172a] rounded-2xl border border-white/5 overflow-hidden aspect-video flex items-center justify-center">
-                <span className="text-gray-500 font-mono text-sm">Dashboard Önizlemesi</span>
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--background)] via-transparent to-transparent z-10 h-full"></div>
+            <div className="bg-app-card/50 rounded-3xl border border-app-border/60 p-4 backdrop-blur-sm shadow-2xl skew-y-3">
+              <div className="bg-app-bg rounded-2xl border border-app-border/60 overflow-hidden aspect-video flex items-center justify-center">
+                <span className="text-app-subtle font-mono text-sm">Dashboard Önizlemesi</span>
               </div>
             </div>
           </div>
@@ -72,11 +72,11 @@ export default function Home() {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="py-24 px-6 bg-slate-900/30">
+      <section id="features" className="py-24 px-6 bg-app-bg/30">
         <div className="container mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-3xl md:text-5xl font-bold mb-4">Hız Kesmeden Büyüyün</h2>
-            <p className="text-gray-400">İşletmenizi bir üst lige taşıyacak özellikler</p>
+            <p className="text-app-muted">İşletmenizi bir üst lige taşıyacak özellikler</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -125,7 +125,7 @@ export default function Home() {
         <div className="container mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-3xl md:text-5xl font-bold mb-4">Şeffaf Fiyatlandırma</h2>
-            <p className="text-gray-400">İhtiyacınıza uygun paketi seçin, dilediğiniz zaman yükseltin.</p>
+            <p className="text-app-muted">İhtiyacınıza uygun paketi seçin, dilediğiniz zaman yükseltin.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
@@ -160,7 +160,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-white/5 bg-slate-900/50">
+      <footer className="py-12 border-t border-app-border/60 bg-app-bg/50">
         <div className="container mx-auto px-6 text-center">
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="w-8 h-8 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-lg flex items-center justify-center">
@@ -168,8 +168,8 @@ export default function Home() {
             </div>
             <span className="font-bold tracking-tight">WhatIstaspp</span>
           </div>
-          <p className="text-sm text-gray-500 mb-8">© 2024 WhatIstaspp. Tüm hakları saklıdır. Türkiye'nin en gelişmiş WhatsApp SaaS platformu.</p>
-          <div className="flex justify-center gap-8 text-xs font-bold text-gray-400 uppercase tracking-widest">
+          <p className="text-sm text-app-subtle mb-8">© 2024 WhatIstaspp. Tüm hakları saklıdır. Türkiye'nin en gelişmiş WhatsApp SaaS platformu.</p>
+          <div className="flex justify-center gap-8 text-xs font-bold text-app-muted uppercase tracking-widest">
             <a href="#" className="hover:text-purple-400">Gizlilik</a>
             <a href="#" className="hover:text-purple-400">Şartlar</a>
             <a href="#" className="hover:text-purple-400">İletişim</a>
@@ -182,7 +182,7 @@ export default function Home() {
 
 function FeatureCard({ icon, title, description, badge }: any) {
   return (
-    <div className="group p-8 rounded-3xl bg-slate-800/30 border border-white/5 hover:border-purple-500/50 transition-all duration-300 hover:-translate-y-2">
+    <div className="group p-8 rounded-3xl bg-app-card/30 border border-app-border/60 hover:border-purple-500/50 transition-all duration-300 hover:-translate-y-2">
       <div className="text-4xl mb-6">{icon}</div>
       <div className="flex items-center gap-2 mb-4">
         <h3 className="text-xl font-bold">{title}</h3>
@@ -190,14 +190,14 @@ function FeatureCard({ icon, title, description, badge }: any) {
           <span className="text-[9px] font-black bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">{badge}</span>
         )}
       </div>
-      <p className="text-gray-400 text-sm leading-relaxed">{description}</p>
+      <p className="text-app-muted text-sm leading-relaxed">{description}</p>
     </div>
   );
 }
 
 function PriceCard({ name, price, description, features, highlight = false, badge }: any) {
   return (
-    <div className={`relative p-8 rounded-3xl border transition-all duration-300 ${highlight ? 'bg-gradient-to-b from-purple-600/20 to-transparent border-purple-500 scale-105 shadow-2xl shadow-purple-500/10 z-10' : 'bg-slate-800/30 border-white/5 hover:border-white/10'}`}>
+    <div className={`relative p-8 rounded-3xl border transition-all duration-300 ${highlight ? 'bg-gradient-to-b from-purple-600/20 to-transparent border-purple-500 scale-105 shadow-2xl shadow-purple-500/10 z-10' : 'bg-app-card/30 border-app-border/60 hover:border-app-border/70'}`}>
       {highlight && !badge && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest whitespace-nowrap">en popüler</div>
       )}
@@ -206,23 +206,23 @@ function PriceCard({ name, price, description, features, highlight = false, badg
       )}
       <div className="mb-8">
         <h3 className="text-2xl font-bold mb-2">{name}</h3>
-        <p className="text-gray-400 text-sm">{description}</p>
+        <p className="text-app-muted text-sm">{description}</p>
       </div>
       <div className="mb-8">
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-black">₺{price}</span>
-          <span className="text-gray-500 text-sm">/ay</span>
+          <span className="text-app-subtle text-sm">/ay</span>
         </div>
       </div>
       <div className="space-y-4 mb-8">
         {features.map((f: string, i: number) => (
-          <div key={i} className="flex items-center gap-3 text-sm text-gray-300">
+          <div key={i} className="flex items-center gap-3 text-sm text-app-muted">
             <span className="text-green-500">✓</span>
             {f}
           </div>
         ))}
       </div>
-      <Link href="/register" className={`block w-full py-4 rounded-2xl font-bold text-center transition-all active:scale-95 ${highlight ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20' : 'bg-white/10 hover:bg-white/15 text-white'}`}>
+      <Link href="/register" className={`block w-full py-4 rounded-2xl font-bold text-center transition-all active:scale-95 ${highlight ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20' : 'bg-app-elevated/70 hover:bg-app-elevated/80 text-app-fg'}`}>
         Seç ve Başla
       </Link>
     </div>

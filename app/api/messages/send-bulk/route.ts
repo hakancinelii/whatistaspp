@@ -155,6 +155,3 @@ function addMessageVariation(message: string): string {
     const invisibleSpaces = '\u200B'.repeat(Math.floor(Math.random() * 5));
     return result + invisibleSpaces;
 }
-
-// Export for progress endpoint
-export { activeSendings };

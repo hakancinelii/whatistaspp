@@ -99,20 +99,20 @@ export default function DriverProfilePage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-400">Yükleniyor...</div>;
+    if (loading) return <div className="p-8 text-center text-app-muted">Yükleniyor...</div>;
 
     return (
         <div className="fade-in max-w-2xl">
             <div className="flex flex-col md:flex-row items-center gap-8 mb-10">
                 <div className="relative group">
-                    <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-slate-700 shadow-2xl relative">
+                    <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-app-border shadow-2xl relative">
                         <img
                             src={profile.profile_picture || "/android-chrome-512x512.png"}
                             alt="Profil"
                             className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                            <span className="text-white text-[10px] font-black uppercase tracking-widest text-center px-4">Fotoğrafı Değiştir</span>
+                            <span className="text-app-fg text-xs font-black uppercase tracking-widest text-center px-4">Fotoğrafı Değiştir</span>
                         </div>
                     </div>
                     <input
@@ -127,37 +127,37 @@ export default function DriverProfilePage() {
                     </div>
                 </div>
                 <div className="text-center md:text-left">
-                    <h1 className="text-4xl font-black text-white mb-2">{profile.name}</h1>
-                    <p className="text-slate-400 font-medium">Şoför bilgilerinizi buradan güncelleyebilirsiniz.</p>
+                    <h1 className="text-4xl font-black text-app-fg mb-2">{profile.name}</h1>
+                    <p className="text-app-muted font-medium">Şoför bilgilerinizi buradan güncelleyebilirsiniz.</p>
                 </div>
             </div>
 
             <form onSubmit={saveProfile}>
-                <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-6">
+                <div className="bg-app-card rounded-xl border border-app-border p-6 space-y-6">
                     {/* Genel Bilgiler */}
                     <div>
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Genel Bilgiler</h3>
+                        <h3 className="text-sm font-bold text-app-muted uppercase tracking-widest mb-4">Genel Bilgiler</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">
+                                <label className="block text-xs font-bold text-app-subtle mb-2 uppercase tracking-widest">
                                     Ad Soyad
                                 </label>
                                 <input
                                     type="text"
                                     value={profile.name}
                                     disabled
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-gray-500 cursor-not-allowed outline-none"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-subtle cursor-not-allowed outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">
+                                <label className="block text-xs font-bold text-app-subtle mb-2 uppercase tracking-widest">
                                     E-Posta
                                 </label>
                                 <input
                                     type="email"
                                     value={profile.email}
                                     disabled
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-gray-500 cursor-not-allowed outline-none"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-subtle cursor-not-allowed outline-none"
                                 />
                             </div>
                         </div>
@@ -165,7 +165,7 @@ export default function DriverProfilePage() {
 
                     {/* Şoför Bilgileri */}
                     <div>
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">🚗 Şoför Bilgileri</h3>
+                        <h3 className="text-sm font-bold text-app-muted uppercase tracking-widest mb-4">🚗 Şoför Bilgileri</h3>
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
                             <div className="text-xs text-blue-300">
                                 💡 <strong>Önemli:</strong> Bu bilgiler, WhatsApp bağlantınız olmadan iş aldığınızda müşteriye gönderilir.
@@ -173,7 +173,7 @@ export default function DriverProfilePage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">
+                                <label className="block text-xs font-bold text-app-subtle mb-2 uppercase tracking-widest">
                                     📞 Telefon Numarası
                                 </label>
                                 <input
@@ -181,11 +181,11 @@ export default function DriverProfilePage() {
                                     value={profile.driver_phone}
                                     onChange={(e) => setProfile({ ...profile, driver_phone: e.target.value })}
                                     placeholder="0532 123 45 67"
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none transition"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-purple-500 outline-none transition"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">
+                                <label className="block text-xs font-bold text-app-subtle mb-2 uppercase tracking-widest">
                                     🚗 Plaka
                                 </label>
                                 <input
@@ -193,14 +193,14 @@ export default function DriverProfilePage() {
                                     value={profile.driver_plate}
                                     onChange={(e) => setProfile({ ...profile, driver_plate: e.target.value })}
                                     placeholder="34 ABC 123"
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none transition uppercase"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg focus:ring-2 focus:ring-purple-500 outline-none transition uppercase"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Kaydet Butonu */}
-                    <div className="flex justify-end pt-4 border-t border-slate-700">
+                    <div className="flex justify-end pt-4 border-t border-app-border">
                         <button
                             type="submit"
                             disabled={saving}
@@ -213,11 +213,11 @@ export default function DriverProfilePage() {
             </form>
 
             {/* Mesaj Önizleme */}
-            <div className="mt-6 bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">📩 Mesaj Önizleme</h3>
-                <div className="bg-slate-900/50 p-4 rounded-lg border border-white/5">
-                    <div className="text-xs text-slate-400 mb-2">Müşteriye gönderilecek mesaj (örnek):</div>
-                    <div className="text-sm text-white font-mono bg-slate-900 p-3 rounded whitespace-pre-line">
+            <div className="mt-6 bg-app-card rounded-xl border border-app-border p-6">
+                <h3 className="text-sm font-bold text-app-muted uppercase tracking-widest mb-4">📩 Mesaj Önizleme</h3>
+                <div className="bg-app-bg/50 p-4 rounded-lg border border-app-border/60">
+                    <div className="text-xs text-app-muted mb-2">Müşteriye gönderilecek mesaj (örnek):</div>
+                    <div className="text-sm text-app-fg font-mono bg-app-bg p-3 rounded whitespace-pre-line">
                         ✅ Araç hazır!<br />
                         <br />
                         📍 Sabiha Gökçen → Taksim<br />

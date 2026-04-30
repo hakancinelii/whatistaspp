@@ -89,7 +89,7 @@ export default function TemplatesPage() {
     return (
         <div className="fade-in">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-white">Mesaj Şablonları</h1>
+                <h1 className="text-3xl font-bold text-app-fg">Mesaj Şablonları</h1>
                 <button
                     onClick={() => {
                         setFormData({ name: "", content: "" });
@@ -103,14 +103,14 @@ export default function TemplatesPage() {
             </div>
 
             {loading ? (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-app-muted">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
                     Yükleniyor...
                 </div>
             ) : templates.length === 0 ? (
-                <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+                <div className="bg-app-card rounded-xl border border-app-border p-12 text-center">
                     <div className="text-6xl mb-4">📝</div>
-                    <p className="text-gray-400 mb-4">Henüz şablon oluşturmadınız</p>
+                    <p className="text-app-muted mb-4">Henüz şablon oluşturmadınız</p>
                     <button
                         onClick={() => setShowModal(true)}
                         className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
@@ -123,10 +123,10 @@ export default function TemplatesPage() {
                     {templates.map((template) => (
                         <div
                             key={template.id}
-                            className="bg-slate-800 rounded-xl border border-slate-700 p-6 hover:border-purple-500/50 transition"
+                            className="bg-app-card rounded-xl border border-app-border p-6 hover:border-purple-500/50 transition"
                         >
                             <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-lg font-semibold text-white">{template.name}</h3>
+                                <h3 className="text-lg font-semibold text-app-fg">{template.name}</h3>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => handleEdit(template)}
@@ -142,11 +142,11 @@ export default function TemplatesPage() {
                                     </button>
                                 </div>
                             </div>
-                            <p className="text-gray-400 text-sm whitespace-pre-wrap line-clamp-4">
+                            <p className="text-app-muted text-sm whitespace-pre-wrap line-clamp-4">
                                 {template.content}
                             </p>
-                            <div className="mt-4 pt-4 border-t border-slate-700">
-                                <span className="text-xs text-gray-500">
+                            <div className="mt-4 pt-4 border-t border-app-border">
+                                <span className="text-xs text-app-subtle">
                                     {new Date(template.created_at).toLocaleDateString("tr-TR")}
                                 </span>
                             </div>
@@ -158,13 +158,13 @@ export default function TemplatesPage() {
             {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg border border-slate-700">
-                        <h2 className="text-xl font-semibold text-white mb-4">
+                    <div className="bg-app-card rounded-xl p-6 w-full max-w-lg border border-app-border">
+                        <h2 className="text-xl font-semibold text-app-fg mb-4">
                             {editingId ? "Şablonu Düzenle" : "Yeni Şablon"}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                <label className="block text-sm font-medium text-app-muted mb-2">
                                     Şablon Adı
                                 </label>
                                 <input
@@ -173,11 +173,11 @@ export default function TemplatesPage() {
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     required
                                     placeholder="Örn: Hoş Geldiniz Mesajı"
-                                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 bg-app-elevated border border-app-border rounded-lg text-app-fg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                <label className="block text-sm font-medium text-app-muted mb-2">
                                     Mesaj İçeriği
                                 </label>
                                 <textarea
@@ -186,9 +186,9 @@ export default function TemplatesPage() {
                                     required
                                     rows={5}
                                     placeholder="Mesaj içeriğini yazın..."
-                                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                    className="w-full px-4 py-3 bg-app-elevated border border-app-border rounded-lg text-app-fg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-app-subtle mt-1">
                                     İpucu: {"{{isim}}"} yazarak müşteri ismini ekleyebilirsiniz
                                 </p>
                             </div>
@@ -196,7 +196,7 @@ export default function TemplatesPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                                    className="px-4 py-2 bg-app-elevated hover:bg-app-elevated text-app-fg rounded-lg transition"
                                 >
                                     İptal
                                 </button>

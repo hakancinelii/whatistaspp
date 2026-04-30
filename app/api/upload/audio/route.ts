@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsJson, corsPreflight, publicUrl } from '@/lib/cors';
 import { getUserFromToken } from '@/lib/auth';
 import { writeFile } from 'fs/promises';
 import path from 'path';
@@ -8,14 +9,14 @@ export async function POST(request: NextRequest) {
     try {
         const user = await getUserFromToken(request);
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return corsJson(request, { error: 'Unauthorized' }, { status: 401 });
         }
 
         const formData = await request.formData();
         const file = formData.get('audio') as File;
 
         if (!file) {
-            return NextResponse.json({ error: 'No audio file found' }, { status: 400 });
+            return corsJson(request, { error: 'No audio file found' }, { status: 400 });
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -34,10 +35,14 @@ export async function POST(request: NextRequest) {
         const filePath = path.join(uploadDir, fileName);
         await writeFile(filePath, buffer);
 
-        const url = `/uploads/audio/${fileName}`;
-        return NextResponse.json({ url });
+        const uploadPath = `/uploads/audio/${fileName}`;
+        return corsJson(request, { url: publicUrl(uploadPath), path: uploadPath });
     } catch (error: any) {
         console.error('Audio upload error:', error);
-        return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+        return corsJson(request, { error: 'Upload failed' }, { status: 500 });
     }
+}
+
+export async function OPTIONS(request: NextRequest) {
+    return corsPreflight(request);
 }

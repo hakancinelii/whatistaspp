@@ -205,8 +205,8 @@ export default function CustomersPage() {
         <div className="fade-in">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Müşteriler</h1>
-                    <p className="text-gray-400 text-sm">Toplam {customers.length} kayıtlı müşteri.</p>
+                    <h1 className="text-3xl font-bold text-app-fg mb-2">Müşteriler</h1>
+                    <p className="text-app-muted text-sm">Toplam {customers.length} kayıtlı müşteri.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <input
@@ -231,13 +231,13 @@ export default function CustomersPage() {
                     </button>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+                        className="px-4 py-2 bg-app-elevated text-app-fg rounded-lg hover:bg-app-elevated transition"
                     >
                         ➕ Manuel Ekle
                     </button>
                     <button
                         onClick={exportToCSV}
-                        className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+                        className="px-4 py-2 bg-app-elevated text-app-fg rounded-lg hover:bg-app-elevated transition"
                     >
                         📥 CSV İndir
                     </button>
@@ -258,13 +258,13 @@ export default function CustomersPage() {
                     placeholder="🔍 Müşteri ara (isim veya telefon)..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="flex-1 bg-app-card border border-app-border rounded-xl px-4 py-3 text-app-fg outline-none focus:ring-2 focus:ring-purple-500/50"
                 />
 
                 <select
                     value={tagFilter}
                     onChange={(e) => setTagFilter(e.target.value)}
-                    className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50 min-w-[200px]"
+                    className="bg-app-card border border-app-border rounded-xl px-4 py-3 text-app-fg outline-none focus:ring-2 focus:ring-purple-500/50 min-w-[200px]"
                 >
                     <option value="">🏷️ Tüm Etiketler</option>
                     {allTags.map(tag => (
@@ -273,9 +273,9 @@ export default function CustomersPage() {
                 </select>
             </div>
 
-            <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
+            <div className="bg-app-card rounded-2xl border border-app-border overflow-hidden shadow-xl">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-900/50 text-gray-400 text-xs font-black uppercase tracking-widest">
+                    <thead className="bg-app-bg/50 text-app-muted text-xs font-black uppercase tracking-widest">
                         <tr>
                             <th className="p-4 w-12 text-center">
                                 <input
@@ -293,12 +293,12 @@ export default function CustomersPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-700">
                         {loading ? (
-                            <tr><td colSpan={4} className="p-12 text-center text-gray-500">Yükleniyor...</td></tr>
+                            <tr><td colSpan={4} className="p-12 text-center text-app-subtle">Yükleniyor...</td></tr>
                         ) : filteredCustomers.length === 0 ? (
-                            <tr><td colSpan={4} className="p-12 text-center text-gray-500">Kayıt bulunamadı.</td></tr>
+                            <tr><td colSpan={4} className="p-12 text-center text-app-subtle">Kayıt bulunamadı.</td></tr>
                         ) : (
                             filteredCustomers.map((customer) => (
-                                <tr key={customer.id} className="text-gray-300 hover:bg-white/5 transition group">
+                                <tr key={customer.id} className="text-app-muted hover:bg-app-card/70 transition group">
                                     <td className="p-4 text-center">
                                         <input
                                             type="checkbox"
@@ -312,32 +312,32 @@ export default function CustomersPage() {
                                     <td className="p-4">
                                         <div
                                             onClick={() => setViewingCustomer(customer)}
-                                            className="font-bold text-white cursor-pointer hover:text-purple-400 transition"
+                                            className="font-bold text-app-fg cursor-pointer hover:text-purple-400 transition"
                                         >
                                             {customer.name || "İsimsiz"}
                                         </div>
-                                        <div className="text-[10px] text-gray-500 font-mono">+{customer.phone_number}</div>
+                                        <div className="text-xs text-app-subtle font-mono">+{customer.phone_number}</div>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
                                             {customer.tags ? customer.tags.split(',').map((tag, i) => (
-                                                <span key={i} className="text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">
+                                                <span key={i} className="text-[11px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">
                                                     {tag.trim()}
                                                 </span>
-                                            )) : <span className="text-[10px] text-gray-600">—</span>}
+                                            )) : <span className="text-xs text-app-muted">—</span>}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button
                                                 onClick={() => setViewingCustomer(customer)}
-                                                className="text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition font-bold"
+                                                className="text-xs bg-app-elevated hover:bg-app-elevated text-app-fg px-3 py-1.5 rounded-lg transition font-bold"
                                             >
                                                 👁️ Profil
                                             </button>
                                             <button
                                                 onClick={() => setEditingTags({ id: customer.id, tags: customer.tags || "" })}
-                                                className="text-[10px] bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/20 transition font-bold"
+                                                className="text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/20 transition font-bold"
                                             >
                                                 🏷️ Etiketle
                                             </button>
@@ -353,54 +353,54 @@ export default function CustomersPage() {
             {/* View Customer Detail Modal */}
             {viewingCustomer && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 border border-slate-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-app-card border border-app-border rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-8 text-center relative">
-                            <button onClick={() => setViewingCustomer(null)} className="absolute top-4 right-4 text-white/50 hover:text-white text-2xl">×</button>
-                            <div className="w-20 h-20 bg-slate-900 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold border-4 border-slate-800">
+                            <button onClick={() => setViewingCustomer(null)} className="absolute top-4 right-4 text-app-fg/50 hover:text-app-fg text-2xl">×</button>
+                            <div className="w-20 h-20 bg-app-bg rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold border-4 border-app-border">
                                 {viewingCustomer.name?.[0]?.toUpperCase() || "U"}
                             </div>
-                            <h2 className="text-2xl font-bold text-white mb-1">{viewingCustomer.name || "İsimsiz"}</h2>
+                            <h2 className="text-2xl font-bold text-app-fg mb-1">{viewingCustomer.name || "İsimsiz"}</h2>
                             <p className="text-purple-200 text-sm font-mono">+{viewingCustomer.phone_number}</p>
                         </div>
 
                         <div className="p-8 space-y-6">
                             {/* Tags Section */}
                             <div>
-                                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">Etiketler</h3>
+                                <h3 className="text-xs font-black text-app-subtle uppercase tracking-widest mb-3">Etiketler</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {viewingCustomer.tags ? viewingCustomer.tags.split(',').map((tag, i) => (
-                                        <span key={i} className="bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full text-[10px] font-bold border border-purple-500/20">
+                                        <span key={i} className="bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/20">
                                             {tag.trim()}
                                         </span>
-                                    )) : <span className="text-gray-500 text-sm">Etiket bulunmuyor.</span>}
+                                    )) : <span className="text-app-subtle text-sm">Etiket bulunmuyor.</span>}
                                 </div>
                             </div>
 
                             {/* Additional Data Section */}
                             <div>
-                                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">Ek Bilgiler (CRM)</h3>
-                                <div className="bg-slate-900 rounded-2xl p-4 border border-white/5 space-y-3">
+                                <h3 className="text-xs font-black text-app-subtle uppercase tracking-widest mb-3">Ek Bilgiler (CRM)</h3>
+                                <div className="bg-app-bg rounded-2xl p-4 border border-app-border/60 space-y-3">
                                     {viewingCustomer.additional_data ? (() => {
                                         try {
                                             const data = JSON.parse(viewingCustomer.additional_data);
                                             const keys = Object.keys(data);
-                                            if (keys.length === 0) return <span className="text-gray-600 text-sm italic">Ek veri bulunmuyor.</span>;
+                                            if (keys.length === 0) return <span className="text-app-muted text-sm italic">Ek veri bulunmuyor.</span>;
                                             return keys.map(key => (
                                                 <div key={key} className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-500 capitalize">{key.replace(/_/g, ' ')}:</span>
-                                                    <span className="text-white font-medium">{data[key]}</span>
+                                                    <span className="text-app-subtle capitalize">{key.replace(/_/g, ' ')}:</span>
+                                                    <span className="text-app-fg font-medium">{data[key]}</span>
                                                 </div>
                                             ));
                                         } catch (e) {
-                                            return <span className="text-gray-600 text-sm italic">Veri okunamadı.</span>;
+                                            return <span className="text-app-muted text-sm italic">Veri okunamadı.</span>;
                                         }
-                                    })() : <span className="text-gray-600 text-sm italic">Bu müşteri için ek veri yüklenmemiş.</span>}
+                                    })() : <span className="text-app-muted text-sm italic">Bu müşteri için ek veri yüklenmemiş.</span>}
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => setViewingCustomer(null)}
-                                className="w-full py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-2xl transition"
+                                className="w-full py-4 bg-app-elevated hover:bg-app-elevated text-app-fg font-bold rounded-2xl transition"
                             >
                                 Kapat
                             </button>
@@ -412,19 +412,19 @@ export default function CustomersPage() {
             {/* Edit Tags Modal (Existing) */}
             {editingTags && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <h2 className="text-xl font-bold text-white mb-4">Etiketleri Düzenle</h2>
+                    <div className="bg-app-card border border-app-border rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                        <h2 className="text-xl font-bold text-app-fg mb-4">Etiketleri Düzenle</h2>
                         <form onSubmit={handleUpdateTags}>
                             <input
                                 type="text"
                                 value={editingTags.tags}
                                 onChange={(e) => setEditingTags({ ...editingTags, tags: e.target.value })}
                                 placeholder="Örn: VIP, Yeni Müşteri..."
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50 mb-6"
+                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg outline-none focus:ring-2 focus:ring-purple-500/50 mb-6"
                                 autoFocus
                             />
                             <div className="flex gap-3">
-                                <button type="button" onClick={() => setEditingTags(null)} className="flex-1 px-4 py-3 bg-slate-700 text-white rounded-xl transition font-bold">Vazgeç</button>
+                                <button type="button" onClick={() => setEditingTags(null)} className="flex-1 px-4 py-3 bg-app-elevated text-app-fg rounded-xl transition font-bold">Vazgeç</button>
                                 <button type="submit" className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-xl transition font-bold">Güncelle</button>
                             </div>
                         </form>
@@ -435,41 +435,41 @@ export default function CustomersPage() {
             {/* Manual Add Modal (Existing) */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-2xl font-bold text-white mb-6">Yeni Müşteri Ekle</h2>
+                    <div className="bg-app-card border border-app-border rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-2xl font-bold text-app-fg mb-6">Yeni Müşteri Ekle</h2>
                         <form onSubmit={handleAddCustomer} className="space-y-4">
                             <div>
-                                <label className="block text-gray-400 text-sm mb-1">Telefon Numarası</label>
+                                <label className="block text-app-muted text-sm mb-1">Telefon Numarası</label>
                                 <input
                                     type="text"
                                     value={newCustomer.phone}
                                     onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                                     placeholder="905xxxxxxxxx"
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg outline-none focus:ring-2 focus:ring-purple-500/50"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-gray-400 text-sm mb-1">İsim (Opsiyonel)</label>
+                                <label className="block text-app-muted text-sm mb-1">İsim (Opsiyonel)</label>
                                 <input
                                     type="text"
                                     value={newCustomer.name}
                                     onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg outline-none focus:ring-2 focus:ring-purple-500/50"
                                 />
                             </div>
                             <div>
-                                <label className="block text-gray-400 text-sm mb-1">Etiketler (Virgülle ayırın)</label>
+                                <label className="block text-app-muted text-sm mb-1">Etiketler (Virgülle ayırın)</label>
                                 <input
                                     type="text"
                                     value={newCustomer.tags}
                                     onChange={(e) => setNewCustomer({ ...newCustomer, tags: e.target.value })}
                                     placeholder="VIP, Yeni, Potansiyel"
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-3 text-app-fg outline-none focus:ring-2 focus:ring-purple-500/50"
                                 />
                             </div>
                             <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-slate-700 text-white rounded-xl hover:bg-slate-600 transition font-bold">Vazgeç</button>
+                                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-app-elevated text-app-fg rounded-xl hover:bg-app-elevated transition font-bold">Vazgeç</button>
                                 <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-500 hover:to-pink-500 transition font-bold">Ekle</button>
                             </div>
                         </form>
