@@ -22,12 +22,14 @@ const nextConfig = {
     async rewrites() {
         if (!apiProxyTarget) return [];
 
-        return [
-            {
-                source: '/api/:path*',
-                destination: `${apiProxyTarget.replace(/\/$/, '')}/api/:path*`,
-            },
-        ];
+        return {
+            beforeFiles: [
+                {
+                    source: '/api/:path*',
+                    destination: `${apiProxyTarget.replace(/\/$/, '')}/api/:path*`,
+                },
+            ],
+        };
     },
     webpack: (config) => {
         config.externals.push({
