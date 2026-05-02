@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { isTransferJob } from "@/lib/transfer-filter";
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -148,6 +149,8 @@ export default function DriverDashboard() {
             // Otomatik Arama için sadece beklemede olan işler
             if (job.status !== 'pending') return false;
         }
+
+        if (!isTransferJob(job)) return false;
 
         const priceNum = parseInt(job.price?.toString().replace(/\D/g, '')) || 0;
         const normalizedSearch = normalize(regionSearch || '');
@@ -1244,9 +1247,14 @@ export default function DriverDashboard() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="font-bold text-app-muted text-xs mt-0.5 max-w-[150px] truncate opacity-70">
-                                                    {job.raw_message?.slice(0, 40)}
-                                                </div>
+                                                <details className="mt-1 max-w-[260px] group/message">
+                                                    <summary className="list-none cursor-pointer text-xs font-bold text-app-muted/80 leading-snug line-clamp-2 hover:text-app-fg transition-colors">
+                                                        {job.raw_message || 'Mesaj detayı yok'}
+                                                    </summary>
+                                                    <div className="mt-2 rounded-xl border border-app-border/60 bg-app-bg/80 p-3 text-xs font-semibold leading-relaxed text-app-muted whitespace-pre-wrap shadow-xl">
+                                                        {job.raw_message || 'Mesaj detayı yok'}
+                                                    </div>
+                                                </details>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end flex-shrink-0 ml-2">

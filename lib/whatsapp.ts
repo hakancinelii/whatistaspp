@@ -7,6 +7,7 @@ import { writeFile } from 'fs/promises';
 import { execSync } from 'child_process';
 import { tryGemini } from './ai';
 import * as dbLib from './db';
+import { isTransferJob } from './transfer-filter';
 
 
 // Use a global variable to persist sessions across HMR reloads in dev mode
@@ -408,10 +409,13 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
                         // 2. İş Analizi
                         const job = await parseTransferJob(text);
                         if (job) {
-                            // FİYAT FİLTRESİ: 400 TL altı ve belirsiz düşük fiyatlı işleri yoksay (Korsan taksi/dolmuş engelleme)
+                            if (!isTransferJob({ ...job, raw_message: text })) {
+                                console.log(`[WA] ⏭️ Non-transfer message skipped: ${text.substring(0, 80)}`);
+                                continue;
+                            }
+
                             const priceNum = parseInt(job.price.replace(/\D/g, ''));
                             if (!isNaN(priceNum) && priceNum < 400) {
-                                // console.log(`[WA] ⏭️ Job skipped (Low Price): ${job.price}`);
                                 continue;
                             }
                             const senderJid = msg.key.participant || msg.key.remoteJid || fromJid;

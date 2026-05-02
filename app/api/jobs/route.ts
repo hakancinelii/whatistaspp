@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
+import { isTransferJob } from '@/lib/transfer-filter';
 
 export async function GET(request: NextRequest) {
     try {
@@ -37,8 +38,10 @@ export async function GET(request: NextRequest) {
             ORDER BY latest_at DESC
         `, [user.userId]);
 
-        console.log(`[JobsAPI] Global Pool: Found ${jobs?.length || 0} unique jobs for user ${user.userId}.`);
-        return NextResponse.json(jobs || []);
+        const transferJobs = (jobs || []).filter(isTransferJob);
+
+        console.log(`[JobsAPI] Global Pool: Found ${transferJobs.length} transfer jobs for user ${user.userId}.`);
+        return NextResponse.json(transferJobs);
     } catch (error: any) {
         console.error('Jobs GET error detailed:', error.message);
         return NextResponse.json({
