@@ -2,6 +2,12 @@
 import { getDatabase } from './db';
 // whatsapp imports removed to prevent circular dependency
 
+const withTimeout = <T>(promise: Promise<T>, ms: number, message: string) =>
+    Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+    ]);
+
 export async function processJobTaking(userId: number, jobId: number, clientGroupJid?: string, clientPhone?: string, externalDriverId?: number) {
     const db = await getDatabase();
 
@@ -156,7 +162,11 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
 
         if (jid) {
             try {
-                await session.sock.sendMessage(jid, { text: customerMessage });
+                await withTimeout(
+                    session.sock.sendMessage(jid, { text: customerMessage }),
+                    15000,
+                    'WhatsApp müşteri mesajı zaman aşımına düştü.'
+                );
             } catch (err: any) {
                 console.error(`[JobService] Customer Send Error:`, err.message);
                 throw new Error(`Müşteriye mesaj gönderilemedi: ${err.message}`);
@@ -165,7 +175,11 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     } else if (targetSenderJid && (targetSenderJid.endsWith('@s.whatsapp.net') || targetSenderJid.endsWith('@lid'))) {
         let jid = targetSenderJid;
         try {
-            await session.sock.sendMessage(jid, { text: customerMessage });
+            await withTimeout(
+                session.sock.sendMessage(jid, { text: customerMessage }),
+                15000,
+                'WhatsApp gönderen mesajı zaman aşımına düştü.'
+            );
         } catch (err: any) {
             console.error(`[JobService] Sender Send Error:`, err.message);
         }
@@ -174,7 +188,11 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     // 8. Send to Group
     if (targetGroupJid !== 'MANUEL') {
         try {
-            await session.sock.sendMessage(targetGroupJid, { text: groupMessage });
+            await withTimeout(
+                session.sock.sendMessage(targetGroupJid, { text: groupMessage }),
+                15000,
+                'WhatsApp grup mesajı zaman aşımına düştü.'
+            );
         } catch (e) { }
     }
 

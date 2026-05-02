@@ -592,7 +592,8 @@ export default function DriverDashboard() {
                 },
                 body: JSON.stringify({ jobId, groupJid, phone, externalDriverId })
             });
-            const data = await res.json();
+            const contentType = res.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await res.json() : { error: await res.text() };
 
             if (res.status === 401) {
                 localStorage.removeItem("token");
@@ -606,7 +607,10 @@ export default function DriverDashboard() {
                 fetchJobs();
             } else {
                 console.error("[Driver] Take Job API Error:", data);
-                alert("❌ Hata: " + (data.error || "Bilinmeyen bir hata oluştu."));
+                const message = res.status === 504
+                    ? 'İş alma isteği zaman aşımına düştü. WhatsApp bağlantısını kontrol edip tekrar deneyin.'
+                    : (data.error || "Bilinmeyen bir hata oluştu.");
+                alert("❌ Hata: " + message);
             }
         } catch (e: any) {
             console.error("[Driver] Take Job Global Error:", e);
