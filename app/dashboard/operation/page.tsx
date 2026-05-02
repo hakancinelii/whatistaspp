@@ -414,6 +414,10 @@ export default function OperationPage() {
         return { day: d, month: months[parseInt(m) - 1] };
     };
 
+    const modalInputClass = "w-full h-11 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 dark:border-white/10 dark:bg-slate-950/55 dark:text-slate-50 dark:placeholder:text-slate-500";
+    const modalLabelClass = "block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1.5 ml-1 tracking-wide";
+    const modalTextareaClass = "w-full min-h-[88px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold leading-relaxed text-slate-950 shadow-sm outline-none transition-all resize-none placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 dark:border-white/10 dark:bg-slate-950/55 dark:text-slate-50 dark:placeholder:text-slate-500";
+
     return (
         <div className="fade-in">
             {/* Top Bar for View Switcher */}
@@ -874,86 +878,86 @@ export default function OperationPage() {
 
             {/* Add / Edit Modal */}
             {(showAddModal || editRes) && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-[#1e293b] border border-app-border/70 rounded-[3rem] w-full max-w-4xl shadow-2xl relative my-auto">
-                        <div className="p-8 md:p-12 border-b border-app-border/60 bg-gradient-to-r from-emerald-600/10 to-teal-600/10">
-                            <h2 className="text-3xl font-black text-app-fg">{editRes ? 'Rezervasyonu Düzenle' : 'Yeni Transfer Rezervasyonu'}</h2>
-                            <p className="text-app-muted text-sm mt-1">Lütfen transfer detaylarını eksiksiz doldurun.</p>
-                            <button onClick={() => { setShowAddModal(false); setEditRes(null); }} className="absolute top-8 right-8 text-app-subtle hover:text-app-fg text-2xl font-bold transition-colors">✕</button>
+                <div className="fixed inset-0 bg-slate-950/75 dark:bg-black/82 backdrop-blur-xl flex items-center justify-center z-50 p-3 md:p-5 overflow-y-auto">
+                    <div className="bg-white text-slate-950 dark:bg-slate-900 dark:text-slate-50 border border-slate-200/80 dark:border-white/10 rounded-[1.75rem] w-full max-w-3xl shadow-2xl relative my-auto overflow-hidden">
+                        <div className="px-6 py-5 md:px-8 border-b border-slate-200 dark:border-white/10 bg-gradient-to-r from-emerald-50 via-white to-sky-50 dark:from-emerald-500/10 dark:via-slate-900 dark:to-sky-500/10">
+                            <h2 className="text-2xl md:text-[1.65rem] font-black tracking-tight text-slate-950 dark:text-white">{editRes ? 'Rezervasyonu Düzenle' : 'Yeni Transfer Rezervasyonu'}</h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Transfer detaylarını hızlıca girin; zorunlu alanları boş bırakmayın.</p>
+                            <button type="button" onClick={() => { setShowAddModal(false); setEditRes(null); }} className="absolute top-5 right-5 w-9 h-9 rounded-full text-slate-400 hover:text-slate-950 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-white/10 text-xl font-bold transition-colors">✕</button>
                         </div>
 
-                        <form onSubmit={editRes ? handleUpdateReservation : handleAddReservation} className="p-8 md:p-12 space-y-10">
+                        <form onSubmit={editRes ? handleUpdateReservation : handleAddReservation} className="p-5 md:p-7 space-y-6">
                             {/* Section 1: Customer */}
-                            <div className="grid md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
                                     <h3 className="text-xs font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <span className="w-4 h-[2px] bg-emerald-400"></span> MÜŞTERİ BİLGİLERİ
                                     </h3>
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">İsim Soyisim</label>
+                                            <label className={modalLabelClass}>İsim Soyisim</label>
                                             <input
                                                 type="text" required
                                                 value={editRes ? editRes.customer_name : newRes.customerName}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, customer_name: e.target.value }) : setNewRes({ ...newRes, customerName: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Telefon (WhatsApp)</label>
+                                            <label className={modalLabelClass}>Telefon (WhatsApp)</label>
                                             <input
                                                 type="text" required
                                                 value={editRes ? editRes.customer_phone : newRes.customerPhone}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, customer_phone: e.target.value }) : setNewRes({ ...newRes, customerPhone: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all font-mono"
+                                                className={`${modalInputClass} font-mono`}
                                                 placeholder="905xxxxxxxxx"
                                             />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <span className="w-4 h-[2px] bg-blue-400"></span> ZAMAN & KONUM
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Tarih</label>
+                                            <label className={modalLabelClass}>Tarih</label>
                                             <input
                                                 type="date" required
                                                 value={editRes ? editRes.date : newRes.date}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, date: e.target.value }) : setNewRes({ ...newRes, date: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Saat</label>
+                                            <label className={modalLabelClass}>Saat</label>
                                             <input
                                                 type="time" required
                                                 value={editRes ? editRes.time : newRes.time}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, time: e.target.value }) : setNewRes({ ...newRes, time: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 gap-4">
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Alış Noktası</label>
+                                            <label className={modalLabelClass}>Alış Noktası</label>
                                             <input
                                                 type="text" required
                                                 value={editRes ? editRes.pickup_location : newRes.pickup}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, pickup_location: e.target.value }) : setNewRes({ ...newRes, pickup: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                                 placeholder="Örn: Antalya Havalimanı"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Varış Noktası</label>
+                                            <label className={modalLabelClass}>Varış Noktası</label>
                                             <input
                                                 type="text" required
                                                 value={editRes ? editRes.dropoff_location : newRes.dropoff}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, dropoff_location: e.target.value }) : setNewRes({ ...newRes, dropoff: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                                 placeholder="Örn: Belek X Hotel"
                                             />
                                         </div>
@@ -962,14 +966,14 @@ export default function OperationPage() {
                             </div>
 
                             {/* Section 2: Passengers & Pricing */}
-                            <div className="grid md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
                                     <h3 className="text-xs font-black text-purple-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <span className="w-4 h-[2px] bg-purple-400"></span> YOLCU DETAYLARI
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Yolcu Sayısı</label>
+                                            <label className={modalLabelClass}>Yolcu Sayısı</label>
                                             <input
                                                 type="number" min="1" required
                                                 value={editRes ? editRes.passenger_count : newRes.passengers}
@@ -984,22 +988,22 @@ export default function OperationPage() {
                                                         setNewRes({ ...newRes, passengers: count, passengerNames: newNames });
                                                     }
                                                 }}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Uçuş Kodu</label>
+                                            <label className={modalLabelClass}>Uçuş Kodu</label>
                                             <input
                                                 type="text"
                                                 value={editRes ? (editRes.flight_code || '') : newRes.flightCode}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, flight_code: e.target.value }) : setNewRes({ ...newRes, flightCode: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-purple-500/50 outline-none transition-all uppercase"
+                                                className={`${modalInputClass} uppercase`}
                                                 placeholder="TK1234"
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                        <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Yolcu İsimleri</label>
+                                        <label className={modalLabelClass}>Yolcu İsimleri</label>
                                         {(editRes ? JSON.parse(editRes.passenger_names || '[]') : newRes.passengerNames).map((name: string, idx: number) => (
                                             <input
                                                 key={idx}
@@ -1017,32 +1021,32 @@ export default function OperationPage() {
                                                         setNewRes({ ...newRes, passengerNames: names });
                                                     }
                                                 }}
-                                                className="w-full bg-app-bg/40 border border-app-border/70 rounded-xl px-4 py-3 text-sm text-app-fg focus:ring-1 focus:ring-purple-500/50 outline-none mb-2"
+                                                className={`${modalInputClass} mb-2`}
                                             />
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <h3 className="text-xs font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <span className="w-4 h-[2px] bg-amber-400"></span> FİYAT & NOTLAR
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Fiyat</label>
+                                            <label className={modalLabelClass}>Fiyat</label>
                                             <input
                                                 type="text" required
                                                 value={editRes ? editRes.price : newRes.price}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, price: parseFloat(e.target.value) || 0 }) : setNewRes({ ...newRes, price: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Döviz</label>
+                                            <label className={modalLabelClass}>Döviz</label>
                                             <select
                                                 value={editRes ? editRes.currency : newRes.currency}
                                                 onChange={e => editRes ? setEditRes({ ...editRes, currency: e.target.value }) : setNewRes({ ...newRes, currency: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             >
                                                 <option value="USD">USD ($)</option>
                                                 <option value="EUR">EUR (€)</option>
@@ -1052,22 +1056,22 @@ export default function OperationPage() {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Operasyon Notları</label>
+                                        <label className={modalLabelClass}>Operasyon Notları</label>
                                         <textarea
                                             rows={3}
                                             value={editRes ? (editRes.notes || '') : newRes.notes}
                                             onChange={e => editRes ? setEditRes({ ...editRes, notes: e.target.value }) : setNewRes({ ...newRes, notes: e.target.value })}
-                                            className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-amber-500/50 outline-none transition-all resize-none"
+                                            className={modalTextareaClass}
                                             placeholder="Bagaj bilgisi, özel istekler vb."
                                         />
                                     </div>
                                     {editRes && (
                                         <div>
-                                            <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Durum</label>
+                                            <label className={modalLabelClass}>Durum</label>
                                             <select
                                                 value={editRes.status}
                                                 onChange={e => setEditRes({ ...editRes, status: e.target.value })}
-                                                className="w-full bg-app-bg/60 border border-app-border/70 rounded-2xl px-5 py-4 text-app-fg focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                                                className={modalInputClass}
                                             >
                                                 <option value="pending">Bekliyor</option>
                                                 <option value="confirmed">Onaylandı</option>
@@ -1078,9 +1082,9 @@ export default function OperationPage() {
                                 </div>
                             </div>
 
-                            <div className="flex gap-6 pt-10 border-t border-app-border/60">
-                                <button type="button" onClick={() => { setShowAddModal(false); setEditRes(null); }} className="flex-1 py-5 bg-app-card text-app-muted font-black rounded-3xl hover:bg-app-elevated hover:text-app-fg transition-all uppercase tracking-widest">İptal</button>
-                                <button type="submit" className="flex-[2] py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-3xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-600/20 uppercase tracking-[0.2em]">
+                            <div className="flex gap-4 pt-5 border-t border-slate-200 dark:border-white/10">
+                                <button type="button" onClick={() => { setShowAddModal(false); setEditRes(null); }} className="flex-1 py-3.5 bg-slate-100 text-slate-600 font-black rounded-2xl hover:bg-slate-200 hover:text-slate-950 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15 dark:hover:text-white transition-all uppercase tracking-widest">İptal</button>
+                                <button type="submit" className="flex-[2] py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl hover:scale-[1.01] active:scale-95 transition-all shadow-xl shadow-emerald-600/20 uppercase tracking-[0.18em]">
                                     {editRes ? 'GÜNCELLEMEYİ KAYDET' : 'REZERVASYONU OLUŞTUR'}
                                 </button>
                             </div>
@@ -1100,7 +1104,7 @@ export default function OperationPage() {
                         </div>
                         <form onSubmit={handleAssignDriver} className="p-8 space-y-6">
                             <div>
-                                <label className="block text-xs font-black text-app-subtle uppercase mb-2 ml-1">Sürücü WhatsApp Numarası</label>
+                                <label className={modalLabelClass}>Sürücü WhatsApp Numarası</label>
                                 <input
                                     type="text" required autoFocus
                                     value={driverPhoneInput}
