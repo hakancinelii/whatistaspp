@@ -50,9 +50,133 @@ async function initDatabase(): Promise<any> {
     rawDb.pragma('journal_mode = WAL');
     rawDb.pragma('synchronous = NORMAL');
     rawDb.pragma('busy_timeout = 30000');
+    runSqliteMigrations(rawDb);
     dbInstance = rawDb;
     return dbInstance;
   }
+}
+
+function runSqliteMigrations(db: Database.Database) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      phone_number TEXT NOT NULL,
+      name TEXT,
+      tags TEXT,
+      lid TEXT,
+      is_archived BOOLEAN DEFAULT 0,
+      profile_picture_url TEXT,
+      status TEXT,
+      additional_data TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, phone_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS incoming_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      phone_number TEXT NOT NULL,
+      name TEXT,
+      content TEXT,
+      media_url TEXT,
+      media_type TEXT,
+      received_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS sent_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      phone_number TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      media_url TEXT,
+      media_type TEXT,
+      job_id INTEGER,
+      customer_id INTEGER,
+      queue_index INTEGER,
+      is_read BOOLEAN DEFAULT 0,
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      scheduled_at DATETIME NOT NULL,
+      status TEXT DEFAULT 'pending',
+      recipients TEXT NOT NULL,
+      media_url TEXT,
+      media_type TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS drivers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      phone_number TEXT NOT NULL,
+      license_plate TEXT,
+      vehicle_type TEXT,
+      is_active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS reservations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      customer_id INTEGER NOT NULL,
+      driver_id INTEGER,
+      driver_phone TEXT,
+      voucher_number TEXT UNIQUE NOT NULL,
+      type TEXT DEFAULT 'transfer',
+      date TEXT NOT NULL,
+      time TEXT NOT NULL,
+      pickup_location TEXT NOT NULL,
+      dropoff_location TEXT NOT NULL,
+      flight_code TEXT,
+      passenger_count INTEGER DEFAULT 1,
+      passenger_names TEXT,
+      price REAL,
+      currency TEXT DEFAULT 'TRY',
+      status TEXT DEFAULT 'pending',
+      payment_status TEXT DEFAULT 'pending',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  const addColumn = (table: string, column: string, definition: string) => {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some(col => col.name === column)) {
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+    }
+  };
+
+  addColumn('customers', 'lid', 'TEXT');
+  addColumn('customers', 'is_archived', 'BOOLEAN DEFAULT 0');
+  addColumn('customers', 'profile_picture_url', 'TEXT');
+  addColumn('customers', 'status', 'TEXT');
+  addColumn('customers', 'additional_data', 'TEXT');
+  addColumn('incoming_messages', 'media_url', 'TEXT');
+  addColumn('incoming_messages', 'media_type', 'TEXT');
+  addColumn('sent_messages', 'media_url', 'TEXT');
+  addColumn('sent_messages', 'media_type', 'TEXT');
+  addColumn('sent_messages', 'job_id', 'INTEGER');
+  addColumn('sent_messages', 'customer_id', 'INTEGER');
+  addColumn('sent_messages', 'queue_index', 'INTEGER');
+  addColumn('sent_messages', 'is_read', 'BOOLEAN DEFAULT 0');
+  addColumn('scheduled_messages', 'media_url', 'TEXT');
+  addColumn('scheduled_messages', 'media_type', 'TEXT');
+  addColumn('reservations', 'driver_phone', 'TEXT');
+  addColumn('reservations', 'type', "TEXT DEFAULT 'transfer'");
+  addColumn('reservations', 'flight_code', 'TEXT');
+  addColumn('reservations', 'passenger_count', 'INTEGER DEFAULT 1');
+  addColumn('reservations', 'passenger_names', 'TEXT');
+  addColumn('reservations', 'price', 'REAL');
+  addColumn('reservations', 'currency', "TEXT DEFAULT 'TRY'");
+  addColumn('reservations', 'payment_status', "TEXT DEFAULT 'pending'");
+  addColumn('reservations', 'notes', 'TEXT');
 }
 
 // Convert SQLite compatible SQL to PostgreSQL compatible SQL

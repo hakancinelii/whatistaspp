@@ -167,6 +167,8 @@ export default function OperationPage() {
             if (res.ok) {
                 const data = await res.json();
                 setInboxMessages(data.messages || []);
+            } else {
+                setInboxMessages([]);
             }
         } catch (error) {
             console.error("Failed to fetch inbox messages:", error);
