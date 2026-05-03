@@ -58,6 +58,8 @@ const employmentKeywords = [
 const isUnknownLocation = (value?: string | null) => unknownValues.has(normalize((value || '').trim()));
 const includesAny = (value: string, keywords: string[]) => keywords.some(keyword => value.includes(keyword));
 const isAirportLocation = (value?: string | null) => includesAny(normalize(value || ''), airportKeywords);
+const hasTransferIntent = (value: string) =>
+    includesAny(value, ['TRANSFER', 'YOLCU', 'MISAFIR', 'PAX', 'UCUS', 'FLIGHT', 'KARSILAMA', 'ALINACAK', 'BIRAKILACAK', 'HAZIR']);
 
 export function isTransferJob(job: TransferJobLike) {
     const from = normalize((job.from_loc || '').trim());
@@ -65,14 +67,17 @@ export function isTransferJob(job: TransferJobLike) {
     const raw = normalize(job.raw_message || '');
 
     if (includesAny(raw, employmentKeywords)) return false;
-    if (isUnknownLocation(from) || isUnknownLocation(to)) return false;
     if (from === to) return false;
     if (from === 'COKLU / TAKAS' || Boolean(job.is_swap)) return false;
 
+    const fromIsUnknown = isUnknownLocation(from);
+    const toIsUnknown = isUnknownLocation(to);
     const hasAirport = isAirportLocation(from) || isAirportLocation(to) || includesAny(raw, airportKeywords);
     if (!hasAirport) return false;
 
     if (isAirportLocation(from) && isAirportLocation(to)) return false;
+    if (fromIsUnknown && toIsUnknown) return false;
+    if ((fromIsUnknown || toIsUnknown) && !hasTransferIntent(raw)) return false;
 
     return true;
 }

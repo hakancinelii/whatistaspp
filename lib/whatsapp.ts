@@ -157,6 +157,10 @@ export async function connectWhatsApp(userId: number, instanceId: string = 'main
                     session.sock = null;
                     if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
                     sessions.delete(sessionKey);
+                } else {
+                    setTimeout(() => {
+                        connectWhatsApp(userId, instanceId).catch(e => console.error('[WA] Reconnect failed:', e));
+                    }, 5000);
                 }
             } else if (connection === 'open') {
                 console.log(`[WA] ✅ Session ${sessionKey} connected successfully!`);
