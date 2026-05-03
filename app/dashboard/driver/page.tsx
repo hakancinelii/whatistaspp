@@ -18,6 +18,7 @@ export default function DriverDashboard() {
     const [isWakeLockActive, setIsWakeLockActive] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [waStatus, setWaStatus] = useState({ isConnected: false, isConnecting: false });
+    const [botStatus, setBotStatus] = useState({ isConnected: false, isConnecting: false });
     const [showOnlyReady, setShowOnlyReady] = useState(false);
     const [showOnlyAirport, setShowOnlyAirport] = useState(false);
     const [showOnlyVip, setShowOnlyVip] = useState(false);
@@ -250,7 +251,10 @@ export default function DriverDashboard() {
         try {
             const token = localStorage.getItem("token");
             if (!token) return;
-            const res = await apiFetch("/api/whatsapp/status", {
+            const res = await apiFetch("/api/whatsapp/status?instanceId=main", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const botRes = await apiFetch("/api/whatsapp/status?instanceId=gathering", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Kullanıcı bilgilerini de çekelim (telefon için)
@@ -276,6 +280,14 @@ export default function DriverDashboard() {
                 isConnected: !!data.isConnected,
                 isConnecting: !!data.isConnecting
             });
+
+            if (botRes.ok) {
+                const botData = await botRes.json();
+                setBotStatus({
+                    isConnected: !!botData.isConnected,
+                    isConnecting: !!botData.isConnecting
+                });
+            }
         } catch (e: any) {
             console.error("WA Status Error:", e);
         }
@@ -732,7 +744,11 @@ export default function DriverDashboard() {
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${waStatus.isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
                                 <span className={`text-[11px] font-bold ${waStatus.isConnected ? 'text-green-400' : 'text-red-400'}`}>
-                                    {waStatus.isConnected ? 'BAĞLI' : 'KOPUK'}
+                                    ANA {waStatus.isConnected ? 'BAĞLI' : 'KOPUK'}
+                                </span>
+                                <span className="text-[11px] text-app-subtle">•</span>
+                                <span className={`text-[11px] font-bold ${botStatus.isConnected ? 'text-green-400' : botStatus.isConnecting ? 'text-yellow-400' : 'text-red-400'}`}>
+                                    BOT {botStatus.isConnected ? 'BAĞLI' : botStatus.isConnecting ? 'BAĞLANIYOR' : 'KOPUK'}
                                 </span>
                                 <span className="text-[11px] text-app-subtle">•</span>
                                 <span className="text-[11px] font-bold text-app-muted">{filteredJobs.length} İŞ</span>
