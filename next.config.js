@@ -6,7 +6,7 @@ const withPWA = require('next-pwa')({
 });
 
 /** @type {import('next').NextConfig} */
-const apiProxyTarget = process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_BASE_URL;
+const apiProxyTarget = process.env.API_PROXY_TARGET;
 
 const nextConfig = {
     // output: 'standalone', // Disabled - causes issues with bcryptjs/jwt
