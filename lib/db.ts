@@ -160,6 +160,7 @@ function runSqliteMigrations(db: Database.Database) {
   addColumn('customers', 'additional_data', 'TEXT');
   addColumn('incoming_messages', 'media_url', 'TEXT');
   addColumn('incoming_messages', 'media_type', 'TEXT');
+  addColumn('incoming_messages', 'is_read', 'BOOLEAN DEFAULT 0');
   addColumn('sent_messages', 'media_url', 'TEXT');
   addColumn('sent_messages', 'media_type', 'TEXT');
   addColumn('sent_messages', 'job_id', 'INTEGER');

@@ -369,11 +369,12 @@ export default function OperationPage() {
             if (res.ok) {
                 showNotification(`Voucher ${target === 'driver' ? 'sürücüye' : 'müşteriye'} gönderildi!`, "success");
             } else {
-                const err = await res.json();
-                showNotification(err.error || "Gönderim başarısız.", "error");
+                const contentType = res.headers.get('content-type') || '';
+                const err = contentType.includes('application/json') ? await res.json() : { error: await res.text() };
+                showNotification(err.error || "Voucher gönderilemedi.", "error");
             }
-        } catch (error) {
-            showNotification("Bir hata oluştu.", "error");
+        } catch (error: any) {
+            showNotification(error.message || "Voucher gönderilemedi.", "error");
         } finally {
             setSendingVoucher(null);
         }
