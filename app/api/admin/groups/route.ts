@@ -74,6 +74,13 @@ export async function POST(request: NextRequest) {
         const { code, instanceId = 'main' } = await request.json();
         if (!code) return NextResponse.json({ error: 'Invite code required' }, { status: 400 });
 
+        // Çıkılmış grup kontrolü
+        const db = await getDatabase();
+        const group = await db.get('SELECT is_left FROM group_discovery WHERE invite_code = ?', [code]);
+        if (group?.is_left) {
+            return NextResponse.json({ error: 'Bu gruptan daha önce çıktınız. Tekrar katılmak için önce "çıkıldı" işaretini kaldırın.' }, { status: 400 });
+        }
+
         const session = await getSession(user.userId, instanceId);
         if (!session.sock || !session.isConnected) {
             return NextResponse.json({ error: `WhatsApp (${instanceId}) is not connected` }, { status: 400 });
@@ -84,6 +91,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, result });
     } catch (error: any) {
         console.error('[Groups API] Join Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// Grubu "çıkıldı" olarak işaretle / işareti kaldır
+export async function PATCH(request: NextRequest) {
+    try {
+        const user = await getUserFromToken(request);
+        if (!user || user.role !== 'admin') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { groupId, is_left } = await request.json();
+        if (!groupId) return NextResponse.json({ error: 'Group ID required' }, { status: 400 });
+
+        const db = await getDatabase();
+        await db.run('UPDATE group_discovery SET is_left = ? WHERE id = ?', [is_left ? 1 : 0, groupId]);
+
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error('[Groups API] Patch Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

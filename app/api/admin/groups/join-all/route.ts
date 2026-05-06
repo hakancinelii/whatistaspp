@@ -15,9 +15,8 @@ export async function POST(request: NextRequest) {
         const { instanceId = 'main' } = await request.json().catch(() => ({}));
 
         const db = await getDatabase();
-        // Sadece JID'si olmayan ve henüz katılınmamış (id ile kontrol edemeyiz, jid ile ederiz) grupları alalım
-        // Ama "join-all" butonu kullanıcının isteği, hepsini denemekte fayda var.
-        const groups = await db.all('SELECT id, invite_code, invite_link, group_jid FROM group_discovery');
+        // Çıkılmış (is_left) grupları hariç tut
+        const groups = await db.all('SELECT id, invite_code, invite_link, group_jid FROM group_discovery WHERE is_left = 0 OR is_left IS NULL');
 
         if (!groups || groups.length === 0) {
             return NextResponse.json({

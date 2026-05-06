@@ -10,15 +10,18 @@ interface DiscoveredGroup {
     found_by: string;
     created_at: string;
     is_joined?: boolean;
+    is_left?: boolean;
 }
 
 export default function GroupDiscovery() {
     const [groups, setGroups] = useState<DiscoveredGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [joiningId, setJoiningId] = useState<number | null>(null);
+    const [togglingId, setTogglingId] = useState<number | null>(null);
     const [isJoiningAll, setIsJoiningAll] = useState(false);
     const [instanceId, setInstanceId] = useState<'main' | 'gathering'>('gathering');
     const [instanceStatus, setInstanceStatus] = useState<{ isConnected: boolean; isConnecting: boolean } | null>(null);
+    const [showLeft, setShowLeft] = useState(false);
 
     useEffect(() => {
         fetchGroups();
@@ -84,6 +87,35 @@ export default function GroupDiscovery() {
         }
     };
 
+    const handleToggleLeft = async (id: number, currentlyLeft: boolean) => {
+        setTogglingId(id);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await apiFetch("/api/admin/groups", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ groupId: id, is_left: !currentlyLeft })
+            });
+
+            if (res.ok) {
+                setGroups(prev => prev.map(g => g.id === id ? { ...g, is_left: !currentlyLeft } : g));
+            } else {
+                alert("❌ İşlem başarısız oldu.");
+            }
+        } catch (e: any) {
+            alert("🚨 Hata: " + e.message);
+        } finally {
+            setTogglingId(null);
+        }
+    };
+
+    const leftCount = groups.filter(g => g.is_left).length;
+    const activeCount = groups.filter(g => !g.is_left).length;
+    const filteredGroups = showLeft ? groups : groups.filter(g => !g.is_left);
+
     if (loading) return (
         <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -139,7 +171,7 @@ export default function GroupDiscovery() {
                             alert(`❌ Seçilen cihaz (${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'}) bağlı değil! Önce WhatsApp bağlantısını kurun.`);
                             return;
                         }
-                        if (!confirm(`${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'} cihazı ile tüm gruplara katılmak istediğinize emin misiniz?\n\nNot: Bu işlem arka planda çalışacaktır, lütfen bitene kadar bekleyin.`)) return;
+                        if (!confirm(`${instanceId === 'main' ? 'Ana Cihaz' : 'Bot'} cihazı ile tüm gruplara katılmak istediğinize emin misiniz?\n\nNot: Çıkıldı olarak işaretlenen gruplar atlanacaktır.`)) return;
 
                         setIsJoiningAll(true);
                         try {
@@ -180,6 +212,30 @@ export default function GroupDiscovery() {
                 </button>
             </div>
 
+            {/* Left Groups Toggle */}
+            <div className="flex items-center justify-between bg-app-card px-6 py-4 rounded-2xl border border-app-border/60">
+                <div className="flex items-center gap-4">
+                    <span className="text-sm font-bold text-app-muted">
+                        Aktif: <span className="text-green-400">{activeCount}</span>
+                    </span>
+                    <span className="text-sm font-bold text-app-muted">
+                        Çıkılan: <span className="text-red-400">{leftCount}</span>
+                    </span>
+                    <span className="text-sm font-bold text-app-muted">
+                        Toplam: <span className="text-app-fg">{groups.length}</span>
+                    </span>
+                </div>
+                <button
+                    onClick={() => setShowLeft(!showLeft)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${showLeft
+                        ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                        : 'bg-app-elevated text-app-subtle border-app-border/60 hover:text-app-muted'
+                        }`}
+                >
+                    {showLeft ? '🚫 Çıkılanları Gizle' : `👁️ Çıkılanları Göster (${leftCount})`}
+                </button>
+            </div>
+
             <div className="bg-app-card rounded-2xl border border-app-border overflow-hidden">
                 <table className="w-full text-left">
                     <thead>
@@ -192,20 +248,25 @@ export default function GroupDiscovery() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-app-border">
-                        {groups.length === 0 ? (
+                        {filteredGroups.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-12 text-center text-app-subtle font-medium">
-                                    Henüz keşfedilen bir grup davet linki bulunamadı.
+                                    {showLeft ? 'Henüz çıkılmış grup yok.' : 'Henüz keşfedilen bir grup davet linki bulunamadı.'}
                                 </td>
                             </tr>
                         ) : (
-                            groups.map((group: DiscoveredGroup) => (
-                                <tr key={group.id} className={`transition-colors ${group.is_joined ? 'bg-green-500/5 hover:bg-green-500/10' : 'hover:bg-app-elevated/30'}`}>
+                            filteredGroups.map((group: DiscoveredGroup) => (
+                                <tr key={group.id} className={`transition-colors ${group.is_left
+                                    ? 'bg-red-500/5 hover:bg-red-500/10 opacity-60'
+                                    : group.is_joined
+                                        ? 'bg-green-500/5 hover:bg-green-500/10'
+                                        : 'hover:bg-app-elevated/30'
+                                    }`}>
                                     <td className="px-6 py-4 text-sm text-app-muted">
                                         {new Date(group.created_at).toLocaleString('tr-TR')}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-sm font-mono text-blue-400 truncate max-w-xs" title={group.invite_link}>
+                                        <div className={`text-sm font-mono truncate max-w-xs ${group.is_left ? 'text-red-400/50 line-through' : 'text-blue-400'}`} title={group.invite_link}>
                                             {group.invite_link}
                                         </div>
                                     </td>
@@ -215,7 +276,12 @@ export default function GroupDiscovery() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        {group.is_joined ? (
+                                        {group.is_left ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase bg-red-500/20 text-red-400 border border-red-500/30">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                                                ÇIKILDI
+                                            </span>
+                                        ) : group.is_joined ? (
                                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase bg-green-500/20 text-green-400 border border-green-500/30">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                                                 KATILDIN
@@ -228,25 +294,48 @@ export default function GroupDiscovery() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        {group.is_joined ? (
+                                        <div className="flex items-center justify-end gap-2">
+                                            {/* Çıkıldı Toggle */}
                                             <button
-                                                disabled
-                                                className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-app-card text-green-500/50 cursor-default border border-green-900/30 opacity-60"
+                                                onClick={() => handleToggleLeft(group.id, !!group.is_left)}
+                                                disabled={togglingId === group.id}
+                                                className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${group.is_left
+                                                    ? 'bg-green-600/20 text-green-400 border-green-500/30 hover:bg-green-600/30'
+                                                    : 'bg-red-600/20 text-red-400 border-red-500/30 hover:bg-red-600/30'
+                                                    } ${togglingId === group.id ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+                                                title={group.is_left ? 'Çıkıldı işaretini kaldır' : 'Çıkıldı olarak işaretle'}
                                             >
-                                                ZATEN ÜYESİNİZ
+                                                {togglingId === group.id ? '...' : group.is_left ? '↩️ GERİ AL' : '🚫 ÇIKILDIM'}
                                             </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleJoin(group.id, group.invite_code)}
-                                                disabled={joiningId === group.id}
-                                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${joiningId === group.id
-                                                    ? 'bg-app-elevated text-app-subtle cursor-not-allowed'
-                                                    : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20 active:scale-95'
-                                                    }`}
-                                            >
-                                                {joiningId === group.id ? 'KATILINIYOR...' : 'GRUBA KATIL ✅'}
-                                            </button>
-                                        )}
+
+                                            {/* Katıl Butonu */}
+                                            {group.is_left ? (
+                                                <button
+                                                    disabled
+                                                    className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-app-card text-red-500/40 cursor-not-allowed border border-red-900/20 opacity-50"
+                                                >
+                                                    ÇIKILDI
+                                                </button>
+                                            ) : group.is_joined ? (
+                                                <button
+                                                    disabled
+                                                    className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-app-card text-green-500/50 cursor-default border border-green-900/30 opacity-60"
+                                                >
+                                                    ZATEN ÜYESİNİZ
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleJoin(group.id, group.invite_code)}
+                                                    disabled={joiningId === group.id}
+                                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${joiningId === group.id
+                                                        ? 'bg-app-elevated text-app-subtle cursor-not-allowed'
+                                                        : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20 active:scale-95'
+                                                        }`}
+                                                >
+                                                    {joiningId === group.id ? 'KATILINIYOR...' : 'GRUBA KATIL ✅'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))

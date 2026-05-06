@@ -488,8 +488,11 @@ export async function runMigrations() {
             group_name TEXT,
             group_jid TEXT,
             found_by_user_id INTEGER,
+            is_left BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        ALTER TABLE group_discovery ADD COLUMN IF NOT EXISTS is_left BOOLEAN DEFAULT FALSE;
 
         CREATE TABLE IF NOT EXISTS driver_filters (
             id SERIAL PRIMARY KEY,

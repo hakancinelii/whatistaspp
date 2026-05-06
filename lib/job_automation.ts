@@ -31,18 +31,18 @@ export const ISTANBUL_REGIONS = [
 
     // Anadolu Yakası
     { id: "SAW", label: "Sabiha Gökçen (SAW)", side: "Anadolu", keywords: ["SAW", "SABİHA"] },
-    { id: "ATAŞEHİR", label: "Ataşehir", side: "Anadolu", keywords: ["ATAŞEHİR"] },
+    { id: "ATAŞEHİR", label: "Ataşehir", side: "Anadolu", keywords: ["ATAŞEHİR", "KOZYATAĞI", "İMES", "KAYIŞDAĞI", "YENİSAHRA"] },
     { id: "BEYKOZ", label: "Beykoz", side: "Anadolu", keywords: ["BEYKOZ", "KAVACIK"] },
     { id: "ÇEKMEKÖY", label: "Çekmeköy", side: "Anadolu", keywords: ["ÇEKMEKÖY"] },
-    { id: "KADIKÖY", label: "Kadıköy", side: "Anadolu", keywords: ["KADIKÖY", "GÖZTEPE", "BOSTANCI", "MODA"] },
-    { id: "KARTAL", label: "Kartal", side: "Anadolu", keywords: ["KARTAL"] },
-    { id: "MALTEPE", label: "Maltepe", side: "Anadolu", keywords: ["MALTEPE"] },
-    { id: "PENDİK", label: "Pendik", side: "Anadolu", keywords: ["PENDİK"] },
+    { id: "KADIKÖY", label: "Kadıköy", side: "Anadolu", keywords: ["KADIKÖY", "GÖZTEPE", "BOSTANCI", "MODA", "FİKİRTEPE", "CADDEBOSTAN", "ERENKÖY", "SUADİYE", "FENERBAHÇE"] },
+    { id: "KARTAL", label: "Kartal", side: "Anadolu", keywords: ["KARTAL", "YAKACIK"] },
+    { id: "MALTEPE", label: "Maltepe", side: "Anadolu", keywords: ["MALTEPE", "KÜÇÜKYALI", "İDEALTEPE"] },
+    { id: "PENDİK", label: "Pendik", side: "Anadolu", keywords: ["PENDİK", "KURTKÖY", "KAYNARCA", "GÜZELYALI"] },
     { id: "SANCAKTEPE", label: "Sancaktepe", side: "Anadolu", keywords: ["SANCAKTEPE"] },
     { id: "SULTANBEYLİ", label: "Sultanbeyli", side: "Anadolu", keywords: ["SULTANBEYLİ"] },
-    { id: "TUZLA", label: "Tuzla", side: "Anadolu", keywords: ["TUZLA"] },
-    { id: "ÜMRANİYE", label: "Ümraniye", side: "Anadolu", keywords: ["ÜMRANİYE"] },
-    { id: "ÜSKÜDAR", label: "Üsküdar", side: "Anadolu", keywords: ["ÜSKÜDAR", "ÇENGELKÖY", "BEYLERBEYİ"] },
+    { id: "TUZLA", label: "Tuzla", side: "Anadolu", keywords: ["TUZLA", "AYDINLI", "İÇMELER", "ŞEKERPINAR"] },
+    { id: "ÜMRANİYE", label: "Ümraniye", side: "Anadolu", keywords: ["ÜMRANİYE", "DUDULLU", "LİBADİYE"] },
+    { id: "ÜSKÜDAR", label: "Üsküdar", side: "Anadolu", keywords: ["ÜSKÜDAR", "ÇENGELKÖY", "BEYLERBEYİ", "ALTUNIZADE", "KÜPLÜCE", "SELİMİYE", "BULGURLU", "ACIBADEM", "KOŞUYOLU"] },
 ];
 
 function normalize(str: string): string {

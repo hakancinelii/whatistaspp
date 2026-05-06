@@ -61,6 +61,8 @@ const isAirportLocation = (value?: string | null) => includesAny(normalize(value
 const hasTransferIntent = (value: string) =>
     includesAny(value, ['TRANSFER', 'YOLCU', 'MISAFIR', 'PAX', 'UCUS', 'FLIGHT', 'KARSILAMA', 'ALINACAK', 'BIRAKILACAK', 'HAZIR']);
 
+const hasPrice = (value: string) => /\d{3,5}\s*(?:₺|TL|TRY)?/.test(value);
+
 export function isTransferJob(job: TransferJobLike) {
     const from = normalize((job.from_loc || '').trim());
     const to = normalize((job.to_loc || '').trim());
@@ -73,7 +75,20 @@ export function isTransferJob(job: TransferJobLike) {
     const fromIsUnknown = isUnknownLocation(from);
     const toIsUnknown = isUnknownLocation(to);
     const hasAirport = isAirportLocation(from) || isAirportLocation(to) || includesAny(raw, airportKeywords);
-    if (!hasAirport) return false;
+
+    // Havalimanı olmayan ama açık transfer niyeti olan işler de geçerli
+    // Örn: "11:00 Bağcılar Dudullu 2 pax 1500₺" -> havalimanı yok ama PAX var, lokasyonlar var
+    if (!hasAirport) {
+        // Her iki lokasyon da biliniyorsa VE transfer niyeti varsa VEYA fiyat varsa -> geçerli iş
+        if (!fromIsUnknown && !toIsUnknown && (hasTransferIntent(raw) || hasPrice(raw))) {
+            return true;
+        }
+        // Tek lokasyon biliniyor + transfer niyeti + fiyat -> geçerli iş
+        if ((!fromIsUnknown || !toIsUnknown) && hasTransferIntent(raw) && hasPrice(raw)) {
+            return true;
+        }
+        return false;
+    }
 
     if (isAirportLocation(from) && isAirportLocation(to)) return false;
     if (fromIsUnknown && toIsUnknown) return false;
