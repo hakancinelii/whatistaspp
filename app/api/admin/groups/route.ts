@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         }
 
         // Grupları işle ve durum ekle
+        const jidsToMarkAsLeft: string[] = [];
+        
         const processedGroups = groups.map((g: any) => {
             let is_joined = false;
 
@@ -54,8 +56,28 @@ export async function GET(request: NextRequest) {
                 if (match) is_joined = true;
             }
 
+            // TELEFONDAN ÇIKILMA DURUMU KONTROLÜ
+            // Eğer veritabanında group_jid varsa ama artık WhatsApp grupları arasında yoksa (ve WhatsApp listesi başarıyla çekilmişse)
+            // Bu, kullanıcının telefondan gruptan çıktığı anlamına gelir.
+            if (g.group_jid && !is_joined && !g.is_left) {
+                if (Object.keys(participatingGroups).length > 0) {
+                    jidsToMarkAsLeft.push(g.group_jid);
+                    g.is_left = 1; // UI'da anında güncellenmiş göstermek için
+                }
+            }
+
             return { ...g, is_joined };
         });
+
+        // Telefondan çıkılanları veritabanında da işaretle
+        if (jidsToMarkAsLeft.length > 0) {
+            try {
+                const placeholders = jidsToMarkAsLeft.map(() => '?').join(',');
+                await db.run(`UPDATE group_discovery SET is_left = 1 WHERE group_jid IN (${placeholders})`, jidsToMarkAsLeft);
+            } catch (err) {
+                console.error('[Group API] Auto-left sync error:', err);
+            }
+        }
 
         return NextResponse.json(processedGroups);
     } catch (error: any) {
