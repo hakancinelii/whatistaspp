@@ -371,6 +371,11 @@ export default function DriverDashboard() {
     };
 
 
+    const jobsRef = useRef<any[]>([]);
+    useEffect(() => {
+        jobsRef.current = jobs;
+    }, [jobs]);
+
     const fetchJobs = async () => {
         try {
             const token = localStorage.getItem("token");
@@ -392,11 +397,14 @@ export default function DriverDashboard() {
 
             if (!data.error && Array.isArray(data)) {
                 setError(null);
+                
+                const currentJobs = jobsRef.current;
+                
                 // Eğer yeni bir iş geldiyse ve liste boş değilse ses çal
-                if (jobs.length > 0 && data.length > jobs.length) {
+                if (currentJobs.length > 0 && data.length > currentJobs.length) {
                     playAlert();
 
-                    const newJobs = data.filter((dj: any) => !jobs.some((j: any) => j.id === dj.id));
+                    const newJobs = data.filter((dj: any) => !currentJobs.some((j: any) => j.id === dj.id));
                     if (autoCall && newJobs.length > 0) {
                         // Sadece filtrelerime uyan İLK işi otomatik ara
                         const matchingNewJob = newJobs.find(job => checkJobMatch(job, true));
