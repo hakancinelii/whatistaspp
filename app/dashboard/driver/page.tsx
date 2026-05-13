@@ -35,8 +35,11 @@ export default function DriverDashboard() {
     const [jobMode, setJobMode] = useState<'all' | 'ready' | 'scheduled'>('all');
     const [filterSprinter, setFilterSprinter] = useState(false);
     const [filterSwap, setFilterSwap] = useState(false);
-    const [actionMode, setActionMode] = useState<'manual' | 'auto'>('manual');
+    const [actionMode, setActionMode] = useState<'manual' | 'auto' | 'auto-take'>('manual');
     const autoCall = actionMode === 'auto';
+    const autoTake = actionMode === 'auto-take';
+    // Ref to prevent double-firing in the same interval tick
+    const autoTakeFiredRef = useRef(false);
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("STRATEJİ 1");
     // Profil Zorunluluğu State
@@ -405,12 +408,27 @@ export default function DriverDashboard() {
                     playAlert();
 
                     const newJobs = data.filter((dj: any) => !currentJobs.some((j: any) => j.id === dj.id));
+
+                    // OTO-ARA modu
                     if (autoCall && newJobs.length > 0) {
-                        // Sadece filtrelerime uyan İLK işi otomatik ara
                         const matchingNewJob = newJobs.find(job => checkJobMatch(job, true));
                         if (matchingNewJob) {
                             console.log("[OTO-ARA] Filtrelere uyan iş bulundu, aranıyor:", matchingNewJob.id);
                             handleCall(matchingNewJob.phone, matchingNewJob.id);
+                        }
+                    }
+
+                    // OTO-İŞ AL modu (tek kurşun)
+                    if (actionMode === 'auto-take' && !autoTakeFiredRef.current && newJobs.length > 0) {
+                        const matchingNewJob = newJobs.find(job => checkJobMatch(job, true));
+                        if (matchingNewJob) {
+                            console.log("[OTO-İŞ AL] Filtrelere uyan iş bulundu, otomatik alınıyor:", matchingNewJob.id);
+                            autoTakeFiredRef.current = true; // Çift ateşi engelle
+                            // Modu manuel'e çek (tek kurşun)
+                            setActionMode('manual');
+                            saveFilters(undefined, undefined, 'manual');
+                            // İşi al (admin bypass - kendi hesabıyla)
+                            handleTakeJob(matchingNewJob.id, matchingNewJob.group_jid, matchingNewJob.phone, undefined, true);
                         }
                     }
                 }
@@ -584,14 +602,15 @@ export default function DriverDashboard() {
         }
     }, [userProfile]);
 
-    const handleTakeJob = async (jobId: number, groupJid: string, phone: string, externalDriverId?: number) => {
+    const handleTakeJob = async (jobId: number, groupJid: string, phone: string, externalDriverId?: number, skipAdminModal = false) => {
         if (isRestricted) {
             alert("🚫 Hesabınız kısıtlı moddadır, iş alamazsınız.");
             return;
         }
 
         // Eğer kullanıcı adminse ve harici şoför seçilmemişse modalı aç (sadece ilk tıklamada)
-        if (userProfile?.role === 'admin' && !externalDriverId) {
+        // skipAdminModal=true olunca (auto-take) modal açılmaz, kendi hesabıyla mesaj gider
+        if (userProfile?.role === 'admin' && !externalDriverId && !skipAdminModal) {
             const job = jobs.find(j => j.id === jobId);
             if (job) {
                 setAssigningJob({ jobId, groupJid, phone, details: job });
@@ -624,6 +643,7 @@ export default function DriverDashboard() {
             if (res.ok && data.success) {
                 setShowAssignModal(false);
                 setAssigningJob(null);
+                autoTakeFiredRef.current = false; // Sonraki tetik için sıfırla
                 fetchJobs();
             } else {
                 console.error("[Driver] Take Job API Error:", data);
@@ -989,19 +1009,34 @@ export default function DriverDashboard() {
                                                 <div className="flex gap-2">
                                                     {[
                                                         { id: 'manual', label: 'MANUEL', icon: '👤', color: 'bg-blue-600' },
-                                                        { id: 'auto', label: 'OTO-İŞ AL', icon: '⚡', color: 'bg-orange-600' }
+                                                        { id: 'auto', label: 'OTO-ARA', icon: '📞', color: 'bg-orange-600' },
+                                                        { id: 'auto-take', label: 'OTO-İŞ AL', icon: '🎯', color: 'bg-red-600' }
                                                     ].map(m => (
                                                         <button
                                                             key={m.id}
-                                                            onClick={() => { setActionMode(m.id as any); saveFilters(undefined, undefined, m.id); }}
-                                                            className={`flex-1 py-3 rounded-xl border text-[11px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-app-border/70 text-app-fg shadow-lg` : 'bg-app-bg border-app-border text-app-subtle hover:bg-app-card'}`}
+                                                            onClick={() => {
+                                                                autoTakeFiredRef.current = false;
+                                                                setActionMode(m.id as any);
+                                                                saveFilters(undefined, undefined, m.id);
+                                                            }}
+                                                            className={`flex-1 py-3 rounded-xl border text-[11px] font-black transition-all flex flex-col items-center gap-1.5 ${actionMode === m.id ? `${m.color} border-app-border/70 text-app-fg shadow-lg ${m.id === 'auto-take' ? 'animate-pulse' : ''}` : 'bg-app-bg border-app-border text-app-subtle hover:bg-app-card'}`}
                                                         >
                                                             <span className="text-base">{m.icon}</span>
                                                             {m.label}
+                                                            {m.id === 'auto-take' && actionMode === 'auto-take' && (
+                                                                <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">KİLİTLENDİ</span>
+                                                            )}
                                                         </button>
                                                     ))}
                                                 </div>
+                                                {actionMode === 'auto-take' && (
+                                                    <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 mt-1">
+                                                        <span className="text-red-400 text-sm animate-pulse">🎯</span>
+                                                        <span className="text-xs font-black text-red-400">OTO-İŞ AL AKTİF — Filtrelerinize uyan ilk yeni iş otomatik alınacak, ardından MANUEL moda geçilecek.</span>
+                                                    </div>
+                                                )}
                                             </div>
+
                                         </div>
                                     </div>
 
