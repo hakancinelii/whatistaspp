@@ -379,7 +379,7 @@ export default function DriverDashboard() {
         jobsRef.current = jobs;
     }, [jobs]);
 
-    // Sprinter iş tespiti
+    // Sprinter/Minibüs iş tespiti (10+ kapasite)
     const isSprinterJob = (job: any): boolean => {
         const content = [
             job.raw_message || '',
@@ -391,7 +391,7 @@ export default function DriverDashboard() {
             'SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK',
             '10 LUK', '13 LUK', '16 LIK', '10LIK', 'MINIBUS', 'MİNİBÜS',
             'BÜYÜK ARAÇ', 'BUYUK ARAC', '13 LIK', '16 LIK', '10 KISILIK',
-            '13 KISILIK', '16 KISILIK', 'VAN', 'TRANSPORTER'
+            '13 KISILIK', '16 KISILIK', 'VAN', 'TRANSPORTER', 'CRAFTER', '10+1', '13+1', '16+1'
         ].some(kw => content.includes(kw));
     };
 
@@ -1289,20 +1289,20 @@ export default function DriverDashboard() {
                                 <div
                                     key={job.id}
                                     className={`relative group rounded-3xl border transition-all hover:scale-[1.01] hover:shadow-2xl overflow-hidden ${isSprinterJob(job)
-                                        ? 'bg-app-card border-amber-500/80 shadow-amber-900/40 hover:border-amber-400 hover:shadow-amber-900/60'
-                                        : job.status === 'won' ? 'bg-app-card border-red-500 shadow-red-900/40'
+                                        ? 'bg-app-card border-red-500 shadow-red-900/40 hover:border-red-400 hover:shadow-red-900/60'
+                                        : job.status === 'won' ? 'bg-app-card border-emerald-500 shadow-emerald-900/40'
                                         : job.status === 'ignored' ? 'bg-app-card border-red-500/50 opacity-60 grayscale'
                                         : job.status === 'called' ? 'bg-app-card border-blue-500/50 shadow-blue-900/20'
                                         : 'bg-app-card border-app-border hover:border-app-border'
                                     }`}
                                 >
-                                    {/* Sprinter Üst Banner */}
+                                    {/* Sprinter Üst Banner (Kırmızı) */}
                                     {isSprinterJob(job) && (
-                                        <div className="flex items-center gap-2 bg-amber-500 px-4 py-1.5">
+                                        <div className="flex items-center gap-2 bg-red-600 px-4 py-1.5 shadow-[0_2px_10px_rgba(220,38,38,0.3)]">
                                             <span className="text-sm">🚐</span>
-                                            <span className="text-black text-[11px] font-black uppercase tracking-widest">SPRİNTER / MİNİBÜS İŞİ</span>
+                                            <span className="text-white text-[11px] font-black uppercase tracking-widest">ÖNCELİKLİ: SPRİNTER / MİNİBÜS İŞİ</span>
                                             <div className="flex-1" />
-                                            <span className="text-black/60 text-[10px] font-black uppercase">13'LÜK ARACA UYGUN</span>
+                                            <span className="text-white/80 text-[10px] font-black uppercase animate-pulse">13'LÜK ARACA UYGUN</span>
                                         </div>
                                     )}
                                     <div className="p-5">
@@ -1350,7 +1350,7 @@ export default function DriverDashboard() {
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end flex-shrink-0 ml-2">
-                                            <div className={`text-xl font-black tracking-tighter whitespace-nowrap ${isSprinterJob(job) ? 'text-amber-400' : 'text-app-fg'}`}>
+                                            <div className={`text-xl font-black tracking-tighter whitespace-nowrap ${isSprinterJob(job) ? 'text-red-500' : 'text-app-fg'}`}>
                                                 {job.price || 'BELİRTİLMEDİ'}
                                             </div>
                                             {job.is_swap === 1 && (
