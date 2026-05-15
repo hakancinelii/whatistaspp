@@ -527,6 +527,29 @@ export async function runMigrations() {
             UNIQUE(user_id, job_id)
         );
 
+        CREATE TABLE IF NOT EXISTS accounting_entries (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            job_id INTEGER,
+            agency_name TEXT,
+            agency_group_jid TEXT,
+            from_loc TEXT,
+            to_loc TEXT,
+            price TEXT,
+            price_numeric INTEGER DEFAULT 0,
+            contact_phone TEXT,
+            job_time TEXT,
+            taken_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_confirmed BOOLEAN DEFAULT FALSE,
+            payment_status TEXT DEFAULT 'pending',
+            payment_received_at TIMESTAMP,
+            notes TEXT
+        );
+
+        ALTER TABLE accounting_entries ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE;
+        ALTER TABLE accounting_entries ADD COLUMN IF NOT EXISTS job_time TEXT;
+
+
         CREATE TABLE IF NOT EXISTS user_heartbeat (
             user_id INTEGER PRIMARY KEY REFERENCES users(id),
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP

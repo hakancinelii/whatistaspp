@@ -161,6 +161,22 @@ export default function DashboardLayout({
                 </Link>
               </li>
             )}
+            {(user?.package === 'driver' || user?.role === 'admin') && (
+              <li>
+                <Link
+                  href="/dashboard/accounting"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/accounting"
+                    ? "bg-yellow-600/20 text-yellow-400 border border-yellow-500/30"
+                    : "text-app-muted hover:bg-app-card hover:text-app-fg"
+                    }`}
+                >
+                  <span className="text-xl">💰</span>
+                  <span className="font-medium">Muhasebem</span>
+                </Link>
+              </li>
+            )}
+
 
             {/* Şirket Paketi Paneli (Varsa) */}
             {user?.package === 'company' && (

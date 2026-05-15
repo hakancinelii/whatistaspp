@@ -203,5 +203,31 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         ON CONFLICT(user_id, job_id) DO UPDATE SET status = 'won'
     `, [userId, jobId, 'won']);
 
+    // 10. Create Accounting Entry
+    try {
+        const priceNumeric = parseInt((job.price || '0').toString().replace(/\D/g, '')) || 0;
+        await db.run(`
+            INSERT INTO accounting_entries 
+            (user_id, job_id, agency_name, agency_group_jid, from_loc, to_loc, price, price_numeric, contact_phone, job_time, is_confirmed, payment_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            userId,
+            job.id,
+            job.group_name || 'Bilinmeyen Acente',
+            job.group_jid || null,
+            job.from_loc || '',
+            job.to_loc || '',
+            job.price || '',
+            priceNumeric,
+            job.phone || '',
+            job.time || '',
+            false,
+            'pending'
+        ]);
+    } catch (accErr) {
+        // Muhasebe kaydı hatası işi engellemesin
+        console.error('[JobService] Accounting entry error:', accErr);
+    }
+
     return { success: true, isUsingProxy };
 }
