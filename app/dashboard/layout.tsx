@@ -132,8 +132,8 @@ export default function DashboardLayout({
       >
         <div className="p-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold gradient-text">WhatIstaspp</h1>
-            <p className="text-sm text-app-muted mt-1">Hoş geldin, {user?.name}</p>
+            <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">WhatIstaspp</h1>
+            <p className="text-[11px] font-bold text-app-muted uppercase tracking-widest mt-1">Hoş geldin, {user?.name}</p>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -151,13 +151,15 @@ export default function DashboardLayout({
                 <Link
                   href="/dashboard/driver"
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/driver"
-                    ? "bg-green-600/20 text-green-400 border border-green-500/30"
-                    : "text-app-muted hover:bg-app-card hover:text-app-fg"
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${pathname === "/dashboard/driver"
+                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                    : "text-app-muted hover:bg-slate-800/40 hover:text-app-fg"
                     }`}
                 >
-                  <img src="/android-chrome-192x192.png" alt="" className="w-6 h-6 object-contain" />
-                  <span className="font-medium">İşleri Gör</span>
+                  <div className={`p-1.5 rounded-lg transition-colors ${pathname === "/dashboard/driver" ? 'bg-emerald-500/20' : 'bg-slate-800'}`}>
+                    <img src="/android-chrome-192x192.png" alt="" className="w-5 h-5 object-contain" />
+                  </div>
+                  <span className="font-bold text-sm tracking-tight">İşleri Gör</span>
                 </Link>
               </li>
             )}
@@ -166,13 +168,15 @@ export default function DashboardLayout({
                 <Link
                   href="/dashboard/accounting"
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === "/dashboard/accounting"
-                    ? "bg-yellow-600/20 text-yellow-400 border border-yellow-500/30"
-                    : "text-app-muted hover:bg-app-card hover:text-app-fg"
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${pathname === "/dashboard/accounting"
+                    ? "bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                    : "text-app-muted hover:bg-slate-800/40 hover:text-app-fg"
                     }`}
                 >
-                  <span className="text-xl">💰</span>
-                  <span className="font-medium">Muhasebem</span>
+                  <div className={`p-1.5 rounded-lg text-lg transition-colors ${pathname === "/dashboard/accounting" ? 'bg-amber-500/20' : 'bg-slate-800'}`}>
+                    💰
+                  </div>
+                  <span className="font-bold text-sm tracking-tight">Muhasebem</span>
                 </Link>
               </li>
             )}
@@ -233,17 +237,19 @@ export default function DashboardLayout({
                   <Link
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${pathname === item.href
-                      ? "bg-purple-600/20 text-purple-400 border border-purple-500/30"
-                      : "text-app-muted hover:bg-app-card hover:text-app-fg"
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${pathname === item.href
+                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                      : "text-app-muted hover:bg-slate-800/40 hover:text-app-fg"
                       }`}
                   >
-                    {item.icon.startsWith('/') ? (
-                      <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
-                    ) : (
-                      <span className="text-xl">{item.icon}</span>
-                    )}
-                    <span className="font-medium">{item.label}</span>
+                    <div className={`p-1.5 rounded-lg text-lg transition-colors ${pathname === item.href ? 'bg-indigo-500/20' : 'bg-slate-800'}`}>
+                      {item.icon.startsWith('/') ? (
+                        <img src={item.icon} alt="" className="w-5 h-5 object-contain" />
+                      ) : (
+                        <span>{item.icon}</span>
+                      )}
+                    </div>
+                    <span className="font-bold text-sm tracking-tight">{item.label}</span>
                   </Link>
                 </li>
               ))}

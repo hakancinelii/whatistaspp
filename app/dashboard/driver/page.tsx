@@ -1288,31 +1288,36 @@ export default function DriverDashboard() {
                             {filteredJobs.slice(0, visibleCount).map((job: any) => (
                                 <div
                                     key={job.id}
-                                    className={`relative group rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${isSprinterJob(job)
-                                        ? 'bg-amber-950/40 border-amber-500/60 shadow-amber-900/30 hover:border-amber-400 hover:shadow-amber-900/50'
+                                    className={`relative group rounded-3xl border transition-all hover:scale-[1.01] hover:shadow-2xl overflow-hidden ${isSprinterJob(job)
+                                        ? 'bg-app-card border-amber-500/80 shadow-amber-900/40 hover:border-amber-400 hover:shadow-amber-900/60'
                                         : job.status === 'won' ? 'bg-app-card border-red-500 shadow-red-900/40'
                                         : job.status === 'ignored' ? 'bg-app-card border-red-500/50 opacity-60 grayscale'
                                         : job.status === 'called' ? 'bg-app-card border-blue-500/50 shadow-blue-900/20'
                                         : 'bg-app-card border-app-border hover:border-app-border'
                                     }`}
                                 >
-                                    {/* Sprinter Badge */}
+                                    {/* Sprinter Üst Banner */}
                                     {isSprinterJob(job) && (
-                                        <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-lg animate-pulse z-10">
-                                            🚐 SPRİNTER
+                                        <div className="flex items-center gap-2 bg-amber-500 px-4 py-1.5">
+                                            <span className="text-sm">🚐</span>
+                                            <span className="text-black text-[11px] font-black uppercase tracking-widest">SPRİNTER / MİNİBÜS İŞİ</span>
+                                            <div className="flex-1" />
+                                            <span className="text-black/60 text-[10px] font-black uppercase">13'LÜK ARACA UYGUN</span>
                                         </div>
                                     )}
+                                    <div className="p-5">
+
                                     {/* ... (Job card header remains same) ... */}
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
                                             <div
                                                 title={job.status === 'won' ? 'İşi Kazandınız' : job.status === 'ignored' ? 'Yoksayıldı' : job.status === 'called' ? 'Arandı / İlgilenildi' : 'Yeni İş / Bekliyor'}
-                                                className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg cursor-help ${job.status === 'won' ? 'bg-red-600' :
-                                                    job.status === 'ignored' ? 'bg-red-500' :
-                                                        job.status === 'called' ? 'bg-blue-500' :
-                                                            'bg-app-elevated text-app-muted'
+                                                className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg cursor-help transition-all duration-300 ${job.status === 'won' ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-rose-900/40' :
+                                                    job.status === 'ignored' ? 'bg-slate-700 text-slate-400' :
+                                                        job.status === 'called' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-900/40' :
+                                                            'bg-slate-800 text-slate-500 border border-slate-700/50'
                                                     }`}>
-                                                {job.status === 'won' ? '✓' : job.status === 'ignored' ? '✕' : job.status === 'called' ? '📞' : '⚡'}
+                                                {job.status === 'won' ? '🏆' : job.status === 'ignored' ? '✕' : job.status === 'called' ? '📞' : '⚡'}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
@@ -1345,9 +1350,11 @@ export default function DriverDashboard() {
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end flex-shrink-0 ml-2">
-                                            <div className="text-lg font-black text-app-fg tracking-tighter whitespace-nowrap">{job.price}</div>
+                                            <div className={`text-xl font-black tracking-tighter whitespace-nowrap ${isSprinterJob(job) ? 'text-amber-400' : 'text-app-fg'}`}>
+                                                {job.price || 'BELİRTİLMEDİ'}
+                                            </div>
                                             {job.is_swap === 1 && (
-                                                <span className="text-[11px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase mt-1 border border-purple-500/20 whitespace-nowrap">
+                                                <span className="text-[10px] font-black text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full uppercase mt-1 border border-violet-500/20 whitespace-nowrap tracking-wider">
                                                     🔁 TAKASLI
                                                 </span>
                                             )}
@@ -1406,19 +1413,23 @@ export default function DriverDashboard() {
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <button
                                                             onClick={() => handleCall(job.phone, job.id)}
-                                                            className="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 flex items-center justify-center gap-1.5"
+                                                            className="group/btn relative bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/30 flex items-center justify-center gap-2 overflow-hidden"
                                                         >
-                                                            <span>📞 ARA</span>
+                                                            <span className="text-sm transition-transform group-hover/btn:-rotate-12">📞</span>
+                                                            ARA
                                                         </button>
                                                         <button
                                                             onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
                                                             disabled={loadingJobId === job.id}
-                                                            className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/20"
+                                                            className="group/btn relative bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 overflow-hidden"
                                                         >
                                                             {loadingJobId === job.id ? (
-                                                                <span className="animate-pulse">...</span>
+                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                             ) : (
-                                                                "İŞİ AL"
+                                                                <>
+                                                                    <span className="text-sm transition-transform group-hover/btn:scale-110">⚡</span>
+                                                                    İŞİ AL
+                                                                </>
                                                             )}
                                                         </button>
                                                     </div>
@@ -1449,6 +1460,7 @@ export default function DriverDashboard() {
                                             ✕
                                         </button>
                                     )}
+                                    </div>{/* /p-5 */}
                                 </div>
                             ))}
                         </div>
