@@ -379,6 +379,22 @@ export default function DriverDashboard() {
         jobsRef.current = jobs;
     }, [jobs]);
 
+    // Sprinter iş tespiti
+    const isSprinterJob = (job: any): boolean => {
+        const content = [
+            job.raw_message || '',
+            job.from_loc || '',
+            job.to_loc || '',
+            job.price || ''
+        ].join(' ').toUpperCase();
+        return [
+            'SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK',
+            '10 LUK', '13 LUK', '16 LIK', '10LIK', 'MINIBUS', 'MİNİBÜS',
+            'BÜYÜK ARAÇ', 'BUYUK ARAC', '13 LIK', '16 LIK', '10 KISILIK',
+            '13 KISILIK', '16 KISILIK', 'VAN', 'TRANSPORTER'
+        ].some(kw => content.includes(kw));
+    };
+
     const fetchJobs = async () => {
         try {
             const token = localStorage.getItem("token");
@@ -1272,12 +1288,20 @@ export default function DriverDashboard() {
                             {filteredJobs.slice(0, visibleCount).map((job: any) => (
                                 <div
                                     key={job.id}
-                                    className={`relative group bg-app-card rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${job.status === 'won' ? 'border-red-500 shadow-red-900/40' :
-                                        job.status === 'ignored' ? 'border-red-500/50 opacity-60 grayscale' :
-                                            job.status === 'called' ? 'border-blue-500/50 shadow-blue-900/20' :
-                                                'border-app-border hover:border-app-border'
-                                        }`}
+                                    className={`relative group rounded-3xl p-5 border transition-all hover:scale-[1.01] hover:shadow-2xl ${isSprinterJob(job)
+                                        ? 'bg-amber-950/40 border-amber-500/60 shadow-amber-900/30 hover:border-amber-400 hover:shadow-amber-900/50'
+                                        : job.status === 'won' ? 'bg-app-card border-red-500 shadow-red-900/40'
+                                        : job.status === 'ignored' ? 'bg-app-card border-red-500/50 opacity-60 grayscale'
+                                        : job.status === 'called' ? 'bg-app-card border-blue-500/50 shadow-blue-900/20'
+                                        : 'bg-app-card border-app-border hover:border-app-border'
+                                    }`}
                                 >
+                                    {/* Sprinter Badge */}
+                                    {isSprinterJob(job) && (
+                                        <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-lg animate-pulse z-10">
+                                            🚐 SPRİNTER
+                                        </div>
+                                    )}
                                     {/* ... (Job card header remains same) ... */}
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
