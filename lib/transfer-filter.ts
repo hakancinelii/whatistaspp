@@ -70,7 +70,6 @@ export function isTransferJob(job: TransferJobLike) {
 
     if (includesAny(raw, employmentKeywords)) return false;
     if (from === to) return false;
-    if (from === 'COKLU / TAKAS' || Boolean(job.is_swap)) return false;
 
     const fromIsUnknown = isUnknownLocation(from);
     const toIsUnknown = isUnknownLocation(to);

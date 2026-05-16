@@ -388,10 +388,11 @@ export default function DriverDashboard() {
             job.price || ''
         ].join(' ').toUpperCase();
         return [
-            'SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK',
+            'SPRINTER', 'SPRINTIR', 'SPRİNTİR', 'SPRİNTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK',
             '10 LUK', '13 LUK', '16 LIK', '10LIK', 'MINIBUS', 'MİNİBÜS',
             'BÜYÜK ARAÇ', 'BUYUK ARAC', '13 LIK', '16 LIK', '10 KISILIK',
-            '13 KISILIK', '16 KISILIK', 'VAN', 'TRANSPORTER', 'CRAFTER', '10+1', '13+1', '16+1'
+            '13 KISILIK', '16 KISILIK', 'VAN', 'TRANSPORTER', 'CRAFTER', '10+1', '13+1', '16+1',
+            'SPRINTER*', '*SPRINTER*', 'SPRİNTİR*', 'SPRINTIR*'
         ].some(kw => content.includes(kw));
     };
 
