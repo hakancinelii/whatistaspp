@@ -6,10 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
     try {
-        const user = await getUserFromToken(request);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
         const db = await getDatabase();
+        const userId = 1; // Dummy user ID for testing
         
         // Try a manual insert to test
         const testId = 999999 + Math.floor(Math.random() * 1000);
