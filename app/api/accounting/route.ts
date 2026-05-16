@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
         const status = searchParams.get('status'); // pending | received | cancelled | all
         const agency = searchParams.get('agency');
         const days = parseInt(searchParams.get('days') || '30');
+        const dateLimit = new Date();
+        dateLimit.setDate(dateLimit.getDate() - days);
+        const dateLimitStr = dateLimit.toISOString();
 
         const db = await getDatabase();
 
@@ -22,9 +25,9 @@ export async function GET(request: NextRequest) {
             FROM accounting_entries ae
             LEFT JOIN users u ON ae.user_id = u.id
             WHERE ae.user_id = ?
-              AND ae.taken_at >= DATETIME('now', '-${days} days')
+              AND ae.taken_at >= ?
         `;
-        const params: any[] = [user.userId];
+        const params: any[] = [user.userId, dateLimitStr];
 
         if (status && status !== 'all') {
             query += ` AND ae.payment_status = ?`;
