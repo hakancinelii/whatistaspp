@@ -144,6 +144,34 @@ function runSqliteMigrations(db: Database.Database) {
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS job_interactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      job_id INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, job_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS accounting_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      job_id INTEGER,
+      agency_name TEXT,
+      agency_group_jid TEXT,
+      from_loc TEXT,
+      to_loc TEXT,
+      price TEXT,
+      price_numeric INTEGER DEFAULT 0,
+      contact_phone TEXT,
+      job_time TEXT,
+      taken_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_confirmed BOOLEAN DEFAULT 0,
+      payment_status TEXT DEFAULT 'pending',
+      payment_received_at DATETIME,
+      notes TEXT
+    );
   `);
 
   const addColumn = (table: string, column: string, definition: string) => {

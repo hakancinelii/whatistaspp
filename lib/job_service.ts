@@ -206,6 +206,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
     // 10. Create Accounting Entry
     try {
         const priceNumeric = parseInt((job.price || '0').toString().replace(/\D/g, '')) || 0;
+        console.log(`[JobService] Creating accounting entry for user ${userId}, job ${job.id}, price ${priceNumeric}`);
         await db.run(`
             INSERT INTO accounting_entries 
             (user_id, job_id, agency_name, agency_group_jid, from_loc, to_loc, price, price_numeric, contact_phone, job_time, is_confirmed, payment_status)
@@ -224,6 +225,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
             false,
             'pending'
         ]);
+        console.log(`[JobService] Accounting entry created successfully.`);
     } catch (accErr) {
         // Muhasebe kaydı hatası işi engellemesin
         console.error('[JobService] Accounting entry error:', accErr);

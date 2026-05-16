@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             FROM accounting_entries ae
             LEFT JOIN users u ON ae.user_id = u.id
             WHERE ae.user_id = ?
-              AND ae.taken_at >= NOW() - INTERVAL '${days} days'
+              AND ae.taken_at >= DATETIME('now', '-${days} days')
         `;
         const params: any[] = [user.userId];
 
