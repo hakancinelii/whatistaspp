@@ -222,7 +222,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
             priceNumeric,
             job.phone || '',
             job.time || '',
-            false,
+            0,
             'pending'
         ]);
         console.log(`[JobService] Accounting entry created successfully.`);

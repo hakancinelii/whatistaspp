@@ -48,6 +48,7 @@ export default function AccountingPage() {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [editNoteId, setEditNoteId] = useState<number | null>(null);
     const [noteText, setNoteText] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -70,9 +71,14 @@ export default function AccountingPage() {
                 setEntries(data.entries || []);
                 setAgencySummary(data.agency_summary || []);
                 setStats(data.stats || null);
+                setError(null);
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                setError(errData.error || 'Veriler alınırken bir hata oluştu.');
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            setError(e.message || 'Sunucu bağlantı hatası.');
         } finally {
             setLoading(false);
         }
@@ -178,6 +184,14 @@ export default function AccountingPage() {
                         <div className="text-3xl font-black text-green-400">{stats.received_amount.toLocaleString('tr-TR')} ₺</div>
                         <div className="text-xs text-green-400/60">Alındı</div>
                     </div>
+                </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-red-500 text-sm font-bold animate-in fade-in slide-in-from-top-2">
+                    ⚠️ {error}
+                    <button onClick={fetchData} className="ml-4 underline hover:text-red-400">Tekrar Dene</button>
                 </div>
             )}
 
