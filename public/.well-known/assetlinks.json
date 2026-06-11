@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.socialtransfer.twa",
+      "sha256_cert_fingerprints": [
+        "49:F8:EE:82:51:B6:46:98:52:C6:EB:D1:E2:25:D2:85:9A:44:EE:B4:6C:80:72:F5:BC:BB:39:23:EE:60:45:0F"
+      ]
+    }
+  }
+]

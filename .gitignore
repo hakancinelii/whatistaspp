@@ -41,3 +41,14 @@ auth_info/
 whatsapp_session/
 data/*.db-shm
 data/*.db-wal
+
+# android twa - signing key & build artifacts (NEVER commit the keystore!)
+android-twa/android.keystore
+android-twa/*.keystore
+android-twa/*.jks
+android-twa/app/
+android-twa/.gradle/
+android-twa/build/
+android-twa/*.aab
+android-twa/*.apk
+android-twa/*.idsig
