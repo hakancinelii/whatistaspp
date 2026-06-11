@@ -40,6 +40,9 @@ export default function DriverDashboard() {
     const autoTake = actionMode === 'auto-take';
     // Ref to prevent double-firing in the same interval tick
     const autoTakeFiredRef = useRef(false);
+    // Arka plandan dönüşte birikmiş işler için oto-ara/oto-iş-al ve sesin
+    // yanlışlıkla tetiklenmesini engellemek için tek seferlik bastırma bayrağı
+    const suppressAutoRef = useRef(false);
     const [isSaving, setIsSaving] = useState(false);
     const [rotaName, setRotaName] = useState("STRATEJİ 1");
     // Profil Zorunluluğu State
@@ -421,7 +424,9 @@ export default function DriverDashboard() {
                 const currentJobs = jobsRef.current;
                 
                 // Eğer yeni bir iş geldiyse ve liste boş değilse ses çal
-                if (currentJobs.length > 0 && data.length > currentJobs.length) {
+                // suppressAutoRef: arka plandan dönüşteki ilk senkronizasyonda
+                // birikmiş işler için ses/oto-ara/oto-iş-al tetiklenmesin
+                if (!suppressAutoRef.current && currentJobs.length > 0 && data.length > currentJobs.length) {
                     playAlert();
 
                     const newJobs = data.filter((dj: any) => !currentJobs.some((j: any) => j.id === dj.id));
@@ -456,6 +461,8 @@ export default function DriverDashboard() {
                         : job.created_at
                 }));
                 setJobs(formattedData);
+                // Bastırma tek seferliktir; sonraki normal döngüler oto-aksiyonları çalıştırır
+                suppressAutoRef.current = false;
             } else if (data.error) {
                 setError(data.error);
             }
@@ -570,16 +577,45 @@ export default function DriverDashboard() {
         fetchJobs();
         fetchStats();
         fetchFilters();
-        const interval = setInterval(fetchJobs, 10000); // 10 saniyede bir
-        const statsInterval = setInterval(fetchStats, 60000); // İstatistikleri 1 dakikada bir güncelle
-        const profileInterval = setInterval(fetchProfile, 120000); // Profil/Statü 2 dakikada bir kontrol
-        waStatusIntervalRef.current = setInterval(checkWAStatus, 5000);
+
+        // Tüm interval'ları tek yerden yönet — arka plana atılınca durdur,
+        // öne gelince yeniden başlat. Böylece ekran kapalıyken/cepteyken
+        // gereksiz ağ+CPU kullanımı (ısınma/pil tüketimi) olmaz.
+        const polls: { jobs?: any; stats?: any; profile?: any } = {};
+        const startPolling = () => {
+            stopPolling();
+            polls.jobs = setInterval(fetchJobs, 10000);      // İşler: 10 sn
+            polls.stats = setInterval(fetchStats, 60000);    // İstatistik: 1 dk
+            polls.profile = setInterval(fetchProfile, 120000); // Profil/statü: 2 dk
+            waStatusIntervalRef.current = setInterval(checkWAStatus, 15000); // WA durumu: 15 sn
+        };
+        const stopPolling = () => {
+            if (polls.jobs) clearInterval(polls.jobs);
+            if (polls.stats) clearInterval(polls.stats);
+            if (polls.profile) clearInterval(polls.profile);
+            if (waStatusIntervalRef.current) clearInterval(waStatusIntervalRef.current);
+            polls.jobs = polls.stats = polls.profile = undefined;
+            waStatusIntervalRef.current = null;
+        };
+        const handleVisibility = () => {
+            if (document.visibilityState === "visible") {
+                // Arka plandan dönüşte: birikmiş işler için oto-aksiyonları bastır,
+                // hemen senkronize ol ve polling'i yeniden başlat.
+                suppressAutoRef.current = true;
+                fetchJobs();
+                checkWAStatus();
+                startPolling();
+            } else {
+                stopPolling();
+            }
+        };
+
+        startPolling();
+        document.addEventListener("visibilitychange", handleVisibility);
 
         return () => {
-            clearInterval(interval);
-            clearInterval(statsInterval);
-            clearInterval(profileInterval);
-            if (waStatusIntervalRef.current) clearInterval(waStatusIntervalRef.current);
+            stopPolling();
+            document.removeEventListener("visibilitychange", handleVisibility);
             if (wakeLockRef.current) wakeLockRef.current.release();
         };
     }, []);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useVisiblePolling } from "@/lib/useVisiblePolling";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 
@@ -36,11 +37,8 @@ export default function WhatsAppPage() {
         }
     }, [loading]);
 
-    useEffect(() => {
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 3000);
-        return () => clearInterval(interval);
-    }, [fetchStatus]);
+    // Sayfa görünürken 3 sn'de bir durum kontrolü; arka planda durur.
+    useVisiblePolling(fetchStatus, 3000);
 
     const handleConnect = async () => {
         if (actionLoading) return;

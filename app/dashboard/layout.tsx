@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
+import PushSetup from "@/components/PushSetup";
 
 const menuItems = [
   { href: "/dashboard/inbox", icon: "/whatsapp.png", label: "Sohbetler" },
@@ -83,10 +84,24 @@ export default function DashboardLayout({
         }
       } catch (e) { }
     };
+    // Heartbeat yalnızca sayfa görünürken gönderilsin — arka plandayken
+    // kullanıcı zaten aktif değildir; bu gereksiz uyanmaları (ısınma/pil) önler.
+    let heartbeatInterval: any = null;
+    const startHeartbeat = () => {
+      if (heartbeatInterval == null) heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    };
+    const stopHeartbeat = () => {
+      if (heartbeatInterval != null) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") { sendHeartbeat(); startHeartbeat(); }
+      else stopHeartbeat();
+    };
     sendHeartbeat();
-    const heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    startHeartbeat();
+    document.addEventListener("visibilitychange", onVisibility);
 
-    // Poll scheduler every minute
+    // Poll scheduler every minute (zamanlanmış mesajlar için — sürekli çalışır)
     const schedulerInterval = setInterval(() => {
       apiFetch("/api/scheduler/run").catch((err) =>
         console.error("Scheduler poll failed", err)
@@ -94,7 +109,8 @@ export default function DashboardLayout({
     }, 60000);
 
     return () => {
-      clearInterval(heartbeatInterval);
+      stopHeartbeat();
+      document.removeEventListener("visibilitychange", onVisibility);
       clearInterval(schedulerInterval);
     };
   }, [router]);
@@ -117,6 +133,9 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-app-bg">
+      {/* Push bildirim aboneliği (izin yoksa buton gösterir) */}
+      <PushSetup />
+
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div

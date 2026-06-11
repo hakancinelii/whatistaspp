@@ -1,6 +1,7 @@
 
 import { getDatabase } from './db';
 import { processJobTaking } from './job_service';
+import { sendPushToUser } from './push';
 
 export const ISTANBUL_REGIONS = [
     // Avrupa Yakası
@@ -60,6 +61,64 @@ function normalize(str: string): string {
         .replace(/c/g, 'c');
 }
 
+/**
+ * Bir işin, bir sürücünün filtrelerine uyup uymadığını kontrol eder.
+ * (Bölge/fiyat/mod eşleştirme mantığı — hem otomatik iş alma hem push bildirimi için ortak.)
+ */
+export function jobMatchesDriver(job: any, driver: any, jobPrice: number, jobContent: string): boolean {
+    // 1. Min Price
+    if (driver.min_price > 0 && jobPrice < driver.min_price) return false;
+
+    // 2. Job Mode (Ready/Scheduled)
+    if (driver.job_mode === 'ready' && !job.time?.includes('HAZIR')) return false;
+    if (driver.job_mode === 'scheduled' && (job.time?.includes('HAZIR') || job.time === 'Belirtilmedi')) return false;
+
+    // 3. Sprinter Filter
+    if (driver.filter_sprinter) {
+        const sprinterKeywords = ['SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK', '10 LUK', '13 LUK', '16 LIK', '10 VE UZERI', '13 VE UZERI', '16 VE UZERI', 'BUYUK ARAC', 'MINIBUS'];
+        if (!sprinterKeywords.some(kw => jobContent.includes(normalize(kw)))) return false;
+    }
+
+    // 4. Swap Filter
+    if (driver.filter_swap && job.is_swap !== 1) return false;
+
+    // 5. From Region Match
+    const selectedRegions = driver.regions ? JSON.parse(driver.regions) : [];
+    if (selectedRegions.length > 0) {
+        const normalizedFrom = normalize(job.from_loc || '');
+        const normalizedRaw = normalize(job.raw_message || '');
+        const hasFromMatch = selectedRegions.some((regId: string) => {
+            const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
+            if (!reg) return false;
+            return reg.keywords.some(key => {
+                const normalizedKey = normalize(key);
+                if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return normalizedRaw.includes(normalizedKey);
+                return normalizedFrom.includes(normalizedKey);
+            });
+        });
+        if (!hasFromMatch) return false;
+    }
+
+    // 6. To Region Match
+    const selectedToRegions = driver.to_regions ? JSON.parse(driver.to_regions) : [];
+    if (selectedToRegions.length > 0) {
+        const normalizedTo = normalize(job.to_loc || '');
+        const normalizedRaw = normalize(job.raw_message || '');
+        const hasToMatch = selectedToRegions.some((regId: string) => {
+            const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
+            if (!reg) return false;
+            return reg.keywords.some(key => {
+                const normalizedKey = normalize(key);
+                if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return normalizedRaw.includes(normalizedKey);
+                return normalizedTo.includes(normalizedKey);
+            });
+        });
+        if (!hasToMatch) return false;
+    }
+
+    return true;
+}
+
 export async function runJobAutomation(jobId: number) {
     const db = await getDatabase();
 
@@ -67,91 +126,61 @@ export async function runJobAutomation(jobId: number) {
     const job = await db.get('SELECT * FROM captured_jobs WHERE id = ?', [jobId]);
     if (!job) return;
 
-    // 2. Get All Users with Auto Mode
-    const autoDrivers = await db.all(`
-        SELECT df.*, u.id as user_id 
+    // 2. Get ALL drivers with filters (auto-take için 'auto' olanlar; push için hepsi)
+    const allDrivers = await db.all(`
+        SELECT df.*, u.id as user_id
         FROM driver_filters df
         JOIN users u ON df.user_id = u.id
-        WHERE df.action_mode = 'auto'
     `);
-
-    if (autoDrivers.length === 0) return;
+    if (allDrivers.length === 0) return;
 
     const jobPrice = parseInt(job.price?.toString().replace(/\D/g, '')) || 0;
     const jobContent = normalize((job.from_loc || '') + (job.to_loc || '') + (job.raw_message || '') + (job.time || ''));
 
-    for (const driver of autoDrivers) {
+    // Filtreye uyan sürücüler
+    const matchedDrivers = allDrivers.filter((d: any) => {
+        try { return jobMatchesDriver(job, d, jobPrice, jobContent); }
+        catch (e) { return false; }
+    });
+    if (matchedDrivers.length === 0) return;
+
+    // 3. Otomatik iş alma — yalnızca action_mode='auto' olanlar (mevcut davranış korunur)
+    let takenByUserId: number | null = null;
+    for (const driver of matchedDrivers.filter((d: any) => d.action_mode === 'auto')) {
         try {
-            // -- FILTER CHECK --
-
-            // 1. Min Price
-            if (driver.min_price > 0 && jobPrice < driver.min_price) continue;
-
-            // 2. Job Mode (Ready/Scheduled)
-            if (driver.job_mode === 'ready' && !job.time?.includes('HAZIR')) continue;
-            if (driver.job_mode === 'scheduled' && (job.time?.includes('HAZIR') || job.time === 'Belirtilmedi')) continue;
-
-            // 3. Sprinter Filter
-            if (driver.filter_sprinter) {
-                const sprinterKeywords = ['SPRINTER', '10+', '13+', '16+', '10LUK', '13LUK', '16LIK', '10 LUK', '13 LUK', '16 LIK', '10 VE UZERI', '13 VE UZERI', '16 VE UZERI', 'BUYUK ARAC', 'MINIBUS'];
-                if (!sprinterKeywords.some(kw => jobContent.includes(normalize(kw)))) continue;
-            }
-
-            // 4. Swap Filter
-            if (driver.filter_swap && job.is_swap !== 1) continue;
-
-            // 5. From Region Match
-            const selectedRegions = driver.regions ? JSON.parse(driver.regions) : [];
-            if (selectedRegions.length > 0) {
-                const normalizedFrom = normalize(job.from_loc || '');
-                const normalizedRaw = normalize(job.raw_message || '');
-                const hasFromMatch = selectedRegions.some((regId: string) => {
-                    const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
-                    if (!reg) return false;
-                    return reg.keywords.some(key => {
-                        const normalizedKey = normalize(key);
-                        if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return normalizedRaw.includes(normalizedKey);
-                        return normalizedFrom.includes(normalizedKey);
-                    });
-                });
-                if (!hasFromMatch) continue;
-            }
-
-            // 6. To Region Match
-            const selectedToRegions = driver.to_regions ? JSON.parse(driver.to_regions) : [];
-            if (selectedToRegions.length > 0) {
-                const normalizedTo = normalize(job.to_loc || '');
-                const normalizedRaw = normalize(job.raw_message || '');
-                const hasToMatch = selectedToRegions.some((regId: string) => {
-                    const reg = ISTANBUL_REGIONS.find(r => r.id === regId);
-                    if (!reg) return false;
-                    return reg.keywords.some(key => {
-                        const normalizedKey = normalize(key);
-                        if (job.is_swap === 1 || job.from_loc === 'ÇOKLU / TAKAS') return normalizedRaw.includes(normalizedKey);
-                        return normalizedTo.includes(normalizedKey);
-                    });
-                });
-                if (!hasToMatch) continue;
-            }
-
-            // -- ALL FILTERS PASSED! --
-            console.log(`[Automation] Job ${jobId} matches driver ${driver.user_id}. Automatically taking...`);
-
-            // Check if already taken (by this user or others)
+            // Daha önce alınmış mı? (bu iş için herhangi bir etkileşim)
             const alreadyInteracted = await db.get('SELECT id FROM job_interactions WHERE job_id = ?', [jobId]);
             if (alreadyInteracted) {
-                console.log(`[Automation] Job ${jobId} already taken by someone else. Skipping user ${driver.user_id}.`);
-                continue;
+                console.log(`[Automation] Job ${jobId} already taken. Skipping user ${driver.user_id}.`);
+                break;
             }
-
+            console.log(`[Automation] Job ${jobId} matches driver ${driver.user_id}. Automatically taking...`);
             await processJobTaking(driver.user_id, jobId);
+            takenByUserId = driver.user_id;
             console.log(`[Automation] ✅ Successfully took job ${jobId} for user ${driver.user_id}`);
-
-            // If one driver took it, we should probably stop for this job to avoid spamming the same customer
+            // Aynı müşteriye tekrar yazmamak için ilk alan sürücüde dur
             break;
-
         } catch (err: any) {
             console.error(`[Automation] Error for driver ${driver.user_id}:`, err.message);
         }
+    }
+
+    // 4. Push bildirimi — filtreye uyan tüm sürücülere (uygulama kapalı olsa bile ulaşır).
+    //    İşi otomatik alan sürücüye onay, diğerlerine "uygun yeni iş" bildirimi.
+    //    Push hataları otomasyonu asla etkilemez.
+    try {
+        const route = `${job.from_loc || '?'} → ${job.to_loc || '?'}`;
+        const priceText = job.price ? ` • ${job.price}` : '';
+        await Promise.all(matchedDrivers.map((driver: any) => {
+            const isTaker = driver.user_id === takenByUserId;
+            return sendPushToUser(driver.user_id, {
+                title: isTaker ? '✅ İş otomatik alındı' : '🚖 Sana uygun yeni iş',
+                body: `${route}${priceText}`,
+                url: '/dashboard/driver',
+                tag: `job-${jobId}`,
+            }).catch(() => { });
+        }));
+    } catch (err: any) {
+        console.error('[Automation] Push bildirimi hatası:', err.message);
     }
 }

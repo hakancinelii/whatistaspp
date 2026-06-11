@@ -146,9 +146,28 @@ export default function OperationPage() {
 
     useEffect(() => {
         fetchData();
+
+        // Mesaj polling'i yalnızca sayfa görünürken çalıştır; arka planda
+        // (ekran kapalı/cepte) durdur — gereksiz ağ+CPU ısınmasını önler.
+        let msgInterval: any = null;
+        const startMsgPolling = () => {
+            if (msgInterval == null) msgInterval = setInterval(fetchInboxMessages, 5000);
+        };
+        const stopMsgPolling = () => {
+            if (msgInterval != null) { clearInterval(msgInterval); msgInterval = null; }
+        };
+        const onVisibility = () => {
+            if (document.visibilityState === "visible") { fetchInboxMessages(); startMsgPolling(); }
+            else stopMsgPolling();
+        };
+
         fetchInboxMessages(); // Initial fetch
-        const msgInterval = setInterval(fetchInboxMessages, 5000); // Poll every 5 seconds
-        return () => clearInterval(msgInterval);
+        startMsgPolling();
+        document.addEventListener("visibilitychange", onVisibility);
+        return () => {
+            stopMsgPolling();
+            document.removeEventListener("visibilitychange", onVisibility);
+        };
     }, []);
 
     // Scroll to bottom when messages change

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { useVisiblePolling } from "@/lib/useVisiblePolling";
 
 export default function AdminWhatsAppBotPage() {
     const router = useRouter();
@@ -38,11 +39,8 @@ export default function AdminWhatsAppBotPage() {
         }
     }, [loading, instanceId]);
 
-    useEffect(() => {
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 3000);
-        return () => clearInterval(interval);
-    }, [fetchStatus]);
+    // Sayfa görünürken 3 sn'de bir durum kontrolü; arka planda durur.
+    useVisiblePolling(fetchStatus, 3000);
 
     const handleConnect = async () => {
         if (actionLoading) return;

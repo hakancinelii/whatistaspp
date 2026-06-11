@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useVisiblePolling } from '@/lib/useVisiblePolling';
 
 export default function DriverWhatsAppPage() {
     const router = useRouter();
@@ -20,11 +21,8 @@ export default function DriverWhatsAppPage() {
         }
     };
 
-    useEffect(() => {
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 3000);
-        return () => clearInterval(interval);
-    }, []);
+    // Sayfa görünürken 3 sn'de bir durum kontrolü; arka planda durur.
+    useVisiblePolling(fetchStatus, 3000);
 
     const handleConnect = async () => {
         setActionLoading(true);

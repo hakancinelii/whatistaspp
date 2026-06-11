@@ -80,8 +80,20 @@ export default function MessagesPage() {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(fetchProgress, 3000);
-        return () => clearInterval(interval);
+        // İlerleme polling'i yalnızca sayfa görünürken; arka planda durur.
+        let interval: any = null;
+        const start = () => { if (interval == null) interval = setInterval(fetchProgress, 3000); };
+        const stop = () => { if (interval != null) { clearInterval(interval); interval = null; } };
+        const onVisibility = () => {
+            if (document.visibilityState === "visible") { fetchProgress(); start(); }
+            else stop();
+        };
+        start();
+        document.addEventListener("visibilitychange", onVisibility);
+        return () => {
+            stop();
+            document.removeEventListener("visibilitychange", onVisibility);
+        };
     }, []);
 
     const fetchData = async () => {
