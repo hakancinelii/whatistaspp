@@ -8,7 +8,7 @@ let dbInstance: any = null;
 let pgPool: Pool | null = null;
 
 // Determine if we should use PostgreSQL (Production) or SQLite (Local)
-const isPostgres = !!process.env.DATABASE_URL;
+export const isPostgres = !!process.env.DATABASE_URL;
 
 function getDbPath() {
   const railwayPath = '/app/data/database.db';

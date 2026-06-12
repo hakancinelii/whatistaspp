@@ -1,5 +1,42 @@
 import webpush from "web-push";
-import { getDatabase } from "./db";
+import { getDatabase, isPostgres } from "./db";
+
+let tableEnsured = false;
+
+/**
+ * push_subscriptions tablosunu oluşturur (idempotent).
+ * Postgres için runMigrations da oluşturur; bu fonksiyon SQLite (üretim) için kritik,
+ * çünkü runMigrations yalnızca Postgres'te çalışır.
+ */
+async function ensurePushTable(): Promise<void> {
+    if (tableEnsured) return;
+    const db = await getDatabase();
+    const ddl = isPostgres
+        ? `CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                endpoint TEXT UNIQUE NOT NULL,
+                p256dh TEXT NOT NULL,
+                auth TEXT NOT NULL,
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+           )`
+        : `CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                endpoint TEXT UNIQUE NOT NULL,
+                p256dh TEXT NOT NULL,
+                auth TEXT NOT NULL,
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+           )`;
+    if (typeof db.exec === "function") {
+        await db.exec(ddl);
+    } else {
+        await db.run(ddl);
+    }
+    tableEnsured = true;
+}
 
 /**
  * Web Push (VAPID) servisi.
@@ -44,6 +81,7 @@ export async function saveSubscription(
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         throw new Error("Geçersiz abonelik verisi");
     }
+    await ensurePushTable();
     const db = await getDatabase();
     await db.run(
         `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
@@ -63,6 +101,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
         console.warn("[Push] VAPID anahtarları ayarlı değil; bildirim atlanıyor.");
         return;
     }
+    await ensurePushTable();
     const db = await getDatabase();
     const subs = await db.all("SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?", [userId]);
     if (!subs || subs.length === 0) return;
