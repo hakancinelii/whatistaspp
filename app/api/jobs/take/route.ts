@@ -7,13 +7,15 @@ export async function POST(request: NextRequest) {
         const user = await getUserFromToken(request);
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { jobId, groupJid, phone, externalDriverId } = await request.json();
+        const { jobId, groupJid, phone, externalDriverId, okOnly } = await request.json();
 
-        const result = await processJobTaking(user.userId, jobId, groupJid, phone, externalDriverId);
+        const result = await processJobTaking(user.userId, jobId, groupJid, phone, externalDriverId, !!okOnly);
 
         return NextResponse.json({
             success: true,
-            message: result.isUsingProxy ? 'İş sahiplenildi (Admin WhatsApp üzerinden)' : 'İş sahiplenildi.'
+            message: result.isUsingProxy
+                ? (okOnly ? 'Gruba "OK" gönderildi (Admin WhatsApp üzerinden)' : 'İş sahiplenildi (Admin WhatsApp üzerinden)')
+                : (okOnly ? 'Gruba "OK" gönderildi.' : 'İş sahiplenildi.')
         });
     } catch (error: any) {
         console.error('[API Take Job Global Error]', error);

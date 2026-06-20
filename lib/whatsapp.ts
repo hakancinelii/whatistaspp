@@ -459,8 +459,8 @@ function setupMessageListeners(userId: number, sock: any, instanceId: string = '
 
                             if (!duplicateCheck) {
                                 const result = await db.run(
-                                    'INSERT INTO captured_jobs (user_id, instance_id, group_jid, group_name, sender_jid, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                                    [userId, instanceId, fromJid, groupName, senderJid, job.from_loc, job.to_loc, job.price, job.time, finalPhone, text, job.is_high_reward || 0, job.is_swap || 0]
+                                    'INSERT INTO captured_jobs (user_id, instance_id, group_jid, group_name, sender_jid, message_id, from_loc, to_loc, price, time, phone, raw_message, is_high_reward, is_swap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                    [userId, instanceId, fromJid, groupName, senderJid, msg.key?.id || null, job.from_loc, job.to_loc, job.price, job.time, finalPhone, text, job.is_high_reward || 0, job.is_swap || 0]
                                 );
 
                                 console.log(`[WA] ✅ Job Captured! ID: ${result.lastID} in ${groupName || fromJid}`);

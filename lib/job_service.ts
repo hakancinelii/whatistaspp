@@ -8,7 +8,7 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, message: string) =>
         new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
     ]);
 
-export async function processJobTaking(userId: number, jobId: number, clientGroupJid?: string, clientPhone?: string, externalDriverId?: number) {
+export async function processJobTaking(userId: number, jobId: number, clientGroupJid?: string, clientPhone?: string, externalDriverId?: number, okOnly: boolean = false) {
     const db = await getDatabase();
 
     // 1. Get User Profile
@@ -146,8 +146,13 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         groupMessage = `✅ Araç hazır, işi alıyorum!\n\n${jobDetails}\n\n━━━━━━━━━━━━━━━━\nŞoför: ${driverName}\n📞 ${driverPhone}${driverPlate ? `\n🚗 Plaka: ${driverPlate}` : ''}`;
     }
 
-    // 7. Send to Customer
-    if (finalCustomerPhone && finalCustomerPhone !== "Belirtilmedi") {
+    // "OK" modu: gruba sadece "OK" yazılır, müşteriye/gönderene mesaj GÖNDERİLMEZ.
+    if (okOnly) {
+        groupMessage = 'OK';
+    }
+
+    // 7. Send to Customer (OK modunda atlanır)
+    if (!okOnly && finalCustomerPhone && finalCustomerPhone !== "Belirtilmedi") {
         let jid = '';
         if (finalCustomerPhone.includes('@')) {
             // Zaten bir JID (LID veya tam JID)
@@ -172,7 +177,7 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
                 throw new Error(`Müşteriye mesaj gönderilemedi: ${err.message}`);
             }
         }
-    } else if (targetSenderJid && (targetSenderJid.endsWith('@s.whatsapp.net') || targetSenderJid.endsWith('@lid'))) {
+    } else if (!okOnly && targetSenderJid && (targetSenderJid.endsWith('@s.whatsapp.net') || targetSenderJid.endsWith('@lid'))) {
         let jid = targetSenderJid;
         try {
             await withTimeout(
@@ -185,11 +190,25 @@ export async function processJobTaking(userId: number, jobId: number, clientGrou
         }
     }
 
-    // 8. Send to Group
+    // 8. Send to Group — mümkünse orijinal iş mesajına ALINTI (reply) olarak gönder.
+    // Grup kuralları gereği iş, ilgili mesaja cevaben "OK" yazılarak alınmış sayılır.
     if (targetGroupJid !== 'MANUEL') {
+        const quotedOriginal = job.message_id ? {
+            key: {
+                remoteJid: targetGroupJid,
+                fromMe: false,
+                id: job.message_id,
+                participant: targetSenderJid || undefined,
+            },
+            message: { conversation: job.raw_message || '' },
+        } : undefined;
         try {
             await withTimeout(
-                session.sock.sendMessage(targetGroupJid, { text: groupMessage }),
+                session.sock.sendMessage(
+                    targetGroupJid,
+                    { text: groupMessage },
+                    quotedOriginal ? { quoted: quotedOriginal } : {}
+                ),
                 15000,
                 'WhatsApp grup mesajı zaman aşımına düştü.'
             );

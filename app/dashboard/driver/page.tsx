@@ -23,6 +23,7 @@ export default function DriverDashboard() {
     const [showOnlyAirport, setShowOnlyAirport] = useState(false);
     const [showOnlyVip, setShowOnlyVip] = useState(false);
     const [loadingJobId, setLoadingJobId] = useState<number | null>(null);
+    const [okLoadingJobId, setOkLoadingJobId] = useState<number | null>(null);
     const [view, setView] = useState<'active' | 'history'>('active');
 
     // Görünür iş limiti (Performans için)
@@ -373,6 +374,82 @@ export default function DriverDashboard() {
             window.location.href = `tel:${phone}`;
         } catch (e: any) {
             console.error("[Driver] Call Error:", e);
+        }
+    };
+
+    // Bir iş telefonundan WhatsApp için kullanılabilir uluslararası numara üretir.
+    // @lid (gizlilik kimliği) veya geçersiz değerlerde null döner.
+    const waNumber = (phone?: string): string | null => {
+        if (!phone) return null;
+        if (phone.includes('@')) return null; // @lid / @s.whatsapp.net JID — aranabilir numara değil
+        let digits = phone.replace(/\D/g, '');
+        if (!digits) return null;
+        if (digits.startsWith('00')) digits = digits.slice(2);
+        if (digits.startsWith('0')) digits = '90' + digits.slice(1);          // 05XX... -> 905XX...
+        else if (digits.length === 10 && digits.startsWith('5')) digits = '90' + digits; // 5XX... -> 905XX...
+        if (digits.length < 11 || digits.length > 15) return null;
+        return digits;
+    };
+
+    // WhatsApp sohbetini açar (kişinin WhatsApp'ında; arama ikonu tek dokunuştadır).
+    const handleWhatsApp = (phone: string, jobId: number) => {
+        const num = waNumber(phone);
+        if (!num) {
+            alert("Bu işte WhatsApp için kullanılabilir bir numara yok (gizli numara / @lid).");
+            return;
+        }
+        // WhatsApp sohbetini DOĞRUDAN tıklama jestinde aç (popup-blocker'a takılmasın)
+        window.open(`https://wa.me/${num}`, '_blank');
+        // Durumu 'arandı' olarak işaretle (fire-and-forget — sohbet açılışını bekletme)
+        const token = localStorage.getItem("token");
+        apiFetch("/api/jobs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ jobId, status: 'called' })
+        }).catch((e: any) => console.error("[Driver] WhatsApp status update error:", e));
+    };
+
+    // "OK" butonu: İş Al ile aynı (won + muhasebe) ama gruba sadece "OK" yazar,
+    // müşteriye/gönderene mesaj atmaz. Admin modalı açılmaz (hızlı aksiyon).
+    const handleOkJob = async (jobId: number, groupJid: string, phone: string) => {
+        if (isRestricted) {
+            alert("🚫 Hesabınız kısıtlı moddadır, iş alamazsınız.");
+            return;
+        }
+        setOkLoadingJobId(jobId);
+        const token = localStorage.getItem("token");
+        try {
+            const res = await apiFetch("/api/jobs/take", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ jobId, groupJid, phone, okOnly: true })
+            });
+            const contentType = res.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await res.json() : { error: await res.text() };
+
+            if (res.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
+
+            if (res.ok && data.success) {
+                fetchJobs();
+            } else {
+                const message = res.status === 504
+                    ? 'İstek zaman aşımına düştü. WhatsApp bağlantısını kontrol edip tekrar deneyin.'
+                    : (data.error || "Bilinmeyen bir hata oluştu.");
+                alert("❌ Hata: " + message);
+            }
+        } catch (e: any) {
+            console.error("[Driver] OK Job Error:", e);
+            if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
+                alert("🚨 Bağlantı Hatası: İnternet bağlantınız koptu veya kararsız. Lütfen kontrol edip tekrar deneyin.");
+            } else {
+                alert("🚨 Sistem hatası: " + e.message);
+            }
+        } finally {
+            setOkLoadingJobId(null);
         }
     };
 
@@ -1376,6 +1453,15 @@ export default function DriverDashboard() {
                                                         </span>
                                                     )}
                                                 </div>
+                                                {job.group_name && (
+                                                    <div
+                                                        className="mt-1 flex items-center gap-1 text-[11px] font-black text-emerald-400/90 max-w-[260px]"
+                                                        title={`Grup: ${job.group_name}`}
+                                                    >
+                                                        <span className="flex-shrink-0">👥</span>
+                                                        <span className="truncate">{job.group_name}</span>
+                                                    </div>
+                                                )}
                                                 <details className="mt-1 max-w-[260px] group/message">
                                                     <summary className="list-none cursor-pointer text-xs font-bold text-app-muted/80 leading-snug line-clamp-2 hover:text-app-fg transition-colors">
                                                         {job.raw_message || 'Mesaj detayı yok'}
@@ -1431,61 +1517,77 @@ export default function DriverDashboard() {
                                     )}
 
                                     {/* Action Buttons */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {job.status === 'won' ? (
-                                            <div className="col-span-2 bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-center animate-in zoom-in-95 duration-300">
-                                                <div className="text-red-500 font-black text-sm uppercase">İŞ SENİN! 🚀</div>
-                                                <div className="text-xs text-red-500/60 font-bold mt-1 uppercase tracking-widest">Müşteriye mesajın gönderildi.</div>
-                                            </div>
-                                        ) : (
-                                            <>
+                                    {job.status === 'won' ? (
+                                        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-center animate-in zoom-in-95 duration-300">
+                                            <div className="text-red-500 font-black text-sm uppercase">İŞ SENİN! 🚀</div>
+                                            <div className="text-xs text-red-500/60 font-bold mt-1 uppercase tracking-widest">İşi aldın.</div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2.5">
+                                            {/* İletişim: Telefon + WhatsApp */}
+                                            <div className="grid grid-cols-2 gap-2">
                                                 <button
-                                                    onClick={() => handleIgnore(job.id)}
-                                                    className="bg-app-elevated/50 hover:bg-app-elevated text-app-muted font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-transparent hover:border-app-border"
+                                                    onClick={() => handleCall(job.phone, job.id)}
+                                                    disabled={!waNumber(job.phone)}
+                                                    title={waNumber(job.phone) ? 'Telefonla ara' : 'Aranabilir numara yok (@lid)'}
+                                                    className="group/btn relative bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-3.5 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/30 flex items-center justify-center gap-2 overflow-hidden"
                                                 >
-                                                    Yoksay
+                                                    <span className="text-sm transition-transform group-hover/btn:-rotate-12">📞</span>
+                                                    ARA
                                                 </button>
+                                                <button
+                                                    onClick={() => handleWhatsApp(job.phone, job.id)}
+                                                    disabled={!waNumber(job.phone)}
+                                                    title={waNumber(job.phone) ? 'WhatsApp sohbetini aç' : 'WhatsApp için numara yok (@lid)'}
+                                                    className="group/btn relative bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-3.5 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 overflow-hidden"
+                                                >
+                                                    <span className="text-sm transition-transform group-hover/btn:scale-110">💬</span>
+                                                    WHATSAPP
+                                                </button>
+                                            </div>
 
-                                                {(job.status === 'called' || job.phone) ? (
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <button
-                                                            onClick={() => handleCall(job.phone, job.id)}
-                                                            className="group/btn relative bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/30 flex items-center justify-center gap-2 overflow-hidden"
-                                                        >
-                                                            <span className="text-sm transition-transform group-hover/btn:-rotate-12">📞</span>
-                                                            ARA
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
-                                                            disabled={loadingJobId === job.id}
-                                                            className="group/btn relative bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 overflow-hidden"
-                                                        >
-                                                            {loadingJobId === job.id ? (
-                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                            ) : (
-                                                                <>
-                                                                    <span className="text-sm transition-transform group-hover/btn:scale-110">⚡</span>
-                                                                    İŞİ AL
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
-                                                        disabled={loadingJobId === job.id}
-                                                        className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-green-900/20"
-                                                    >
-                                                        {loadingJobId === job.id ? (
-                                                            <span className="animate-pulse">...</span>
-                                                        ) : (
-                                                            "İŞİ AL"
-                                                        )}
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
+                                            {/* Aksiyon: İşi Al + OK */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => handleTakeJob(job.id, job.group_jid, job.phone)}
+                                                    disabled={loadingJobId === job.id || okLoadingJobId === job.id}
+                                                    className="group/btn relative bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 overflow-hidden"
+                                                >
+                                                    {loadingJobId === job.id ? (
+                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-sm transition-transform group-hover/btn:scale-110">⚡</span>
+                                                            İŞİ AL
+                                                        </>
+                                                    )}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOkJob(job.id, job.group_jid, job.phone)}
+                                                    disabled={loadingJobId === job.id || okLoadingJobId === job.id}
+                                                    title='Gruba sadece "OK" yazar ve işi alır (müşteriye mesaj gitmez)'
+                                                    className="group/btn relative bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 overflow-hidden"
+                                                >
+                                                    {okLoadingJobId === job.id ? (
+                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-sm transition-transform group-hover/btn:scale-110">✔️</span>
+                                                            OK
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            {/* Yoksay */}
+                                            <button
+                                                onClick={() => handleIgnore(job.id)}
+                                                className="w-full bg-app-elevated/50 hover:bg-app-elevated text-app-muted font-black py-3 rounded-2xl transition-all active:scale-95 text-xs uppercase tracking-widest border border-transparent hover:border-app-border"
+                                            >
+                                                Yoksay
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Quick Ignore for already called jobs (if needed) */}
                                     {job.status === 'called' && (

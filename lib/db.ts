@@ -206,6 +206,8 @@ function runSqliteMigrations(db: Database.Database) {
   addColumn('reservations', 'currency', "TEXT DEFAULT 'TRY'");
   addColumn('reservations', 'payment_status', "TEXT DEFAULT 'pending'");
   addColumn('reservations', 'notes', 'TEXT');
+  // Grupta orijinal iş mesajına "alıntı/cevap" (reply) ile OK atabilmek için mesaj kimliği
+  addColumn('captured_jobs', 'message_id', 'TEXT');
 }
 
 // Convert SQLite compatible SQL to PostgreSQL compatible SQL
@@ -496,6 +498,7 @@ export async function runMigrations() {
             group_jid TEXT,
             group_name TEXT,
             sender_jid TEXT,
+            message_id TEXT,
             from_loc TEXT,
             to_loc TEXT,
             price TEXT,
